@@ -18,7 +18,7 @@ namespace Celeste.Mod.Ghost {
         public readonly static string Magic = "everest-ghost\r\n";
         public readonly static char[] MagicChars = Magic.ToCharArray();
 
-        public readonly static int Version = 0;
+        public readonly static int Version = 1;
 
         public readonly static Regex PathVerifyRegex = new Regex("[\"`?* #" + Regex.Escape(new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars())) + "]", RegexOptions.Compiled);
 
@@ -78,6 +78,8 @@ namespace Celeste.Mod.Ghost {
 
         public float? Opacity;
 
+        public Guid Run;
+
         protected string _FilePath;
         public string FilePath {
             get {
@@ -103,6 +105,7 @@ namespace Celeste.Mod.Ghost {
 
         public GhostData() {
             Date = DateTime.UtcNow;
+            Run = Guid.NewGuid();
         }
         public GhostData(Session session)
             : this() {
@@ -173,6 +176,12 @@ namespace Celeste.Mod.Ghost {
 
             Opacity = reader.ReadBoolean() ? (float?) reader.ReadSingle() : null;
 
+            if (version >= 1) {
+                Run = new Guid(reader.ReadBytes(16));
+            } else {
+                Run = Guid.Empty;
+            }
+
             int count = reader.ReadInt32();
             reader.ReadChar(); // \r
             reader.ReadChar(); // \n
@@ -224,6 +233,8 @@ namespace Celeste.Mod.Ghost {
             } else {
                 writer.Write(false);
             }
+
+            writer.Write(Run.ToByteArray());
 
             writer.Write(Frames.Count);
             writer.Write('\r');

@@ -27,6 +27,8 @@ namespace Celeste.Mod.Ghost {
 
         public GhostName Name;
 
+        protected Color color;
+
         protected float alpha;
         protected float alphaHair;
 
@@ -57,7 +59,7 @@ namespace Celeste.Mod.Ghost {
             Hair.Start();
             UpdateHair();
 
-            if (Data != null && Data.Name != GhostModule.Settings.Name)
+            if (Data != null)
                 Scene.Add(Name = new GhostName(this, Data.Name));
         }
 
@@ -105,6 +107,8 @@ namespace Celeste.Mod.Ghost {
             Visible &= Frame.HasData;
             if (Data != null && Data.Dead)
                 Visible &= GhostModule.Settings.ShowDeaths;
+            if (Data != null && !string.IsNullOrEmpty(GhostModule.Settings.NameFilter))
+                Visible &= string.IsNullOrEmpty(Data.Name) || GhostModule.Settings.NameFilter.Equals(Data.Name, StringComparison.InvariantCultureIgnoreCase);
 
             if (Player.InControl && AutoForward && ForcedFrame == null) {
                 do {
@@ -115,9 +119,6 @@ namespace Celeste.Mod.Ghost {
                 );
             }
             playerHadControl = Player.InControl;
-
-            UpdateSprite();
-            UpdateHair();
 
             if (Data != null && Data.Opacity != null) {
                 alpha = Data.Opacity.Value;
@@ -135,6 +136,18 @@ namespace Celeste.Mod.Ghost {
                 alpha = Calc.LerpClamp(GhostModule.Settings.InnerOpacityFactor, GhostModule.Settings.OuterOpacityFactor, dist);
                 alphaHair = Calc.LerpClamp(GhostModule.Settings.InnerHairOpacityFactor, GhostModule.Settings.OuterHairOpacityFactor, dist);
             }
+
+            if (Data != null) {
+                /* Proposed colors:
+                 * blue - full run PB
+                 * silver - chapter PB
+                 * gold - room PB
+                 */
+                 // TODO: Ghost colors based on time.
+            }
+
+            UpdateSprite();
+            UpdateHair();
 
             Visible &= alpha > 0f;
 

@@ -17,7 +17,10 @@ namespace Celeste.Mod.Ghost {
         [SettingInGame(false)]
         public string Name { get; set; } = "";
 
-        public bool ShowOtherNames { get; set; } = true;
+        [SettingIgnore] // Ignore on older builds of Everest which don't support custom entry creators.
+        public string NameFilter { get; set; } = "";
+
+        public bool ShowNames { get; set; } = true;
 
         public bool ShowDeaths { get; set; } = false;
 
@@ -56,6 +59,10 @@ namespace Celeste.Mod.Ghost {
         [YamlIgnore]
         [SettingIgnore]
         public float BorderSizeDist => BorderSize * BorderSize * 64f;
+
+        public void ShowNameFilterEntry(TextMenu menu, bool inGame) {
+            // TODO: Create a slider to choose between all available names.
+        }
 
     }
     public enum GhostModuleMode {

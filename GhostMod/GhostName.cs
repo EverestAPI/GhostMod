@@ -32,7 +32,7 @@ namespace Celeste.Mod.Ghost {
 
             if ((GhostModule.Settings.Mode & GhostModuleMode.Play) != GhostModuleMode.Play)
                 return;
-            if (!GhostModule.Settings.ShowOtherNames ||
+            if (!GhostModule.Settings.ShowNames ||
                 Tracking == null)
                 return;
 

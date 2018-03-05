@@ -24,6 +24,8 @@ namespace Celeste.Mod.Ghost {
         public List<Ghost> Ghosts = new List<Ghost>();
         public GhostRecorder GhostRecorder;
 
+        public Guid Run;
+
         public GhostModule() {
             Instance = this;
             
@@ -50,6 +52,7 @@ namespace Celeste.Mod.Ghost {
                 Ghosts.Clear();
                 GhostRecorder?.RemoveSelf();
                 GhostRecorder = null;
+                Run = Guid.NewGuid();
             }
 
             Step(level);
@@ -75,6 +78,7 @@ namespace Celeste.Mod.Ghost {
             // Maybe we left the level prematurely earlier?
             if (GhostRecorder?.Data != null) {
                 GhostRecorder.Data.Target = target;
+                GhostRecorder.Data.Run = Run;
                 GhostRecorder.Data.Write();
             }
 
