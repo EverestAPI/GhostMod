@@ -21,7 +21,7 @@ namespace Celeste.Mod.Ghost {
 
         public static string PathGhosts { get; internal set; }
 
-        public List<Ghost> Ghosts = new List<Ghost>();
+        public GhostManager GhostManager;
         public GhostRecorder GhostRecorder;
 
         public Guid Run;
@@ -49,7 +49,8 @@ namespace Celeste.Mod.Ghost {
 
         public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
             if (isFromLoader) {
-                Ghosts.Clear();
+                GhostManager?.RemoveSelf();
+                GhostManager = null;
                 GhostRecorder?.RemoveSelf();
                 GhostRecorder = null;
                 Run = Guid.NewGuid();
@@ -82,21 +83,9 @@ namespace Celeste.Mod.Ghost {
                 GhostRecorder.Data.Write();
             }
 
-            // Remove any dead ghosts (heh)
-            for (int i = Ghosts.Count - 1; i > -1; --i) {
-                Ghost ghost = Ghosts[i];
-                if (ghost.Player != player)
-                    ghost.RemoveSelf();
-            }
-            Ghosts.Clear();
+            GhostManager?.RemoveSelf();
 
-            // Read and add all ghosts.
-            GhostData.ForAllGhosts(level.Session, (i, ghostData) => {
-                Ghost ghost = new Ghost(player, ghostData);
-                level.Add(ghost);
-                Ghosts.Add(ghost);
-                return true;
-            });
+            level.Add(GhostManager = new GhostManager(player, level));
 
             if (GhostRecorder != null)
                 GhostRecorder.RemoveSelf();

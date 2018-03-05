@@ -12,6 +12,8 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost {
     public class Ghost : Actor {
 
+        public GhostManager Manager;
+
         public Player Player;
 
         public PlayerSprite Sprite;
@@ -27,7 +29,7 @@ namespace Celeste.Mod.Ghost {
 
         public GhostName Name;
 
-        protected Color color;
+        public Color Color = Color.White;
 
         protected float alpha;
         protected float alphaHair;
@@ -73,7 +75,12 @@ namespace Celeste.Mod.Ghost {
             if (!Frame.HasData)
                 return;
 
-            Hair.Color = Frame.HairColor;
+            Hair.Color = new Color(
+                (Frame.HairColor.R * Color.R) / 255,
+                (Frame.HairColor.G * Color.G) / 255,
+                (Frame.HairColor.B * Color.B) / 255,
+                (Frame.HairColor.A * Color.A) / 255
+            );
             Hair.Alpha = alphaHair;
             Hair.Facing = Frame.Facing;
             Hair.SimulateMotion = Frame.HairSimulateMotion;
@@ -87,7 +94,12 @@ namespace Celeste.Mod.Ghost {
             Sprite.Rotation = Frame.Rotation;
             Sprite.Scale = Frame.Scale;
             Sprite.Scale.X = Sprite.Scale.X * (float) Frame.Facing;
-            Sprite.Color = Frame.Color * alpha;
+            Sprite.Color = new Color(
+                (Frame.Color.R * Color.R) / 255,
+                (Frame.Color.G * Color.G) / 255,
+                (Frame.Color.B * Color.B) / 255,
+                (Frame.Color.A * Color.A) / 255
+            ) * alpha;
 
             Sprite.Rate = Frame.SpriteRate;
             Sprite.Justify = Frame.SpriteJustify;
@@ -135,15 +147,6 @@ namespace Celeste.Mod.Ghost {
                 }
                 alpha = Calc.LerpClamp(GhostModule.Settings.InnerOpacityFactor, GhostModule.Settings.OuterOpacityFactor, dist);
                 alphaHair = Calc.LerpClamp(GhostModule.Settings.InnerHairOpacityFactor, GhostModule.Settings.OuterHairOpacityFactor, dist);
-            }
-
-            if (Data != null) {
-                /* Proposed colors:
-                 * blue - full run PB
-                 * silver - chapter PB
-                 * gold - room PB
-                 */
-                 // TODO: Ghost colors based on time.
             }
 
             UpdateSprite();

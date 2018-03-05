@@ -64,6 +64,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GhostManager.cs" />
     <Compile Include="GhostName.cs" />
     <Compile Include="GhostInputReplayer.cs" />
     <Compile Include="GhostRecorder.cs" />
