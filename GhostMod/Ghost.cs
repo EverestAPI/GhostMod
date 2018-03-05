@@ -139,7 +139,7 @@ namespace Celeste.Mod.Ghost {
             Visible &= alpha > 0f;
 
             if (Name != null)
-                Name.Alpha = alpha;
+                Name.Alpha = Visible ? alpha : 0f;
 
             base.Update();
         }
