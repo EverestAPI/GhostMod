@@ -30,8 +30,9 @@ namespace Celeste.Mod.Ghost {
         public override void Render() {
             base.Render();
 
-            if ((GhostModule.Settings.Mode & GhostModuleMode.Play) != GhostModuleMode.Play)
+            if (Alpha <= 0f)
                 return;
+
             if (!GhostModule.Settings.ShowNames ||
                 Tracking == null)
                 return;

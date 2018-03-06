@@ -16,6 +16,9 @@ namespace Celeste.Mod.Ghost {
 
         public GhostData Data;
 
+        public GhostFrame LastFrameData;
+        public GhostFrame LastFrameInput;
+
         public GhostRecorder(Player player)
             : base() {
             Player = player;
@@ -25,8 +28,7 @@ namespace Celeste.Mod.Ghost {
         public override void Update() {
             base.Update();
 
-            if ((GhostModule.Settings.Mode & GhostModuleMode.Record) != GhostModuleMode.Record ||
-                Player == null)
+            if (Player == null)
                 Data = null;
 
             RecordData();
@@ -34,9 +36,6 @@ namespace Celeste.Mod.Ghost {
 
         public override void Render() {
             base.Render();
-
-            if (Data == null)
-                return;
 
             RecordInput();
         }
@@ -46,7 +45,7 @@ namespace Celeste.Mod.Ghost {
                 return;
 
             // A data frame is always a new frame, no matter if the previous one lacks data or not.
-            Data.Frames.Add(new GhostFrame {
+            LastFrameData = new GhostFrame {
                 HasData = true,
 
                 InControl = Player.InControl,
@@ -64,7 +63,8 @@ namespace Celeste.Mod.Ghost {
 
                 HairColor = Player.Hair.Color,
                 HairSimulateMotion = Player.Hair.SimulateMotion
-            });
+            };
+            Data.Frames.Add(LastFrameData);
         }
 
         public void RecordInput() {
@@ -76,7 +76,7 @@ namespace Celeste.Mod.Ghost {
 
             GhostFrame frame;
             bool isNew = false;
-            if (Data.Frames.Count == 0 || Data[Data.Frames.Count - 1].HasInput) {
+            if (Data == null || Data.Frames.Count == 0 || Data[Data.Frames.Count - 1].HasInput) {
                 frame = new GhostFrame();
                 isNew = true;
             } else {
@@ -106,11 +106,15 @@ namespace Celeste.Mod.Ghost {
             frame.Grab = Input.Grab.Check;
             frame.Talk = Input.Talk.Check;
 
-            if (isNew) {
-                Data.Frames.Add(frame);
-            } else {
-                Data.Frames[Data.Frames.Count - 1] = frame;
+            if (Data != null) {
+                if (isNew) {
+                    Data.Frames.Add(frame);
+                } else {
+                    Data.Frames[Data.Frames.Count - 1] = frame;
+                }
             }
+
+            LastFrameInput = frame;
 
             MInput.Disabled = inputDisabled;
 

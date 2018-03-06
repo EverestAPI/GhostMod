@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GhostMod", "GhostMod\GhostM
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celeste.Mod.mm", "Everest\Celeste.Mod.mm\Celeste.Mod.mm.csproj", "{D5D0239D-FF95-4897-9484-1898AB7E82F5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GhostNetMod", "GhostNetMod\GhostNetMod.csproj", "{2F04DF2A-9512-41A4-B981-2B86A31E4E45}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{D5D0239D-FF95-4897-9484-1898AB7E82F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D5D0239D-FF95-4897-9484-1898AB7E82F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D5D0239D-FF95-4897-9484-1898AB7E82F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F04DF2A-9512-41A4-B981-2B86A31E4E45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F04DF2A-9512-41A4-B981-2B86A31E4E45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F04DF2A-9512-41A4-B981-2B86A31E4E45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F04DF2A-9512-41A4-B981-2B86A31E4E45}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

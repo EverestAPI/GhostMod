@@ -77,7 +77,8 @@ namespace Celeste.Mod.Ghost {
 
             // Write the ghost, even if we haven't gotten an IL PB.
             // Maybe we left the level prematurely earlier?
-            if (GhostRecorder?.Data != null) {
+            if (GhostRecorder?.Data != null &&
+                (Settings.Mode & GhostModuleMode.Record) == GhostModuleMode.Record) {
                 GhostRecorder.Data.Target = target;
                 GhostRecorder.Data.Run = Run;
                 GhostRecorder.Data.Write();
