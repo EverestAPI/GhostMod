@@ -15,6 +15,7 @@ namespace Celeste.Mod.Ghost.Net {
         [SettingIgnore]
         [YamlMember(Alias = "Enabled")]
         public bool _Enabled { get; set; } = false;
+        [YamlIgnore]
         public bool Enabled {
             get {
                 return _Enabled;
@@ -33,6 +34,7 @@ namespace Celeste.Mod.Ghost.Net {
         [SettingIgnore]
         [YamlMember(Alias = "Server")]
         public string _Server { get; set; } = "";
+        [YamlIgnore]
         public string Server {
             get {
                 return _Server;
@@ -49,7 +51,7 @@ namespace Celeste.Mod.Ghost.Net {
         [YamlIgnore]
         public string Host {
             get {
-                string server = Server;
+                string server = Server.ToLowerInvariant();
                 int indexOfPort;
                 int port;
                 if (!string.IsNullOrEmpty(Server) &&

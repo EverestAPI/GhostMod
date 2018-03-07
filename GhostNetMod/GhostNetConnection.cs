@@ -86,8 +86,18 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public void SendManagement(GhostNetFrame frame) {
-            frame.WriteManagement(ManagementWriter);
-            ManagementWriter.Flush();
+            // The frame writer seeks to update the frame length.
+            // TODO: Should management frames be sent from a separate thread?
+            using (MemoryStream bufferStream = new MemoryStream())
+            using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
+                frame.WriteManagement(bufferWriter);
+
+                bufferWriter.Flush();
+                bufferStream.Seek(0, SeekOrigin.Begin);
+                int length = (int) bufferStream.Position;
+                ManagementStream.Write(bufferStream.GetBuffer(), 0, length);
+                ManagementStream.Flush();
+            }
         }
 
         public void SendUpdate(GhostNetFrame frame) {
@@ -116,11 +126,11 @@ namespace Celeste.Mod.Ghost.Net {
         protected virtual ThreadStart ReceiveUpdateLoop(Action<GhostNetConnection, IPEndPoint, GhostNetFrame> onReceive) => () => {
             using (MemoryStream bufferStream = new MemoryStream())
             using (BinaryReader bufferReader = new BinaryReader(bufferStream)) {
-                while (ManagementClient.Connected) {
+                while (UpdateClient != null) {
                     Thread.Sleep(0);
 
                     IPEndPoint remote = EndPoint as IPEndPoint;
-                    byte[] data = UpdateClient.Receive(ref remote);
+                    byte[] data = UpdateClient?.Receive(ref remote);
                     bufferStream.Write(data, 0, data.Length);
                     bufferStream.Flush();
                     bufferStream.Seek(0, SeekOrigin.Begin);
@@ -137,7 +147,7 @@ namespace Celeste.Mod.Ghost.Net {
         protected virtual void TransferUpdateLoop() {
             using (MemoryStream bufferStream = new MemoryStream())
             using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
-                while (ManagementClient.Connected) {
+                while (UpdateClient != null) {
                     Thread.Sleep(0);
 
                     if (UpdateQueue.Count == 0)
@@ -151,7 +161,7 @@ namespace Celeste.Mod.Ghost.Net {
                             bufferWriter.Flush();
                             bufferStream.Seek(0, SeekOrigin.Begin);
                             int length = (int) bufferStream.Position;
-                            UpdateClient.Send(bufferStream.GetBuffer(), length, entry.Item1 ?? (EndPoint as IPEndPoint));
+                            UpdateClient?.Send(bufferStream.GetBuffer(), length, entry.Item1 ?? (EndPoint as IPEndPoint));
                         }
                     }
                 }
