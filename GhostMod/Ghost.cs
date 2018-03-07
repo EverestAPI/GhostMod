@@ -34,8 +34,6 @@ namespace Celeste.Mod.Ghost {
         protected float alpha;
         protected float alphaHair;
 
-        protected bool playerHadControl;
-
         public Ghost(Player player)
             : this(player, null) {
         }
@@ -52,6 +50,8 @@ namespace Celeste.Mod.Ghost {
             Add(Sprite);
 
             Hair.Color = Player.NormalHairColor;
+
+            Name = new GhostName(this, Data?.Name ?? "");
         }
 
         public override void Added(Scene scene) {
@@ -61,7 +61,7 @@ namespace Celeste.Mod.Ghost {
             Hair.Start();
             UpdateHair();
 
-            Scene.Add(Name = new GhostName(this, Data?.Name ?? ""));
+            Scene.Add(Name);
         }
 
         public override void Removed(Scene scene) {
@@ -114,14 +114,14 @@ namespace Celeste.Mod.Ghost {
         }
 
         public override void Update() {
-            Visible = ((GhostModule.Settings.Mode & GhostModuleMode.Play) == GhostModuleMode.Play) || ForcedFrame != null;
+            Visible = ForcedFrame != null || ((GhostModule.Settings.Mode & GhostModuleMode.Play) == GhostModuleMode.Play);
             Visible &= Frame.HasData;
-            if (Data != null && Data.Dead)
+            if (ForcedFrame == null && Data != null && Data.Dead)
                 Visible &= GhostModule.Settings.ShowDeaths;
-            if (Data != null && !string.IsNullOrEmpty(GhostModule.Settings.NameFilter))
+            if (ForcedFrame == null && Data != null && !string.IsNullOrEmpty(GhostModule.Settings.NameFilter))
                 Visible &= string.IsNullOrEmpty(Data.Name) || GhostModule.Settings.NameFilter.Equals(Data.Name, StringComparison.InvariantCultureIgnoreCase);
 
-            if (Player.InControl && AutoForward && ForcedFrame == null) {
+            if (ForcedFrame == null && Data != null && Player.InControl && AutoForward) {
                 do {
                     FrameIndex++;
                 } while (
@@ -129,7 +129,6 @@ namespace Celeste.Mod.Ghost {
                     (!PrevFrame.HasData && FrameIndex < Data.Frames.Count) // Skip any frames not containing the data chunk.
                 );
             }
-            playerHadControl = Player.InControl;
 
             if (Data != null && Data.Opacity != null) {
                 alpha = Data.Opacity.Value;
@@ -153,8 +152,7 @@ namespace Celeste.Mod.Ghost {
 
             Visible &= alpha > 0f;
 
-            if (Name != null)
-                Name.Alpha = Visible ? alpha : 0f;
+            Name.Alpha = Visible ? alpha : 0f;
 
             base.Update();
         }

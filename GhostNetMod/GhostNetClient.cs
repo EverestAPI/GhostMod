@@ -53,14 +53,15 @@ namespace Celeste.Mod.Ghost.Net {
             base.Update(gameTime);
         }
 
-        protected virtual void OnReceiveManagement(GhostNetConnection con, GhostNetFrame frame) {
+        protected virtual void OnReceiveManagement(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
             if (!frame.HasNetHead0 || !frame.HasNetManagement0)
                 return;
 
             if (Session == null || Player == null)
                 return;
 
-            Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
+            // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
+            Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.PlayerID} {frame.Name} in {frame.SID} {frame.Level}");
 
             Ghost ghost;
 
@@ -76,6 +77,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (!GhostMap.TryGetValue(frame.PlayerID, out ghost) || ghost == null) {
                 Player.Scene.Add(ghost = new Ghost(Player));
+                GhostMap[frame.PlayerID] = ghost;
             }
 
             ghost.Name.Name = frame.Name;
@@ -93,9 +95,18 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nU0 from #{frame.PlayerID} ({con.EndPoint})");
+            Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nU0 from #{frame.PlayerID} ({con.EndPoint}), HasData: {frame.Frame.HasData}");
 
             ghost.ForcedFrame = frame.Frame;
+        }
+
+        protected virtual void OnDisconnect(GhostNetConnection con) {
+            Logger.Log(LogLevel.Info, "ghostnet-c", "Client disconnected");
+
+            Connection = null;
+
+            Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+            Everest.Events.Level.OnExit -= OnExit;
         }
 
         public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
@@ -161,20 +172,23 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (GhostNetModule.Instance.Server != null) {
                 // We're hosting - let's just set up pseudo connections.
-                Connection = GhostNetModule.Instance.Server.LocalConnection;
-                GhostNetModule.Instance.Server.Accept(new GhostNetLocalConnection(
-                    OnReceiveManagement,
-                    OnReceiveUpdate
-                ));
+                Connection = GhostNetModule.Instance.Server.LocalConnectionToServer;
+                GhostNetModule.Instance.Server.Accept(new GhostNetLocalConnection {
+                    OnReceiveManagement = OnReceiveManagement,
+                    OnReceiveUpdate = OnReceiveUpdate,
+                    OnDisconnect = OnDisconnect
+                });
             
             } else {
                 // Set up a remote connection.
                 Connection = new GhostNetRemoteConnection(
                     GhostNetModule.Settings.Host,
-                    GhostNetModule.Settings.Port,
-                    OnReceiveManagement,
-                    OnReceiveUpdate
-                );
+                    GhostNetModule.Settings.Port
+                ) {
+                    OnReceiveManagement = OnReceiveManagement,
+                    OnReceiveUpdate = OnReceiveUpdate,
+                    OnDisconnect = OnDisconnect
+                };
             }
 
             Everest.Events.Level.OnLoadLevel += OnLoadLevel;
@@ -194,11 +208,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             IsRunning = false;
 
-            Connection.Dispose();
+            Connection?.Dispose();
             Connection = null;
-
-            Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
-            Everest.Events.Level.OnExit -= OnExit;
         }
 
         private bool disposed = false;

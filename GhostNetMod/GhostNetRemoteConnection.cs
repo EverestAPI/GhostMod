@@ -28,6 +28,8 @@ namespace Celeste.Mod.Ghost.Net {
         public Thread ReceiveUpdateThread;
         public Thread TransferUpdateThread;
 
+        public bool DisposeOnFailure = true;
+
         protected Queue<Tuple<IPEndPoint, GhostNetFrame>> UpdateQueue = new Queue<Tuple<IPEndPoint, GhostNetFrame>>();
 
         protected static TcpClient GetTCP(string host, int port) {
@@ -38,18 +40,11 @@ namespace Celeste.Mod.Ghost.Net {
             return new UdpClient(port);
         }
 
-        public GhostNetRemoteConnection(
-            string host, int port,
-            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, IPEndPoint, GhostNetFrame> onReceiveUpdate = null
-        ) : this(
-            GetTCP(host, port), GetUDP(host, port),
-            onReceiveManagement, onReceiveUpdate
-        ) {
+        public GhostNetRemoteConnection(string host, int port)
+            : this(GetTCP(host, port), GetUDP(host, port)) {
         }
-        public GhostNetRemoteConnection(
-            TcpClient managementClient, UdpClient updateClient,
-            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, IPEndPoint, GhostNetFrame> onReceiveUpdate = null
-        ) : base(onReceiveManagement, onReceiveUpdate) {
+        public GhostNetRemoteConnection(TcpClient managementClient, UdpClient updateClient)
+            : base() {
             if (managementClient != null) {
                 ManagementClient = managementClient;
                 EndPoint = managementClient.Client.RemoteEndPoint as IPEndPoint;
@@ -58,23 +53,19 @@ namespace Celeste.Mod.Ghost.Net {
                 ManagementReader = new BinaryReader(ManagementStream);
                 ManagementWriter = new BinaryWriter(ManagementStream);
 
-                if (onReceiveManagement != null) {
-                    ReceiveManagementThread = new Thread(ReceiveManagementLoop);
-                    ReceiveManagementThread.Name = $"GhostNetConnection ReceiveManagementThread {Context} {EndPoint}";
-                    ReceiveManagementThread.IsBackground = true;
-                    ReceiveManagementThread.Start();
-                }
+                ReceiveManagementThread = new Thread(ReceiveManagementLoop);
+                ReceiveManagementThread.Name = $"GhostNetConnection ReceiveManagementThread {Context} {EndPoint}";
+                ReceiveManagementThread.IsBackground = true;
+                ReceiveManagementThread.Start();
             }
 
             if (updateClient != null) {
                 UpdateClient = updateClient;
 
-                if (onReceiveUpdate != null) {
-                    ReceiveUpdateThread = new Thread(ReceiveUpdateLoop);
-                    ReceiveUpdateThread.Name = $"GhostNetConnection ReceiveUpdateThread {Context} {EndPoint}";
-                    ReceiveUpdateThread.IsBackground = true;
-                    ReceiveUpdateThread.Start();
-                }
+                ReceiveUpdateThread = new Thread(ReceiveUpdateLoop);
+                ReceiveUpdateThread.Name = $"GhostNetConnection ReceiveUpdateThread {Context} {EndPoint}";
+                ReceiveUpdateThread.IsBackground = true;
+                ReceiveUpdateThread.Start();
 
                 TransferUpdateThread = new Thread(TransferUpdateLoop);
                 TransferUpdateThread.Name = $"GhostNetConnection TransferUpdateThread {Context} {EndPoint}";
@@ -84,32 +75,38 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public override void SendManagement(GhostNetFrame frame) {
+            if (ManagementStream == null || ManagementClient == null || !ManagementClient.Connected)
+                return;
+
+            // The frame writer seeks to update the frame length.
+            // Write it into a buffer, then into the network.
             using (MemoryStream bufferStream = new MemoryStream())
             using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
-                try {
-                    // The frame writer seeks to update the frame length.
-                    // TODO: Should management frames be sent from a separate thread?
-                    frame.WriteManagement(bufferWriter);
+                // TODO: Should management frames be sent from a separate thread?
+                frame.WriteManagement(bufferWriter);
 
-                    bufferWriter.Flush();
-                    bufferStream.Seek(0, SeekOrigin.Begin);
-                    int length = (int) bufferStream.Position;
-                    ManagementStream.Write(bufferStream.GetBuffer(), 0, length);
-                    ManagementStream.Flush();
+                bufferWriter.Flush();
+                byte[] buffer = bufferStream.ToArray();
+
+                try {
+                    ManagementStream.Write(buffer, 0, buffer.Length);
                     // Logger.Log(LogLevel.Warn, "ghostnet-con", "Sent management frame");
-                } catch (SocketException e) {
-                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending management frame, socket fail");
+                } catch (Exception e) {
+                    if (!ManagementClient.Connected) {
+                        Dispose();
+                        return;
+                    }
+
+                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending management frame");
                     LogContext(LogLevel.Warn);
                     e.LogDetailed();
-                } catch (EndOfStreamException e) {
-                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending management frame, EOF");
-                    LogContext(LogLevel.Warn);
-                    e.LogDetailed();
-                } catch (IOException e) {
-                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending management frame, IO fail");
-                    LogContext(LogLevel.Warn);
-                    e.LogDetailed();
+                    if (DisposeOnFailure) {
+                        Dispose();
+                        return;
+                    }
                 }
+
+                bufferStream.Seek(0, SeekOrigin.Begin);
             }
         }
 
@@ -134,101 +131,104 @@ namespace Celeste.Mod.Ghost.Net {
                     GhostNetFrame frame = new GhostNetFrame();
                     frame.Read(ManagementReader);
                     // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Received management frame");
-                    ReceiveManagement(frame);
-                } catch (SocketException e) {
-                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving management frame, socket fail");
+                    ReceiveManagement(EndPoint, frame);
+                } catch (Exception e) {
+                    if (!ManagementClient.Connected) {
+                        Dispose();
+                        return;
+                    }
+
+                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving management frame");
                     LogContext(LogLevel.Warn);
                     e.LogDetailed();
-                } catch (EndOfStreamException e) {
-                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving management frame, EOF");
-                    LogContext(LogLevel.Warn);
-                    e.LogDetailed();
-                } catch (IOException e) {
-                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving management frame, IO fail");
-                    LogContext(LogLevel.Warn);
-                    e.LogDetailed();
+                    if (DisposeOnFailure) {
+                        Dispose();
+                        return;
+                    }
                 }
             }
+            // Not connected - dispose.
+            Dispose();
         }
 
         protected virtual void ReceiveUpdateLoop() {
-            using (MemoryStream bufferStream = new MemoryStream())
-            using (BinaryReader bufferReader = new BinaryReader(bufferStream)) {
-                while (UpdateClient != null) {
-                    Thread.Sleep(0);
+            while (UpdateClient != null) {
+                Thread.Sleep(0);
 
-                    IPEndPoint remote = EndPoint;
-                    byte[] data = null;
-                    try {
-                        // Let's just hope that we always receive a full frame...
-                        data = UpdateClient?.Receive(ref remote);
-                    } catch (SocketException e) {
-                        Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving update frame, socket fail");
-                        LogContext(LogLevel.Warn);
-                        e.LogDetailed();
-                    } catch (EndOfStreamException e) {
-                        Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving update frame, EOF");
-                        LogContext(LogLevel.Warn);
-                        e.LogDetailed();
-                    } catch (IOException e) {
-                        Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving update frame, IO fail");
-                        LogContext(LogLevel.Warn);
-                        e.LogDetailed();
+                IPEndPoint remote = EndPoint;
+                byte[] data = null;
+                try {
+                    // Let's just hope that we always receive a full frame...
+                    data = UpdateClient?.Receive(ref remote);
+                } catch (Exception e) {
+                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving update frame");
+                    LogContext(LogLevel.Warn);
+                    e.LogDetailed();
+                    if (DisposeOnFailure) {
+                        Dispose();
+                        return;
                     }
-                    if (remote == null || remote.Address != EndPoint.Address ||
-                        data == null
-                    ) {
-                        continue;
+                }
+                if (remote == null ||
+                    (EndPoint != null && remote.Address != EndPoint.Address) ||
+                    data == null
+                ) {
+                    continue;
+                }
+
+                try {
+                    using (MemoryStream bufferStream = new MemoryStream(data))
+                    using (BinaryReader bufferReader = new BinaryReader(bufferStream)) {
+                        GhostNetFrame frame = new GhostNetFrame();
+                        frame.Read(bufferReader);
+                        // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Received update frame");
+                        ReceiveUpdate(remote, frame);
                     }
-
-                    bufferStream.Write(data, 0, data.Length);
-                    bufferStream.Flush();
-                    bufferStream.Seek(0, SeekOrigin.Begin);
-
-                    GhostNetFrame frame = new GhostNetFrame();
-                    frame.Read(bufferReader);
-
-                    // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Received update frame");
-                    ReceiveUpdate(frame);
+                } catch (Exception e) {
+                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed parsing update frame");
+                    LogContext(LogLevel.Warn);
+                    e.LogDetailed();
+                    Console.WriteLine("Data:");
+                    Console.WriteLine(data.ToHexadecimalString());
+                    // Don't dispose - maybe upcoming data isn't broken?
                 }
             }
         }
 
         // We need to actively transfer the update data from a separate thread. UDP isn't streamed.
         protected virtual void TransferUpdateLoop() {
-            using (MemoryStream bufferStream = new MemoryStream())
-            using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
-                while (UpdateClient != null) {
-                    Thread.Sleep(0);
+            while (UpdateClient != null) {
+                Thread.Sleep(0);
 
-                    if (UpdateQueue.Count == 0)
-                        continue;
+                if (UpdateQueue.Count == 0)
+                    continue;
 
-                    lock (UpdateQueue) {
-                        while (UpdateQueue.Count > 0) {
+                lock (UpdateQueue) {
+                    while (UpdateQueue.Count > 0) {
+                        using (MemoryStream bufferStream = new MemoryStream())
+                        using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
                             Tuple<IPEndPoint, GhostNetFrame> entry = UpdateQueue.Dequeue();
                             entry.Item2.WriteUpdate(bufferWriter);
 
                             bufferWriter.Flush();
-                            bufferStream.Seek(0, SeekOrigin.Begin);
-                            int length = (int) bufferStream.Position;
+                            byte[] buffer = bufferStream.ToArray();
                             try {
                                 // Let's just hope that we always send a full frame...
-                                UpdateClient?.Send(bufferStream.GetBuffer(), length, entry.Item1 ?? EndPoint);
+                                UpdateClient.Send(buffer, buffer.Length, entry.Item1 ?? EndPoint);
                                 // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Sent update frame");
-                            } catch (SocketException e) {
-                                Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending update frame, socket fail");
+                            } catch (Exception e) {
+                                bufferStream.Seek(0, SeekOrigin.Begin);
+
+                                Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending update frame");
                                 LogContext(LogLevel.Warn);
                                 e.LogDetailed();
-                            } catch (EndOfStreamException e) {
-                                Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending update frame, EOF");
-                                LogContext(LogLevel.Warn);
-                                e.LogDetailed();
-                            } catch (IOException e) {
-                                Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending update frame, IO fail");
-                                LogContext(LogLevel.Warn);
-                                e.LogDetailed();
+                                if (DisposeOnFailure) {
+                                    Dispose();
+                                    return;
+                                }
                             }
+
+                            bufferStream.Seek(0, SeekOrigin.Begin);
                         }
                     }
                 }
@@ -236,6 +236,8 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected override void Dispose(bool disposing) {
+            base.Dispose(disposing);
+
             ManagementReader?.Dispose();
             ManagementReader = null;
 

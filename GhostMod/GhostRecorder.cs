@@ -28,9 +28,6 @@ namespace Celeste.Mod.Ghost {
         public override void Update() {
             base.Update();
 
-            if (Player == null)
-                Data = null;
-
             RecordData();
         }
 
@@ -41,7 +38,7 @@ namespace Celeste.Mod.Ghost {
         }
 
         public void RecordData() {
-            if (Data == null)
+            if (Player == null)
                 return;
 
             // A data frame is always a new frame, no matter if the previous one lacks data or not.
@@ -64,7 +61,9 @@ namespace Celeste.Mod.Ghost {
                 HairColor = Player.Hair.Color,
                 HairSimulateMotion = Player.Hair.SimulateMotion
             };
-            Data.Frames.Add(LastFrameData);
+
+            if (Data != null)
+                Data.Frames.Add(LastFrameData);
         }
 
         public void RecordInput() {

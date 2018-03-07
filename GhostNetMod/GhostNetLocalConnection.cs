@@ -17,21 +17,21 @@ using System.Threading.Tasks;
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetLocalConnection : GhostNetConnection {
 
-        public GhostNetLocalConnection(
-            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, IPEndPoint, GhostNetFrame> onReceiveUpdate = null
-        ) : base(onReceiveManagement, onReceiveUpdate) {
+        public GhostNetLocalConnection()
+            : base() {
             EndPoint = new IPEndPoint(IPAddress.Loopback, 0);
         }
 
         public override void SendManagement(GhostNetFrame frame) {
-            ReceiveManagement(frame);
+            ReceiveManagement(EndPoint, frame);
         }
 
         public override void SendUpdate(GhostNetFrame frame) {
-            ReceiveUpdate(frame);
+            ReceiveUpdate(EndPoint, frame);
         }
 
         public override void SendUpdate(IPEndPoint remote, GhostNetFrame frame) {
+            // Local connections don't support sending updates to another client.
             throw new NotSupportedException();
         }
 
