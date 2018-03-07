@@ -30,7 +30,7 @@ namespace Celeste.Mod.Ghost.Net {
         public Thread ReceiveUpdateThread;
         public Thread TransferUpdateThread;
 
-        protected Queue<GhostNetFrame> UpdateQueue = new Queue<GhostNetFrame>();
+        protected Queue<Tuple<IPEndPoint, GhostNetFrame>> UpdateQueue = new Queue<Tuple<IPEndPoint, GhostNetFrame>>();
 
         protected static TcpClient GetTCP(string host, int ip) {
             return new TcpClient(host, ip);
@@ -45,7 +45,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public GhostNetConnection(
             string host, int ip,
-            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, GhostNetFrame> onReceiveUpdate = null
+            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, IPEndPoint, GhostNetFrame> onReceiveUpdate = null
         ) : this(
             GetTCP(host, ip), GetUDP(host, ip),
             onReceiveManagement, onReceiveUpdate
@@ -53,32 +53,36 @@ namespace Celeste.Mod.Ghost.Net {
         }
         public GhostNetConnection(
             TcpClient managementClient, UdpClient updateClient,
-            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, GhostNetFrame> onReceiveUpdate = null
+            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, IPEndPoint, GhostNetFrame> onReceiveUpdate = null
         ) {
-            ManagementClient = managementClient;
-            EndPoint = managementClient.Client.RemoteEndPoint;
+            if (managementClient != null) {
+                ManagementClient = managementClient;
+                EndPoint = managementClient.Client.RemoteEndPoint;
 
-            ManagementStream = ManagementClient.GetStream();
-            ManagementReader = new BinaryReader(ManagementStream);
-            ManagementWriter = new BinaryWriter(ManagementStream);
+                ManagementStream = ManagementClient.GetStream();
+                ManagementReader = new BinaryReader(ManagementStream);
+                ManagementWriter = new BinaryWriter(ManagementStream);
 
-            UpdateClient = updateClient;
-
-            if (onReceiveManagement != null) {
-                ReceiveManagementThread = new Thread(ReceiveManagementLoop(onReceiveManagement));
-                ReceiveManagementThread.IsBackground = true;
-                ReceiveManagementThread.Start();
+                if (onReceiveManagement != null) {
+                    ReceiveManagementThread = new Thread(ReceiveManagementLoop(onReceiveManagement));
+                    ReceiveManagementThread.IsBackground = true;
+                    ReceiveManagementThread.Start();
+                }
             }
 
-            if (onReceiveUpdate != null) {
-                ReceiveUpdateThread = new Thread(ReceiveUpdateLoop(onReceiveUpdate));
-                ReceiveUpdateThread.IsBackground = true;
-                ReceiveUpdateThread.Start();
-            }
+            if (updateClient != null) {
+                UpdateClient = updateClient;
 
-            TransferUpdateThread = new Thread(TransferUpdateLoop);
-            TransferUpdateThread.IsBackground = true;
-            TransferUpdateThread.Start();
+                if (onReceiveUpdate != null) {
+                    ReceiveUpdateThread = new Thread(ReceiveUpdateLoop(onReceiveUpdate));
+                    ReceiveUpdateThread.IsBackground = true;
+                    ReceiveUpdateThread.Start();
+                }
+
+                TransferUpdateThread = new Thread(TransferUpdateLoop);
+                TransferUpdateThread.IsBackground = true;
+                TransferUpdateThread.Start();
+            }
         }
 
         public void SendManagement(GhostNetFrame frame) {
@@ -88,7 +92,13 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void SendUpdate(GhostNetFrame frame) {
             lock (UpdateQueue) {
-                UpdateQueue.Enqueue(frame);
+                UpdateQueue.Enqueue(Tuple.Create(default(IPEndPoint), frame));
+            }
+        }
+
+        public void SendUpdate(IPEndPoint remote, GhostNetFrame frame) {
+            lock (UpdateQueue) {
+                UpdateQueue.Enqueue(Tuple.Create(remote, frame));
             }
         }
 
@@ -96,15 +106,30 @@ namespace Celeste.Mod.Ghost.Net {
             while (ManagementClient.Connected) {
                 Thread.Sleep(0);
 
-                // TODO: Read management frames.
+                // Let's just hope that the reader always reads a full frame...
+                GhostNetFrame frame = new GhostNetFrame();
+                frame.Read(ManagementReader);
+                onReceive(this, frame);
             }
         };
 
-        protected virtual ThreadStart ReceiveUpdateLoop(Action<GhostNetConnection, GhostNetFrame> onReceive) => () => {
-            while (ManagementClient.Connected) {
-                Thread.Sleep(0);
+        protected virtual ThreadStart ReceiveUpdateLoop(Action<GhostNetConnection, IPEndPoint, GhostNetFrame> onReceive) => () => {
+            using (MemoryStream bufferStream = new MemoryStream())
+            using (BinaryReader bufferReader = new BinaryReader(bufferStream)) {
+                while (ManagementClient.Connected) {
+                    Thread.Sleep(0);
 
-                // TODO: Read update frames.
+                    IPEndPoint remote = EndPoint as IPEndPoint;
+                    byte[] data = UpdateClient.Receive(ref remote);
+                    bufferStream.Write(data, 0, data.Length);
+                    bufferStream.Flush();
+                    bufferStream.Seek(0, SeekOrigin.Begin);
+
+                    GhostNetFrame frame = new GhostNetFrame();
+                    frame.Read(bufferReader);
+
+                    onReceive(this, remote, frame);
+                }
             }
         };
 
@@ -120,14 +145,13 @@ namespace Celeste.Mod.Ghost.Net {
 
                     lock (UpdateQueue) {
                         while (UpdateQueue.Count > 0) {
-                            GhostNetFrame frame = UpdateQueue.Dequeue();
-
-                            frame.WriteUpdate(bufferWriter);
+                            Tuple<IPEndPoint, GhostNetFrame> entry = UpdateQueue.Dequeue();
+                            entry.Item2.WriteUpdate(bufferWriter);
 
                             bufferWriter.Flush();
                             bufferStream.Seek(0, SeekOrigin.Begin);
                             int length = (int) bufferStream.Position;
-                            UpdateClient.Send(bufferStream.GetBuffer(), length);
+                            UpdateClient.Send(bufferStream.GetBuffer(), length, entry.Item1 ?? (EndPoint as IPEndPoint));
                         }
                     }
                 }

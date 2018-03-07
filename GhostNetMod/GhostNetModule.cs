@@ -35,8 +35,10 @@ namespace Celeste.Mod.Ghost.Net {
         public void Start() {
             Stop();
 
-            Server = new GhostNetServer(Celeste.Instance);
-            Server.Start();
+            if (Settings.IsHost) {
+                Server = new GhostNetServer(Celeste.Instance);
+                Server.Start();
+            }
 
             Client = new GhostNetClient(Celeste.Instance);
             Client.Start();

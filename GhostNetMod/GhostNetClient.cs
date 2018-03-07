@@ -78,7 +78,7 @@ namespace Celeste.Mod.Ghost.Net {
             ghost.Name.Name = frame.Name;
         }
 
-        protected virtual void OnReceiveUpdate(GhostNetConnection con, GhostNetFrame frame) {
+        protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
             if (!frame.HasNetHead0 || !frame.HasNetUpdate0)
                 return;
 

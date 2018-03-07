@@ -22,10 +22,13 @@ namespace Celeste.Mod.Ghost.Net {
         public TcpListener ManagementListener;
         public UdpClient UpdateClient;
 
+        public GhostNetConnection UpdateConnection;
         public List<GhostNetConnection> Connections = new List<GhostNetConnection>();
+        public Dictionary<IPEndPoint, GhostNetConnection> ConnectionMap = new Dictionary<IPEndPoint, GhostNetConnection>();
         public Dictionary<uint, GhostNetFrame> GhostMap = new Dictionary<uint, GhostNetFrame>();
+        public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
 
-        public Thread UpdateThread;
+        public Thread ListenerThread;
 
         public GhostNetServer(Game game)
             : base(game) {
@@ -40,11 +43,13 @@ namespace Celeste.Mod.Ghost.Net {
                 Thread.Sleep(0);
 
                 while (ManagementListener.Pending()) {
+                    // Updates are handled via WorldUpdateConnection.
+                    // Receive management updates in a separate connection.
                     Connections.Add(new GhostNetConnection(
                         ManagementListener.AcceptTcpClient(),
-                        UpdateClient,
+                        null,
                         OnReceiveManagement,
-                        OnReceiveUpdate
+                        null
                     ));
                 }
             }
@@ -58,7 +63,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Propagate management to all other players.
             foreach (GhostNetConnection otherCon in Connections)
-                if (otherCon != con)
+                if (otherCon != null && otherCon != con)
                     otherCon.SendManagement(frame);
 
             // Inform the player about all existing ghosts on room change.
@@ -80,10 +85,15 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
+            GhostIndices[frame.PlayerID] = 0;
             GhostMap[frame.PlayerID] = frame;
         }
 
-        protected virtual void OnReceiveUpdate(GhostNetConnection con, GhostNetFrame frame) {
+        protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
+            // The receiving con is the WorldUpdateConnection. Get the actual connection.
+            if (!ConnectionMap.TryGetValue(remote, out con) || con == null)
+                return;
+
             if (!frame.HasNetHead0 || !frame.HasNetUpdate0)
                 return;
 
@@ -97,6 +107,12 @@ namespace Celeste.Mod.Ghost.Net {
                 // Ghost not managed - ignore the update.
                 return;
             }
+
+            // Prevent unordered outdated frames from being handled.
+            if (frame.UpdateIndex <= GhostIndices[frame.PlayerID]) {
+                return;
+            }
+            GhostIndices[frame.PlayerID] = frame.UpdateIndex;
 
             // Propagate update to all active players in the same room.
             for (int i = 0; i < Connections.Count; i++) {
@@ -114,7 +130,7 @@ namespace Celeste.Mod.Ghost.Net {
                     continue;
                 }
 
-                otherCon.SendUpdate(frame);
+                UpdateConnection.SendUpdate(remote, frame);
             }
         }
 
@@ -136,10 +152,16 @@ namespace Celeste.Mod.Ghost.Net {
             ManagementListener.Start();
 
             UpdateClient = new UdpClient(GhostNetModule.Settings.Port);
+            UpdateConnection = new GhostNetConnection(
+                null,
+                UpdateClient,
+                null,
+                OnReceiveUpdate
+            );
 
-            UpdateThread = new Thread(ListenerLoop);
-            UpdateThread.IsBackground = true;
-            UpdateThread.Start();
+            ListenerThread = new Thread(ListenerLoop);
+            ListenerThread.IsBackground = true;
+            ListenerThread.Start();
         }
 
         public void Stop() {
@@ -148,7 +170,7 @@ namespace Celeste.Mod.Ghost.Net {
             Logger.Log("ghostnet-s", "Stopping server");
             IsRunning = false;
 
-            UpdateThread.Join();
+            ListenerThread.Join();
 
             ManagementListener.Stop();
 
@@ -156,11 +178,10 @@ namespace Celeste.Mod.Ghost.Net {
             foreach (GhostNetConnection connection in Connections) {
                 if (connection == null)
                     continue;
-                connection.UpdateClient = null; // Closed separately.
                 connection.Dispose();
             }
 
-            UpdateClient.Close();
+            UpdateConnection.Dispose();
         }
 
         protected override void Dispose(bool disposing) {
