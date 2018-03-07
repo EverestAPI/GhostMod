@@ -95,7 +95,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nU0 from #{frame.PlayerID} ({con.EndPoint}), HasData: {frame.Frame.HasData}");
+            // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nU0 from #{frame.PlayerID} ({remote}), HasData: {frame.Frame.HasData}");
 
             ghost.ForcedFrame = frame.Frame;
         }

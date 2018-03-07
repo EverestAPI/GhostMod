@@ -19,7 +19,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public string Context;
 
-        public IPEndPoint EndPoint;
+        public IPEndPoint ManagementEndPoint;
+        public IPEndPoint UpdateEndPoint;
 
         public Action<GhostNetConnection, IPEndPoint, GhostNetFrame> OnReceiveManagement;
         public Action<GhostNetConnection, IPEndPoint, GhostNetFrame> OnReceiveUpdate;
@@ -45,14 +46,18 @@ namespace Celeste.Mod.Ghost.Net {
 
         public abstract void SendUpdate(IPEndPoint remote, GhostNetFrame frame);
 
-        protected virtual void ReceiveManagement(IPEndPoint remote, GhostNetFrame frame)
-            => OnReceiveManagement?.Invoke(this, remote, frame);
+        protected virtual void ReceiveManagement(IPEndPoint remote, GhostNetFrame frame) {
+            ManagementEndPoint = remote;
+            OnReceiveManagement?.Invoke(this, remote, frame);
+        }
 
-        protected virtual void ReceiveUpdate(IPEndPoint remote, GhostNetFrame frame)
-            => OnReceiveUpdate?.Invoke(this, remote, frame);
+        protected virtual void ReceiveUpdate(IPEndPoint remote, GhostNetFrame frame) {
+            UpdateEndPoint = remote;
+            OnReceiveUpdate?.Invoke(this, remote, frame);
+        }
 
         public void LogContext(LogLevel level) {
-            Logger.Log(level, "ghostnet-con", $"Context: {Context} {EndPoint}");
+            Logger.Log(level, "ghostnet-con", $"Context: {Context} {ManagementEndPoint} {UpdateEndPoint}");
         }
 
         protected virtual void Dispose(bool disposing) {

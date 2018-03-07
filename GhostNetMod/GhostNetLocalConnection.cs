@@ -19,15 +19,16 @@ namespace Celeste.Mod.Ghost.Net {
 
         public GhostNetLocalConnection()
             : base() {
-            EndPoint = new IPEndPoint(IPAddress.Loopback, 0);
+            ManagementEndPoint = new IPEndPoint(IPAddress.Loopback, 0);
+            UpdateEndPoint = new IPEndPoint(IPAddress.Loopback, 0);
         }
 
         public override void SendManagement(GhostNetFrame frame) {
-            ReceiveManagement(EndPoint, frame);
+            ReceiveManagement(ManagementEndPoint, frame);
         }
 
         public override void SendUpdate(GhostNetFrame frame) {
-            ReceiveUpdate(EndPoint, frame);
+            ReceiveUpdate(UpdateEndPoint, frame);
         }
 
         public override void SendUpdate(IPEndPoint remote, GhostNetFrame frame) {
