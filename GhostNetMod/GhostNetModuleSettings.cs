@@ -13,7 +13,7 @@ namespace Celeste.Mod.Ghost.Net {
     public class GhostNetModuleSettings : EverestModuleSettings {
 
         [SettingIgnore]
-        [YamlMember(Alias = "Enabled")]
+        [YamlIgnore]
         public bool _Enabled { get; set; } = false;
         [YamlIgnore]
         public bool Enabled {

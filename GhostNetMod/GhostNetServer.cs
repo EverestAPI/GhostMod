@@ -17,12 +17,20 @@ using System.Threading.Tasks;
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetServer : GameComponent {
 
+        // TODO: Timeout? Auth? Proper server functionality?
+
         public bool IsRunning { get; protected set; } = false;
 
         public TcpListener ManagementListener;
         public UdpClient UpdateClient;
 
+        // Pseudo-connection because sending / receiving data on the same machine sucks on Windows.
+        public GhostNetConnection LocalConnection;
+
+        // Used to broadcast updates.
         public GhostNetConnection UpdateConnection;
+
+        // All managed player connections.
         public List<GhostNetConnection> Connections = new List<GhostNetConnection>();
         public Dictionary<IPEndPoint, GhostNetConnection> ConnectionMap = new Dictionary<IPEndPoint, GhostNetConnection>();
         public Dictionary<uint, GhostNetFrame> GhostMap = new Dictionary<uint, GhostNetFrame>();
@@ -38,6 +46,11 @@ namespace Celeste.Mod.Ghost.Net {
             base.Update(gameTime);
         }
 
+        public void Accept(GhostNetConnection con) {
+            Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Client #{Connections.Count} accepted");
+            Connections.Add(con);
+        }
+
         protected virtual void ListenerLoop() {
             while (IsRunning) {
                 Thread.Sleep(0);
@@ -45,8 +58,10 @@ namespace Celeste.Mod.Ghost.Net {
                 while (ManagementListener.Pending()) {
                     // Updates are handled via WorldUpdateConnection.
                     // Receive management updates in a separate connection.
-                    Connections.Add(new GhostNetConnection(
-                        ManagementListener.AcceptTcpClient(),
+                    TcpClient client = ManagementListener.AcceptTcpClient();
+                    Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Client #{Connections.Count} ({client.Client.RemoteEndPoint}) connected");
+                    Accept(new GhostNetRemoteConnection(
+                        client,
                         null,
                         OnReceiveManagement,
                         null
@@ -60,6 +75,8 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
 
             SetNetHead(con, frame);
+
+            Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
 
             // Propagate management to all other players.
             foreach (GhostNetConnection otherCon in Connections)
@@ -90,14 +107,15 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
-            // The receiving con is the WorldUpdateConnection. Get the actual connection.
-            if (!ConnectionMap.TryGetValue(remote, out con) || con == null)
+            if ((con == UpdateConnection && !ConnectionMap.TryGetValue(remote, out con)) || con == null)
                 return;
 
             if (!frame.HasNetHead0 || !frame.HasNetUpdate0)
                 return;
 
             SetNetHead(con, frame);
+
+            Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nU0 from #{frame.PlayerID} ({con.EndPoint})");
 
             GhostNetFrame managed;
             if (!GhostMap.TryGetValue(frame.PlayerID, out managed) ||
@@ -141,21 +159,26 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void Start() {
             if (IsRunning) {
-                Logger.Log("ghostnet-s", "Server already running, restarting");
+                Logger.Log(LogLevel.Warn, "ghostnet-s", "Server already running, restarting");
                 Stop();
             }
 
-            Logger.Log("ghostnet-s", "Starting server");
+            Logger.Log(LogLevel.Info, "ghostnet-s", "Starting server");
             IsRunning = true;
 
             ManagementListener = new TcpListener(IPAddress.Any, GhostNetModule.Settings.Port);
             ManagementListener.Start();
 
             UpdateClient = new UdpClient(GhostNetModule.Settings.Port);
-            UpdateConnection = new GhostNetConnection(
+            UpdateConnection = new GhostNetRemoteConnection(
                 null,
                 UpdateClient,
                 null,
+                OnReceiveUpdate
+            );
+
+            LocalConnection = new GhostNetLocalConnection(
+                OnReceiveManagement,
                 OnReceiveUpdate
             );
 
@@ -167,7 +190,7 @@ namespace Celeste.Mod.Ghost.Net {
         public void Stop() {
             if (!IsRunning)
                 return;
-            Logger.Log("ghostnet-s", "Stopping server");
+            Logger.Log(LogLevel.Info, "ghostnet-s", "Stopping server");
             IsRunning = false;
 
             ListenerThread.Join();
@@ -182,6 +205,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             UpdateConnection.Dispose();
+
+            LocalConnection.Dispose();
         }
 
         protected override void Dispose(bool disposing) {

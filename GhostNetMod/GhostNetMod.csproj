@@ -61,6 +61,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GhostNetRemoteConnection.cs" />
+    <Compile Include="GhostNetLocalConnection.cs" />
     <Compile Include="GhostNetFrame.cs" />
     <Compile Include="GhostNetConnection.cs" />
     <Compile Include="GhostNetClient.cs" />

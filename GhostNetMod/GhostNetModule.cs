@@ -37,19 +37,34 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (Settings.IsHost) {
                 Server = new GhostNetServer(Celeste.Instance);
+                Celeste.Instance.Components.Add(Server);
                 Server.Start();
             }
 
-            Client = new GhostNetClient(Celeste.Instance);
-            Client.Start();
+            try {
+                Client = new GhostNetClient(Celeste.Instance);
+                Celeste.Instance.Components.Add(Client);
+                Client.Start();
+            } catch (Exception e) {
+                Logger.Log(LogLevel.Warn, "ghostnet", "Failed starting client");
+                e.LogDetailed();
+                Client?.Stop();
+                Client = null;
+            }
         }
 
         public void Stop() {
-            Client?.Stop();
-            Client = null;
+            if (Client != null) {
+                Client.Stop();
+                Celeste.Instance.Components.Remove(Client);
+                Client = null;
+            }
 
-            Server?.Stop();
-            Server = null;
+            if (Server != null) {
+                Server.Stop();
+                Celeste.Instance.Components.Remove(Server);
+                Server = null;
+            }
         }
 
     }
