@@ -23,6 +23,7 @@ namespace Celeste.Mod.Ghost.Net {
         public UdpClient UpdateClient;
 
         public List<GhostNetConnection> Connections = new List<GhostNetConnection>();
+        public Dictionary<uint, GhostNetFrame> GhostMap = new Dictionary<uint, GhostNetFrame>();
 
         public Thread UpdateThread;
 
@@ -53,24 +54,73 @@ namespace Celeste.Mod.Ghost.Net {
             if (!frame.HasNetHead0 || !frame.HasNetManagement0)
                 return;
 
-            frame.PlayerID = (uint) Connections.IndexOf(con);
+            SetNetHead(con, frame);
 
-            foreach (GhostNetConnection other in Connections)
-                if (other != con)
-                    other.SendManagement(frame);
+            // Propagate management to all other players.
+            foreach (GhostNetConnection otherCon in Connections)
+                if (otherCon != con)
+                    otherCon.SendManagement(frame);
+
+            // Inform the player about all existing ghosts on room change.
+            GhostNetFrame prev;
+            if (GhostMap.TryGetValue(frame.PlayerID, out prev) &&
+                prev.HasNetHead0 &&
+                prev.HasNetManagement0
+            ) {
+                foreach (KeyValuePair<uint, GhostNetFrame> otherFrame in GhostMap) {
+                    if (otherFrame.Key == frame.PlayerID ||
+                        !otherFrame.Value.HasNetHead0 ||
+                        !otherFrame.Value.HasNetManagement0 ||
+                        frame.SID != otherFrame.Value.SID ||
+                        frame.Level != otherFrame.Value.Level
+                    ) {
+                        continue;
+                    }
+                    con.SendManagement(otherFrame.Value);
+                }
+            }
+
+            GhostMap[frame.PlayerID] = frame;
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection con, GhostNetFrame frame) {
             if (!frame.HasNetHead0 || !frame.HasNetUpdate0)
                 return;
 
-            // TODO: Only send updates to clients in matching rooms.
+            SetNetHead(con, frame);
 
+            GhostNetFrame managed;
+            if (!GhostMap.TryGetValue(frame.PlayerID, out managed) ||
+                !managed.HasNetHead0 ||
+                !managed.HasNetManagement0
+            ) {
+                // Ghost not managed - ignore the update.
+                return;
+            }
+
+            // Propagate update to all active players in the same room.
+            for (int i = 0; i < Connections.Count; i++) {
+                GhostNetConnection otherCon = Connections[i];
+                if (otherCon == null || otherCon == con)
+                    continue;
+
+                GhostNetFrame otherManaged;
+                if (!GhostMap.TryGetValue((uint) i, out otherManaged) ||
+                    !otherManaged.HasNetHead0 ||
+                    !otherManaged.HasNetManagement0 ||
+                    managed.SID != otherManaged.SID ||
+                    managed.Level != otherManaged.Level
+                ) {
+                    continue;
+                }
+
+                otherCon.SendUpdate(frame);
+            }
+        }
+
+        protected virtual void SetNetHead(GhostNetConnection con, GhostNetFrame frame) {
+            frame.HasNetHead0 = true;
             frame.PlayerID = (uint) Connections.IndexOf(con);
-
-            foreach (GhostNetConnection other in Connections)
-                if (other != con)
-                    other.SendUpdate(frame);
         }
 
         public void Start() {
@@ -102,7 +152,10 @@ namespace Celeste.Mod.Ghost.Net {
 
             ManagementListener.Stop();
 
+            // Close all management connections.
             foreach (GhostNetConnection connection in Connections) {
+                if (connection == null)
+                    continue;
                 connection.UpdateClient = null; // Closed separately.
                 connection.Dispose();
             }

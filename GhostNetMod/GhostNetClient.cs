@@ -26,8 +26,11 @@ namespace Celeste.Mod.Ghost.Net {
 
         public int UpdateIndex;
 
-        public GhostManager GhostManager;
+        public Player Player;
+        public Session Session;
         public GhostRecorder GhostRecorder;
+
+        public Dictionary<uint, Ghost> GhostMap = new Dictionary<uint, Ghost>();
 
         public GhostNetClient(Game game)
             : base(game) {
@@ -52,58 +55,92 @@ namespace Celeste.Mod.Ghost.Net {
             if (!frame.HasNetHead0 || !frame.HasNetManagement0)
                 return;
 
-            // TODO: Update client-side ghosts.
+            if (Session == null || Player == null)
+                return;
 
+            Ghost ghost;
+
+            if (frame.SID != Session.Area.GetSID() ||
+                frame.Level != Session.Level) {
+                // Find the ghost and remove it if it exists.
+                if (GhostMap.TryGetValue(frame.PlayerID, out ghost) && ghost != null) {
+                    ghost.RemoveSelf();
+                    GhostMap[frame.PlayerID] = null;
+                }
+                return;
+            }
+
+
+            if (!GhostMap.TryGetValue(frame.PlayerID, out ghost) || ghost == null) {
+                Player.Scene.Add(ghost = new Ghost(Player));
+            }
+
+            ghost.Name.Name = frame.Name;
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection con, GhostNetFrame frame) {
             if (!frame.HasNetHead0 || !frame.HasNetUpdate0)
                 return;
 
-            // TODO: Update client-side ghosts.
+            if (Session == null || Player == null)
+                return;
 
+            Ghost ghost;
+            if (!GhostMap.TryGetValue(frame.PlayerID, out ghost) || ghost == null) {
+                return;
+            }
+
+            ghost.ForcedFrame = frame.Frame;
         }
 
         public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
-            if (isFromLoader) {
-                GhostManager?.RemoveSelf();
-                GhostManager = null;
-                GhostRecorder?.RemoveSelf();
-                GhostRecorder = null;
-            }
-
-            Step(level);
-        }
-
-        public void OnExit(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow) {
-            if (mode == LevelExit.Mode.Completed ||
-                mode == LevelExit.Mode.CompletedInterlude) {
-                Step(level);
-            }
-        }
-
-        public void Step(Level level) {
             if (!IsRunning)
                 return;
 
-            string target = level.Session.Level;
-            Logger.Log("ghost-c", $"Stepping into {level.Session.Area.GetSID()} {target}");
+            Session = level.Session;
 
-            Player player = level.Tracker.GetEntity<Player>();
+            string target = Session.Level;
+            Logger.Log("ghost-c", $"Stepping into {Session.Area.GetSID()} {target}");
 
-            GhostManager?.RemoveSelf();
-            level.Add(GhostManager = new GhostManager(player, level));
+            Player = level.Tracker.GetEntity<Player>();
 
-            if (GhostRecorder != null)
-                GhostRecorder.RemoveSelf();
-            level.Add(GhostRecorder = new GhostRecorder(player));
+            foreach (Ghost ghost in GhostMap.Values)
+                ghost?.RemoveSelf();
+            GhostMap.Clear();
+
+            GhostRecorder?.RemoveSelf();
+            level.Add(GhostRecorder = new GhostRecorder(Player));
 
             Connection.SendManagement(new GhostNetFrame {
                 HasNetManagement0 = true,
 
                 Name = GhostModule.Settings.Name,
-                SID = level.Session.Area.GetSID(),
-                Level = level.Session.Level
+                SID = Session.Area.GetSID(),
+                Level = Session.Level
+            });
+        }
+
+        public void OnExit(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow) {
+            if (!IsRunning)
+                return;
+
+            Session = null;
+
+            Logger.Log("ghost-c", $"Leaving session");
+
+            foreach (Ghost ghost in GhostMap.Values)
+                ghost?.RemoveSelf();
+            GhostMap.Clear();
+
+            GhostRecorder?.RemoveSelf();
+            GhostRecorder = null;
+
+            Connection.SendManagement(new GhostNetFrame {
+                HasNetManagement0 = true,
+
+                Name = GhostModule.Settings.Name,
+                SID = "",
+                Level = ""
             });
         }
 
@@ -117,8 +154,8 @@ namespace Celeste.Mod.Ghost.Net {
             IsRunning = true;
 
             Connection = new GhostNetConnection(
-                new TcpClient(GhostNetModule.Settings.Host, GhostNetModule.Settings.Port),
-                new UdpClient(GhostNetModule.Settings.Port),
+                GhostNetModule.Settings.Host,
+                GhostNetModule.Settings.Port,
                 OnReceiveManagement,
                 OnReceiveUpdate
             );
@@ -130,6 +167,9 @@ namespace Celeste.Mod.Ghost.Net {
         public void Stop() {
             if (!IsRunning)
                 return;
+
+            OnExit(null, null, LevelExit.Mode.SaveAndQuit, null, null);
+
             Logger.Log("ghostnet-c", "Stopping client");
             IsRunning = false;
 

@@ -108,6 +108,7 @@ namespace Celeste.Mod.Ghost.Net {
         public bool HasNetManagement0;
 
         public string Name;
+
         public string SID;
         public string Level;
 
@@ -115,6 +116,7 @@ namespace Celeste.Mod.Ghost.Net {
             HasNetManagement0 = true;
 
             Name = reader.ReadNullTerminatedString();
+
             SID = reader.ReadNullTerminatedString();
             Level = reader.ReadNullTerminatedString();
         }
@@ -125,6 +127,7 @@ namespace Celeste.Mod.Ghost.Net {
             long start = Frame.WriteChunkStart(writer, "nM0");
 
             writer.WriteNullTerminatedString(Name);
+
             writer.WriteNullTerminatedString(SID);
             writer.WriteNullTerminatedString(Level);
 

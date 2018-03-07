@@ -61,8 +61,7 @@ namespace Celeste.Mod.Ghost {
             Hair.Start();
             UpdateHair();
 
-            if (Data != null)
-                Scene.Add(Name = new GhostName(this, Data.Name));
+            Scene.Add(Name = new GhostName(this, Data?.Name ?? ""));
         }
 
         public override void Removed(Scene scene) {

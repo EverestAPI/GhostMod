@@ -32,9 +32,25 @@ namespace Celeste.Mod.Ghost.Net {
 
         protected Queue<GhostNetFrame> UpdateQueue = new Queue<GhostNetFrame>();
 
+        protected static TcpClient GetTCP(string host, int ip) {
+            return new TcpClient(host, ip);
+        }
+
+        protected static UdpClient GetUDP(string host, int ip) {
+            return new UdpClient(host, ip);
+        }
+
         public GhostNetConnection() {
         }
 
+        public GhostNetConnection(
+            string host, int ip,
+            Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, GhostNetFrame> onReceiveUpdate = null
+        ) : this(
+            GetTCP(host, ip), GetUDP(host, ip),
+            onReceiveManagement, onReceiveUpdate
+        ) {
+        }
         public GhostNetConnection(
             TcpClient managementClient, UdpClient updateClient,
             Action<GhostNetConnection, GhostNetFrame> onReceiveManagement = null, Action<GhostNetConnection, GhostNetFrame> onReceiveUpdate = null

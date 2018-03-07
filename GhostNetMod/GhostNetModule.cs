@@ -23,7 +23,8 @@ namespace Celeste.Mod.Ghost.Net {
         public override Type SettingsType => typeof(GhostNetModuleSettings);
         public static GhostNetModuleSettings Settings => (GhostNetModuleSettings) Instance._Settings;
 
-        public bool IsRunning { get; protected set; } = false;
+        public GhostNetServer Server;
+        public GhostNetClient Client;
 
         public override void Load() {
         }
@@ -32,15 +33,21 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public void Start() {
-            if (IsRunning)
-                Stop();
-            IsRunning = true;
+            Stop();
 
+            Server = new GhostNetServer(Celeste.Instance);
+            Server.Start();
+
+            Client = new GhostNetClient(Celeste.Instance);
+            Client.Start();
         }
 
         public void Stop() {
-            IsRunning = false;
+            Client?.Stop();
+            Client = null;
 
+            Server?.Stop();
+            Server = null;
         }
 
     }
