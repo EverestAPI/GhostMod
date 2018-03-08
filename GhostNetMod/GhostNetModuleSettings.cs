@@ -32,6 +32,11 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        [SettingRange(0, 3)]
+        public int SendSkip { get; set; } = 1;
+
+        public bool SendManagedUpdate { get; set; } = false;
+
         [SettingIgnore]
         [YamlMember(Alias = "Server")]
         public string _Server { get; set; } = "";

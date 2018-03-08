@@ -17,9 +17,6 @@ using System.Threading.Tasks;
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetClient : GameComponent {
 
-        // Prevent killing the network connection by hammering too much UDP data.
-        public static int UpdateModulo = 2;
-
         public bool IsRunning { get; protected set; } = false;
 
         public GhostNetConnection Connection;
@@ -31,6 +28,7 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostRecorder GhostRecorder;
 
         public Dictionary<uint, Ghost> GhostMap = new Dictionary<uint, Ghost>();
+        public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
 
         public GhostNetClient(Game game)
             : base(game) {
@@ -38,14 +36,19 @@ namespace Celeste.Mod.Ghost.Net {
 
         public override void Update(GameTime gameTime) {
             if (Connection != null && GhostRecorder != null) {
-                if ((UpdateIndex % UpdateModulo) == 0) {
-                    Connection.SendUpdate(new GhostNetFrame {
+                if ((UpdateIndex % (GhostNetModule.Settings.SendSkip + 1)) == 0) {
+                    GhostNetFrame frame = new GhostNetFrame {
                         U0 = new GhostChunkNetU0 {
                             IsValid = true,
                             UpdateIndex = (uint) UpdateIndex
                         },
                         Data = GhostRecorder.LastFrameData.Data
-                    });
+                    };
+                    if (GhostNetModule.Settings.SendManagedUpdate) {
+                        Connection.SendManagement(frame);
+                    } else {
+                        Connection.SendUpdate(frame);
+                    }
                 }
 
                 UpdateIndex++;
@@ -54,10 +57,20 @@ namespace Celeste.Mod.Ghost.Net {
             base.Update(gameTime);
         }
 
-        protected virtual void OnReceiveManagement(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
-            if (!frame.H0.IsValid || !frame.M0.IsValid)
+        #region Frame Parsers
+
+        public virtual void Parse(GhostNetConnection con, ref GhostNetFrame frame) {
+            if (!frame.H0.IsValid)
                 return;
 
+            if (frame.M0.IsValid)
+                ParseM0(con, ref frame);
+
+            if (frame.U0.IsValid)
+                ParseU0(con, ref frame);
+        }
+
+        public virtual void ParseM0(GhostNetConnection con, ref GhostNetFrame frame) {
             if (Session == null || Player == null || Player.Scene == null)
                 return;
 
@@ -84,26 +97,44 @@ namespace Celeste.Mod.Ghost.Net {
                 GhostMap[frame.H0.PlayerID] = ghost;
             }
 
+            GhostIndices[frame.H0.PlayerID] = 0;
+
             if (ghost != null && ghost.Name != null)
                 ghost.Name.Name = frame.M0.Name;
         }
 
-        protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
-            if (!frame.H0.IsValid || !frame.U0.IsValid)
-                return;
-
-            if (Session == null || Player == null)
+        public virtual void ParseU0(GhostNetConnection con, ref GhostNetFrame frame) {
+            if (Session == null || Player == null || Player.Scene == null)
                 return;
 
             Ghost ghost;
             if (!GhostMap.TryGetValue(frame.H0.PlayerID, out ghost) || ghost == null)
                 return;
 
+            uint lastIndex;
+            if (GhostIndices.TryGetValue(frame.H0.PlayerID, out lastIndex) && frame.U0.UpdateIndex < lastIndex) {
+                // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Out of order update from #{frame.H0.PlayerID} - got {frame.U0.UpdateIndex}, newest is {lastIndex]}");
+                return;
+            }
+            GhostIndices[frame.H0.PlayerID] = frame.U0.UpdateIndex;
+
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nU0 from #{frame.PlayerID} ({remote}), HasData: {frame.Frame.HasData}");
 
             ghost.ForcedFrame = new GhostFrame {
                 Data = frame.Data
             };
+        }
+
+        #endregion
+
+        #region Connection Handlers
+
+        protected virtual void OnReceiveManagement(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
+            Parse(con, ref frame);
+        }
+
+        protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
+            Parse(con, ref frame);
         }
 
         protected virtual void OnDisconnect(GhostNetConnection con) {
@@ -114,6 +145,10 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
             Everest.Events.Level.OnExit -= OnExit;
         }
+
+        #endregion
+
+        #region Celeste Events
 
         public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
             if (!IsRunning)
@@ -168,6 +203,8 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             });
         }
+
+        #endregion
 
         public void Start() {
             if (IsRunning) {

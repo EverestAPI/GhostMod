@@ -13,13 +13,17 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     public struct GhostNetFrame {
 
+        // Head chunks, always present.
         public GhostChunkNetH0 H0;
 
+        // Management chunks.
         public GhostChunkNetM0 M0;
 
+        // Update chunks.
         public GhostChunkNetU0 U0;
         public GhostChunkData Data;
 
+        // Extra chunks, modifyable by mods.
         public byte[] Extra;
 
         public void Read(BinaryReader reader) {
