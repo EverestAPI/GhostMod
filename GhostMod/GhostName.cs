@@ -17,14 +17,14 @@ namespace Celeste.Mod.Ghost {
 
         protected Camera Camera;
 
-        public float Alpha;
+        public float Alpha = 1f;
 
         public GhostName(Entity tracking, string name)
             : base(Vector2.Zero) {
             Tracking = tracking;
             Name = name;
 
-            Tag = Tags.HUD;
+            Tag = GhostModuleBackCompat.TagSubHUD;
         }
 
         public override void Render() {
@@ -37,11 +37,8 @@ namespace Celeste.Mod.Ghost {
                 Tracking == null)
                 return;
 
-            if (string.IsNullOrEmpty(Name))
-                return;
-
             Level level = SceneAs<Level>();
-            if (level == null || level.FrozenOrPaused || level.RetryPlayerCorpse != null || level.SkippingCutscene)
+            if (level == null /*|| level.FrozenOrPaused || level.RetryPlayerCorpse != null || level.SkippingCutscene*/)
                 return;
 
             if (Camera == null)
@@ -52,6 +49,12 @@ namespace Celeste.Mod.Ghost {
             Vector2 pos = Tracking.Position;
             pos.Y -= 16f;
             pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
+
+            Vector2 size = ActiveFont.Measure(Name);
+            pos = pos.Clamp(
+                0f + size.X * 0.5f, 0f + size.Y * 1f,
+                1920f - size.X * 0.5f, 1080f
+            );
 
             ActiveFont.DrawOutline(
                 Name,

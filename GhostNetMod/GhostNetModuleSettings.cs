@@ -13,17 +13,12 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetModuleSettings : EverestModuleSettings {
 
-        [SettingIgnore]
         [YamlIgnore]
-        public bool _Enabled { get; set; } = false;
-        [YamlIgnore]
-        public bool Enabled {
+        public bool Connection {
             get {
-                return _Enabled;
+                return GhostNetModule.Instance.Client?.Connection != null;
             }
             set {
-                _Enabled = value;
-
                 if (value) {
                     GhostNetModule.Instance.Start();
                 } else {
@@ -31,11 +26,15 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
         }
+        [YamlIgnore]
+        [SettingIgnore]
+        public TextMenu.OnOff EnabledEntry { get; protected set; }
 
         [SettingRange(0, 3)]
-        public int SendSkip { get; set; } = 1;
+        public int SendSkip { get; set; } = 0;
 
-        public bool SendManagedUpdate { get; set; } = false;
+        [SettingIgnore]
+        public bool SendUFramesInMStream { get; set; } = false;
 
         [SettingIgnore]
         [YamlMember(Alias = "Server")]
@@ -48,7 +47,7 @@ namespace Celeste.Mod.Ghost.Net {
             set {
                 _Server = value;
 
-                if (Enabled)
+                if (Connection)
                     GhostNetModule.Instance.Start();
             }
         }
@@ -95,6 +94,13 @@ namespace Celeste.Mod.Ghost.Net {
             Host == "localhost" ||
             Host == "127.0.0.1"
         ;
+
+        public void CreateEnabledEntry(TextMenu menu, bool inGame) {
+            menu.Add(
+                (EnabledEntry = new TextMenu.OnOff(("modoptions_ghostnetmodule_enabled".DialogCleanOrNull() ?? "Enabled"), Connection))
+                .Change(v => Connection = v)
+            );
+        }
 
         public void CreateServerEntry(TextMenu menu, bool inGame) {
             menu.Add(

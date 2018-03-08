@@ -61,7 +61,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected virtual void Dispose(bool disposing) {
-            OnDisconnect(this);
+            OnDisconnect?.Invoke(this);
         }
 
         public void Dispose() {

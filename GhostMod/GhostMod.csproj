@@ -67,6 +67,7 @@
     <Compile Include="GhostChunkInput.cs" />
     <Compile Include="GhostChunkData.cs" />
     <Compile Include="GhostManager.cs" />
+    <Compile Include="GhostModuleBackCompat.cs" />
     <Compile Include="GhostName.cs" />
     <Compile Include="GhostInputReplayer.cs" />
     <Compile Include="GhostRecorder.cs" />

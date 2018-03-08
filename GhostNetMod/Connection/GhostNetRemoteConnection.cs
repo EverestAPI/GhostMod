@@ -25,11 +25,13 @@ namespace Celeste.Mod.Ghost.Net {
         public UdpClient UpdateClient;
 
         public Thread ReceiveManagementThread;
+        public Thread TransferManagementThread;
         public Thread ReceiveUpdateThread;
         public Thread TransferUpdateThread;
 
         public bool DisposeOnFailure = true;
 
+        protected Queue<GhostNetFrame> ManagementQueue = new Queue<GhostNetFrame>();
         protected Queue<Tuple<IPEndPoint, GhostNetFrame>> UpdateQueue = new Queue<Tuple<IPEndPoint, GhostNetFrame>>();
 
         protected static TcpClient GetTCP(string host, int port) {
@@ -57,6 +59,11 @@ namespace Celeste.Mod.Ghost.Net {
                 ReceiveManagementThread.Name = $"GhostNetConnection ReceiveManagementThread {Context} {ManagementEndPoint}";
                 ReceiveManagementThread.IsBackground = true;
                 ReceiveManagementThread.Start();
+
+                TransferManagementThread = new Thread(TransferManagementLoop);
+                TransferManagementThread.Name = $"GhostNetConnection TransferManagementThread {Context} {ManagementEndPoint}";
+                TransferManagementThread.IsBackground = true;
+                TransferManagementThread.Start();
             }
 
             if (updateClient != null) {
@@ -75,38 +82,8 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public override void SendManagement(GhostNetFrame frame) {
-            if (ManagementStream == null || ManagementClient == null || !ManagementClient.Connected)
-                return;
-
-            // The frame writer seeks to update the frame length.
-            // Write it into a buffer, then into the network.
-            using (MemoryStream bufferStream = new MemoryStream())
-            using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
-                // TODO: Should management frames be sent from a separate thread?
-                frame.Write(bufferWriter);
-
-                bufferWriter.Flush();
-                byte[] buffer = bufferStream.ToArray();
-
-                try {
-                    ManagementStream.Write(buffer, 0, buffer.Length);
-                    // Logger.Log(LogLevel.Warn, "ghostnet-con", "Sent management frame");
-                } catch (Exception e) {
-                    if (!ManagementClient.Connected) {
-                        Dispose();
-                        return;
-                    }
-
-                    Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending management frame");
-                    LogContext(LogLevel.Warn);
-                    e.LogDetailed();
-                    if (DisposeOnFailure) {
-                        Dispose();
-                        return;
-                    }
-                }
-
-                bufferStream.Seek(0, SeekOrigin.Begin);
+            lock (ManagementQueue) {
+                ManagementQueue.Enqueue(frame);
             }
         }
 
@@ -123,17 +100,15 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected virtual void ReceiveManagementLoop() {
-            while (ManagementClient.Connected) {
+            while (ManagementClient?.Connected ?? false) {
                 Thread.Sleep(0);
 
+                GhostNetFrame frame = new GhostNetFrame();
                 try {
                     // Let's just hope that the reader always reads a full frame...
-                    GhostNetFrame frame = new GhostNetFrame();
                     frame.Read(ManagementReader);
-                    // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Received management frame");
-                    ReceiveManagement(ManagementEndPoint, frame);
                 } catch (Exception e) {
-                    if (!ManagementClient.Connected) {
+                    if (!(ManagementClient?.Connected ?? false)) {
                         Dispose();
                         return;
                     }
@@ -144,6 +119,52 @@ namespace Celeste.Mod.Ghost.Net {
                     if (DisposeOnFailure) {
                         Dispose();
                         return;
+                    }
+                }
+                // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Received management frame");
+                ReceiveManagement(ManagementEndPoint, frame);
+            }
+            // Not connected - dispose.
+            Dispose();
+        }
+
+        // We need to actively transfer the update data from a separate thread. TCP is streamed, but blocking.
+        protected virtual void TransferManagementLoop() {
+            while (ManagementClient?.Connected ?? false) {
+                Thread.Sleep(0);
+
+                if (ManagementQueue.Count == 0)
+                    continue;
+
+                lock (ManagementQueue) {
+                    while (ManagementQueue.Count > 0) {
+                        GhostNetFrame entry = ManagementQueue.Dequeue();
+                        using (MemoryStream bufferStream = new MemoryStream())
+                        using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
+                            entry.Write(bufferWriter);
+
+                            bufferWriter.Flush();
+                            byte[] buffer = bufferStream.ToArray();
+                            try {
+                                ManagementStream.Write(buffer, 0, buffer.Length);
+                                // Logger.Log(LogLevel.Warn, "ghostnet-con", "Sent management frame");
+                            } catch (Exception e) {
+                                if (!(ManagementClient?.Connected ?? false)) {
+                                    Dispose();
+                                    return;
+                                }
+
+                                Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed sending management frame");
+                                LogContext(LogLevel.Warn);
+                                e.LogDetailed();
+                                if (DisposeOnFailure) {
+                                    Dispose();
+                                    return;
+                                }
+                            }
+
+                            bufferStream.Seek(0, SeekOrigin.Begin);
+                        }
                     }
                 }
             }
@@ -172,10 +193,8 @@ namespace Celeste.Mod.Ghost.Net {
                         return;
                     }
                 }
-                if (remote == null ||
-                    (known != null && !remote.Address.Equals(known.Address)) ||
-                    data == null
-                ) {
+                if (known != null && !remote.Address.Equals(known.Address)) {
+                    Logger.Log(LogLevel.Warn, "ghostnet-con", $"Received update data from unknown remote {remote}: {data.ToHexadecimalString()}");
                     continue;
                 }
 
@@ -238,23 +257,31 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        private object DisposeLock = new object();
+        private bool Disposed = false;
         protected override void Dispose(bool disposing) {
-            base.Dispose(disposing);
+            lock (DisposeLock) {
+                if (Disposed)
+                    return;
+                Disposed = true;
 
-            ManagementReader?.Dispose();
-            ManagementReader = null;
+                base.Dispose(disposing);
 
-            ManagementWriter?.Dispose();
-            ManagementWriter = null;
+                ManagementReader?.Dispose();
+                ManagementReader = null;
 
-            ManagementStream?.Dispose();
-            ManagementStream = null;
+                ManagementWriter?.Dispose();
+                ManagementWriter = null;
 
-            ManagementClient?.Close();
-            ManagementClient = null;
+                ManagementStream?.Dispose();
+                ManagementStream = null;
 
-            UpdateClient?.Close();
-            UpdateClient = null;
+                ManagementClient?.Close();
+                ManagementClient = null;
+
+                UpdateClient?.Close();
+                UpdateClient = null;
+            }
         }
 
     }

@@ -10,10 +10,15 @@ using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
-namespace Celeste.Mod.Ghost {
-    public struct GhostChunkNetM0 {
+namespace Celeste.Mod.Ghost.Net {
+    /// <summary>
+    /// "Status" chunk sent on connection and on room change.
+    /// Server remembers this and responds with all other players in the same room.
+    /// If the player receives this with their own player ID, the server is moving the player.
+    /// </summary>
+    public struct GhostChunkNetMPlayer {
 
-        public const string Chunk = "nM0";
+        public const string Chunk = "nM";
         public bool IsValid;
 
         public string Name;

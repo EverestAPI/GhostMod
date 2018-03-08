@@ -10,22 +10,22 @@ using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
-namespace Celeste.Mod.Ghost {
-    public struct GhostChunkNetH0 {
+namespace Celeste.Mod.Ghost.Net {
+    /// <summary>
+    /// Sent by the server, chunk containing some basic connection info.
+    /// </summary>
+    public struct GhostChunkNetMServerInfo {
 
-        public const string Chunk = "nH0";
+        public const string Chunk = "nM?";
         public bool IsValid;
 
-        public uint PlayerID;
+        // PlayerID contained in HHead.
 
         public void Read(BinaryReader reader) {
             IsValid = true;
-
-            PlayerID = reader.ReadUInt32();
         }
 
         public void Write(BinaryWriter writer) {
-            writer.Write(PlayerID);
         }
 
     }

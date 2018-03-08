@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using FMOD.Studio;
 
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetModule : EverestModule {
@@ -48,8 +49,10 @@ namespace Celeste.Mod.Ghost.Net {
             } catch (Exception e) {
                 Logger.Log(LogLevel.Warn, "ghostnet", "Failed starting client");
                 e.LogDetailed();
-                Client?.Stop();
-                Client = null;
+                if (Settings.EnabledEntry != null) {
+                    Settings.EnabledEntry.LeftPressed();
+                }
+                Stop();
             }
         }
 
