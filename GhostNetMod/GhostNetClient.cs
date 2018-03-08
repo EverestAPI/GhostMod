@@ -18,7 +18,7 @@ namespace Celeste.Mod.Ghost.Net {
     public class GhostNetClient : GameComponent {
 
         // Prevent killing the network connection by hammering too much UDP data.
-        public static int UpdateModulo = 4;
+        public static int UpdateModulo = 2;
 
         public bool IsRunning { get; protected set; } = false;
 

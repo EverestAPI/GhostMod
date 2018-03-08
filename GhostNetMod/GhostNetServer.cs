@@ -107,12 +107,10 @@ namespace Celeste.Mod.Ghost.Net {
             // Inform the player about all existing ghosts.
             GhostNetFrame prev;
             if (!GhostMap.TryGetValue(frame.PlayerID, out prev) ||
-                (prev.HasNetHead0 && prev.HasNetManagement0 && (prev.SID != frame.SID || prev.Level != frame.Level))
+                (prev.SID != frame.SID || prev.Level != frame.Level)
             ) {
                 foreach (KeyValuePair<uint, GhostNetFrame> otherFrame in GhostMap) {
                     if ((!AllowLoopbackGhost && otherFrame.Key == frame.PlayerID) ||
-                        !otherFrame.Value.HasNetHead0 ||
-                        !otherFrame.Value.HasNetManagement0 ||
                         frame.SID != otherFrame.Value.SID ||
                         frame.Level != otherFrame.Value.Level
                     ) {
@@ -165,7 +163,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
             GhostIndices[frame.PlayerID] = frame.UpdateIndex;
 
-            Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nU0 from #{frame.PlayerID} ({remote})");
+            // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nU0 from #{frame.PlayerID} ({remote})");
 
             // Propagate update to all active players in the same room.
             for (int i = 0; i < Connections.Count; i++) {

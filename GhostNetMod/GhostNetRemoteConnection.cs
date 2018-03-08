@@ -160,9 +160,9 @@ namespace Celeste.Mod.Ghost.Net {
                 byte[] data = null;
                 try {
                     // Let's just hope that we always receive a full frame...
-                    Console.WriteLine("Starting receive update");
+                    // Console.WriteLine("Starting receive update");
                     data = UpdateClient?.Receive(ref remote);
-                    Console.WriteLine($"Finished receive update from {remote}: {data.ToHexadecimalString()}");
+                    // Console.WriteLine($"Finished receive update from {remote}: {data.ToHexadecimalString()}");
                 } catch (Exception e) {
                     Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed receiving update frame");
                     LogContext(LogLevel.Warn);
