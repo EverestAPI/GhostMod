@@ -1,4 +1,5 @@
-﻿using FMOD.Studio;
+﻿using Celeste.Mod.UI;
+using FMOD.Studio;
 using Microsoft.Xna.Framework;
 using Monocle;
 using System;
@@ -89,6 +90,20 @@ namespace Celeste.Mod.Ghost.Net {
             Host == "localhost" ||
             Host == "127.0.0.1"
         ;
+
+        public void CreateServerEntry(TextMenu menu, bool inGame) {
+            menu.Add(
+                new TextMenu.Button(("modoptions_ghostnetmodule_server".DialogCleanOrNull() ?? "Server") + ": " + Server)
+                .Pressed(() => {
+                    Audio.Play("event:/ui/main/savefile_rename_start");
+                    menu.SceneAs<Overworld>().Goto<OuiModOptionString>().Init<OuiModOptions>(
+                        Server,
+                        v => Server = v,
+                        maxValueLength: 30
+                    );
+                })
+            );
+        }
 
     }
 }

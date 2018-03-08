@@ -96,10 +96,7 @@ namespace Celeste.Mod.Ghost.Net {
             // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
             Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.PlayerID} {frame.Name} in {frame.SID} {frame.Level}");
 
-            GhostIndices[frame.PlayerID] = 0;
-            GhostMap[frame.PlayerID] = frame;
-
-            // Propagate management to all other players.
+            // Propagate management frame to all other players.
             foreach (GhostNetConnection otherCon in Connections)
                 if (otherCon != null && (AllowLoopbackGhost || otherCon != con))
                     otherCon.SendManagement(frame);
@@ -107,7 +104,8 @@ namespace Celeste.Mod.Ghost.Net {
             // Inform the player about all existing ghosts.
             GhostNetFrame prev;
             if (!GhostMap.TryGetValue(frame.PlayerID, out prev) ||
-                (prev.SID != frame.SID || prev.Level != frame.Level)
+                prev.SID != frame.SID ||
+                prev.Level != frame.Level
             ) {
                 foreach (KeyValuePair<uint, GhostNetFrame> otherFrame in GhostMap) {
                     if ((!AllowLoopbackGhost && otherFrame.Key == frame.PlayerID) ||
@@ -119,6 +117,9 @@ namespace Celeste.Mod.Ghost.Net {
                     con.SendManagement(otherFrame.Value);
                 }
             }
+
+            GhostIndices[frame.PlayerID] = 0;
+            GhostMap[frame.PlayerID] = frame;
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection conReceived, IPEndPoint remote, GhostNetFrame frame) {
