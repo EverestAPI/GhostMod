@@ -40,10 +40,11 @@ namespace Celeste.Mod.Ghost.Net {
             if (Connection != null && GhostRecorder != null) {
                 if ((UpdateIndex % UpdateModulo) == 0) {
                     Connection.SendUpdate(new GhostNetFrame {
-                        Frame = GhostRecorder.LastFrameData,
-
-                        HasNetUpdate0 = true,
-                        UpdateIndex = (uint) UpdateIndex
+                        U0 = new GhostChunkNetU0 {
+                            IsValid = true,
+                            UpdateIndex = (uint) UpdateIndex
+                        },
+                        Data = GhostRecorder.LastFrameData.Data
                     });
                 }
 
@@ -54,50 +55,55 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected virtual void OnReceiveManagement(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
-            if (!frame.HasNetHead0 || !frame.HasNetManagement0)
+            if (!frame.H0.IsValid || !frame.M0.IsValid)
                 return;
 
-            if (Session == null || Player == null)
+            if (Session == null || Player == null || Player.Scene == null)
                 return;
 
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
-            Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.PlayerID} {frame.Name} in {frame.SID} {frame.Level}");
+            Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.H0.PlayerID} {frame.M0.Name} in {frame.M0.SID} {frame.M0.Level}");
 
             Ghost ghost;
 
-            if (frame.SID != Session.Area.GetSID() ||
-                frame.Level != Session.Level) {
+            if (frame.M0.SID != Session.Area.GetSID() ||
+                frame.M0.Level != Session.Level) {
+                // Ghost not in the same room.
                 // Find the ghost and remove it if it exists.
-                if (GhostMap.TryGetValue(frame.PlayerID, out ghost) && ghost != null) {
+                if (GhostMap.TryGetValue(frame.H0.PlayerID, out ghost) && ghost != null) {
                     ghost.RemoveSelf();
-                    GhostMap[frame.PlayerID] = null;
+                    GhostMap[frame.H0.PlayerID] = null;
                 }
                 return;
             }
 
-            if (!GhostMap.TryGetValue(frame.PlayerID, out ghost) || ghost == null) {
+            if (!GhostMap.TryGetValue(frame.H0.PlayerID, out ghost) || ghost == null) {
+                // No ghost for the player existing.
+                // Create a new ghost for the player.
                 Player.Scene.Add(ghost = new Ghost(Player));
-                GhostMap[frame.PlayerID] = ghost;
+                GhostMap[frame.H0.PlayerID] = ghost;
             }
 
-            ghost.Name.Name = frame.Name;
+            if (ghost != null && ghost.Name != null)
+                ghost.Name.Name = frame.M0.Name;
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
-            if (!frame.HasNetHead0 || !frame.HasNetUpdate0)
+            if (!frame.H0.IsValid || !frame.U0.IsValid)
                 return;
 
             if (Session == null || Player == null)
                 return;
 
             Ghost ghost;
-            if (!GhostMap.TryGetValue(frame.PlayerID, out ghost) || ghost == null) {
+            if (!GhostMap.TryGetValue(frame.H0.PlayerID, out ghost) || ghost == null)
                 return;
-            }
 
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nU0 from #{frame.PlayerID} ({remote}), HasData: {frame.Frame.HasData}");
 
-            ghost.ForcedFrame = frame.Frame;
+            ghost.ForcedFrame = new GhostFrame {
+                Data = frame.Data
+            };
         }
 
         protected virtual void OnDisconnect(GhostNetConnection con) {
@@ -128,11 +134,12 @@ namespace Celeste.Mod.Ghost.Net {
             level.Add(GhostRecorder = new GhostRecorder(Player));
 
             Connection?.SendManagement(new GhostNetFrame {
-                HasNetManagement0 = true,
-
-                Name = GhostModule.Settings.Name,
-                SID = Session.Area.GetSID(),
-                Level = Session.Level
+                M0 = new GhostChunkNetM0 {
+                    IsValid = true,
+                    Name = GhostModule.Settings.Name,
+                    SID = Session.Area.GetSID(),
+                    Level = Session.Level
+                }
             });
             UpdateIndex = 0;
         }
@@ -153,11 +160,12 @@ namespace Celeste.Mod.Ghost.Net {
             GhostRecorder = null;
 
             Connection?.SendManagement(new GhostNetFrame {
-                HasNetManagement0 = true,
-
-                Name = GhostModule.Settings.Name,
-                SID = "",
-                Level = ""
+                M0 = new GhostChunkNetM0 {
+                    IsValid = true,
+                    Name = GhostModule.Settings.Name,
+                    SID = "",
+                    Level = ""
+                }
             });
         }
 

@@ -43,23 +43,25 @@ namespace Celeste.Mod.Ghost {
 
             // A data frame is always a new frame, no matter if the previous one lacks data or not.
             LastFrameData = new GhostFrame {
-                HasData = true,
+                Data = new GhostChunkData {
+                    IsValid = true,
 
-                InControl = Player.InControl,
+                    InControl = Player.InControl,
 
-                Position = Player.Position,
-                Speed = Player.Speed,
-                Rotation = Player.Sprite.Rotation,
-                Scale = Player.Sprite.Scale,
-                Color = Player.Sprite.Color,
+                    Position = Player.Position,
+                    Speed = Player.Speed,
+                    Rotation = Player.Sprite.Rotation,
+                    Scale = Player.Sprite.Scale,
+                    Color = Player.Sprite.Color,
 
-                Facing = Player.Facing,
+                    Facing = Player.Facing,
 
-                CurrentAnimationID = Player.Sprite.CurrentAnimationID,
-                CurrentAnimationFrame = Player.Sprite.CurrentAnimationFrame,
+                    CurrentAnimationID = Player.Sprite.CurrentAnimationID,
+                    CurrentAnimationFrame = Player.Sprite.CurrentAnimationFrame,
 
-                HairColor = Player.Hair.Color,
-                HairSimulateMotion = Player.Hair.SimulateMotion
+                    HairColor = Player.Hair.Color,
+                    HairSimulateMotion = Player.Hair.SimulateMotion
+                }
             };
 
             if (Data != null)
@@ -75,35 +77,35 @@ namespace Celeste.Mod.Ghost {
 
             GhostFrame frame;
             bool isNew = false;
-            if (Data == null || Data.Frames.Count == 0 || Data[Data.Frames.Count - 1].HasInput) {
+            if (Data == null || Data.Frames.Count == 0 || Data[Data.Frames.Count - 1].Input.IsValid) {
                 frame = new GhostFrame();
                 isNew = true;
             } else {
                 frame = Data[Data.Frames.Count - 1];
             }
 
-            frame.HasInput = true;
+            frame.Input.IsValid = true;
 
-            frame.MoveX = Input.MoveX.Value;
-            frame.MoveY = Input.MoveY.Value;
+            frame.Input.MoveX = Input.MoveX.Value;
+            frame.Input.MoveY = Input.MoveY.Value;
 
-            frame.Aim = Input.Aim.Value;
-            frame.MountainAim = Input.MountainAim.Value;
+            frame.Input.Aim = Input.Aim.Value;
+            frame.Input.MountainAim = Input.MountainAim.Value;
 
-            frame.ESC = Input.ESC.Check;
-            frame.Pause = Input.Pause.Check;
-            frame.MenuLeft = Input.MenuLeft.Check;
-            frame.MenuRight = Input.MenuRight.Check;
-            frame.MenuUp = Input.MenuUp.Check;
-            frame.MenuDown = Input.MenuDown.Check;
-            frame.MenuConfirm = Input.MenuConfirm.Check;
-            frame.MenuCancel = Input.MenuCancel.Check;
-            frame.MenuJournal = Input.MenuJournal.Check;
-            frame.QuickRestart = Input.QuickRestart.Check;
-            frame.Jump = Input.Jump.Check;
-            frame.Dash = Input.Dash.Check;
-            frame.Grab = Input.Grab.Check;
-            frame.Talk = Input.Talk.Check;
+            frame.Input.ESC = Input.ESC.Check;
+            frame.Input.Pause = Input.Pause.Check;
+            frame.Input.MenuLeft = Input.MenuLeft.Check;
+            frame.Input.MenuRight = Input.MenuRight.Check;
+            frame.Input.MenuUp = Input.MenuUp.Check;
+            frame.Input.MenuDown = Input.MenuDown.Check;
+            frame.Input.MenuConfirm = Input.MenuConfirm.Check;
+            frame.Input.MenuCancel = Input.MenuCancel.Check;
+            frame.Input.MenuJournal = Input.MenuJournal.Check;
+            frame.Input.QuickRestart = Input.QuickRestart.Check;
+            frame.Input.Jump = Input.Jump.Check;
+            frame.Input.Dash = Input.Dash.Check;
+            frame.Input.Grab = Input.Grab.Check;
+            frame.Input.Talk = Input.Talk.Check;
 
             if (Data != null) {
                 if (isNew) {

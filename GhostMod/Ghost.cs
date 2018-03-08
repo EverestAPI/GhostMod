@@ -57,7 +57,7 @@ namespace Celeste.Mod.Ghost {
         public override void Added(Scene scene) {
             base.Added(scene);
 
-            Hair.Facing = Frame.Facing;
+            Hair.Facing = Frame.Data.Facing;
             Hair.Start();
             UpdateHair();
 
@@ -67,46 +67,46 @@ namespace Celeste.Mod.Ghost {
         public override void Removed(Scene scene) {
             base.Removed(scene);
 
-            Name?.RemoveSelf();
+            Name.RemoveSelf();
         }
 
         public void UpdateHair() {
-            if (!Frame.HasData)
+            if (!Frame.Data.IsValid)
                 return;
 
             Hair.Color = new Color(
-                (Frame.HairColor.R * Color.R) / 255,
-                (Frame.HairColor.G * Color.G) / 255,
-                (Frame.HairColor.B * Color.B) / 255,
-                (Frame.HairColor.A * Color.A) / 255
+                (Frame.Data.HairColor.R * Color.R) / 255,
+                (Frame.Data.HairColor.G * Color.G) / 255,
+                (Frame.Data.HairColor.B * Color.B) / 255,
+                (Frame.Data.HairColor.A * Color.A) / 255
             );
             Hair.Alpha = alphaHair;
-            Hair.Facing = Frame.Facing;
-            Hair.SimulateMotion = Frame.HairSimulateMotion;
+            Hair.Facing = Frame.Data.Facing;
+            Hair.SimulateMotion = Frame.Data.HairSimulateMotion;
         }
 
         public void UpdateSprite() {
-            if (!Frame.HasData)
+            if (!Frame.Data.IsValid)
                 return;
 
-            Position = Frame.Position;
-            Sprite.Rotation = Frame.Rotation;
-            Sprite.Scale = Frame.Scale;
-            Sprite.Scale.X = Sprite.Scale.X * (float) Frame.Facing;
+            Position = Frame.Data.Position;
+            Sprite.Rotation = Frame.Data.Rotation;
+            Sprite.Scale = Frame.Data.Scale;
+            Sprite.Scale.X = Sprite.Scale.X * (float) Frame.Data.Facing;
             Sprite.Color = new Color(
-                (Frame.Color.R * Color.R) / 255,
-                (Frame.Color.G * Color.G) / 255,
-                (Frame.Color.B * Color.B) / 255,
-                (Frame.Color.A * Color.A) / 255
+                (Frame.Data.Color.R * Color.R) / 255,
+                (Frame.Data.Color.G * Color.G) / 255,
+                (Frame.Data.Color.B * Color.B) / 255,
+                (Frame.Data.Color.A * Color.A) / 255
             ) * alpha;
 
-            Sprite.Rate = Frame.SpriteRate;
-            Sprite.Justify = Frame.SpriteJustify;
+            Sprite.Rate = Frame.Data.SpriteRate;
+            Sprite.Justify = Frame.Data.SpriteJustify;
 
             try {
-                if (Sprite.CurrentAnimationID != Frame.CurrentAnimationID)
-                    Sprite.Play(Frame.CurrentAnimationID);
-                Sprite.SetAnimationFrame(Frame.CurrentAnimationFrame);
+                if (Sprite.CurrentAnimationID != Frame.Data.CurrentAnimationID)
+                    Sprite.Play(Frame.Data.CurrentAnimationID);
+                Sprite.SetAnimationFrame(Frame.Data.CurrentAnimationFrame);
             } catch {
                 // Play likes to fail randomly as the ID doesn't exist in an underlying dict.
                 // Let's ignore this for now.
@@ -115,7 +115,7 @@ namespace Celeste.Mod.Ghost {
 
         public override void Update() {
             Visible = ForcedFrame != null || ((GhostModule.Settings.Mode & GhostModuleMode.Play) == GhostModuleMode.Play);
-            Visible &= Frame.HasData;
+            Visible &= Frame.Data.IsValid;
             if (ForcedFrame == null && Data != null && Data.Dead)
                 Visible &= GhostModule.Settings.ShowDeaths;
             if (ForcedFrame == null && Data != null && !string.IsNullOrEmpty(GhostModule.Settings.NameFilter))
@@ -125,8 +125,8 @@ namespace Celeste.Mod.Ghost {
                 do {
                     FrameIndex++;
                 } while (
-                    (PrevFrame.HasData && !PrevFrame.InControl) || // Skip any frames we're not in control in.
-                    (!PrevFrame.HasData && FrameIndex < Data.Frames.Count) // Skip any frames not containing the data chunk.
+                    (PrevFrame.Data.IsValid && !PrevFrame.Data.InControl) || // Skip any frames we're not in control in.
+                    (!PrevFrame.Data.IsValid && FrameIndex < Data.Frames.Count) // Skip any frames not containing the data chunk.
                 );
             }
 

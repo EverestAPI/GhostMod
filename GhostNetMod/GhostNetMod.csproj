@@ -61,6 +61,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GhostChunkNetH0.cs" />
+    <Compile Include="GhostChunkNetU0.cs" />
+    <Compile Include="GhostChunkNetM0.cs" />
     <Compile Include="GhostNetRemoteConnection.cs" />
     <Compile Include="GhostNetLocalConnection.cs" />
     <Compile Include="GhostNetFrame.cs" />

@@ -83,7 +83,7 @@ namespace Celeste.Mod.Ghost.Net {
             using (MemoryStream bufferStream = new MemoryStream())
             using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
                 // TODO: Should management frames be sent from a separate thread?
-                frame.WriteManagement(bufferWriter);
+                frame.Write(bufferWriter);
 
                 bufferWriter.Flush();
                 byte[] buffer = bufferStream.ToArray();
@@ -211,7 +211,7 @@ namespace Celeste.Mod.Ghost.Net {
                         Tuple<IPEndPoint, GhostNetFrame> entry = UpdateQueue.Dequeue();
                         using (MemoryStream bufferStream = new MemoryStream())
                         using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
-                            entry.Item2.WriteUpdate(bufferWriter);
+                            entry.Item2.Write(bufferWriter);
 
                             bufferWriter.Flush();
                             byte[] buffer = bufferStream.ToArray();

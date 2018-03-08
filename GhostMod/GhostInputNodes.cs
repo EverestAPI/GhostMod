@@ -17,7 +17,7 @@ namespace Celeste.Mod.Ghost {
             public MoveX(GhostInputReplayer replayer) {
                 Replayer = replayer;
             }
-            public override float Value => Replayer.Frame.MoveX;
+            public override float Value => Replayer.Frame.Input.MoveX;
         }
 
         public class MoveY : VirtualAxis.Node {
@@ -25,7 +25,7 @@ namespace Celeste.Mod.Ghost {
             public MoveY(GhostInputReplayer replayer) {
                 Replayer = replayer;
             }
-            public override float Value => Replayer.Frame.MoveY;
+            public override float Value => Replayer.Frame.Input.MoveY;
         }
 
         public class Aim : VirtualJoystick.Node {
@@ -33,7 +33,7 @@ namespace Celeste.Mod.Ghost {
             public Aim(GhostInputReplayer replayer) {
                 Replayer = replayer;
             }
-            public override Vector2 Value => Replayer.Frame.Aim;
+            public override Vector2 Value => Replayer.Frame.Input.Aim;
         }
 
         public class MountainAim : VirtualJoystick.Node {
@@ -41,19 +41,19 @@ namespace Celeste.Mod.Ghost {
             public MountainAim(GhostInputReplayer replayer) {
                 Replayer = replayer;
             }
-            public override Vector2 Value => Replayer.Frame.MountainAim;
+            public override Vector2 Value => Replayer.Frame.Input.MountainAim;
         }
 
         public class Button : VirtualButton.Node {
             public GhostInputReplayer Replayer;
             public int Mask;
-            public Button(GhostInputReplayer replayer, GhostFrame.ButtonMask mask) {
+            public Button(GhostInputReplayer replayer, GhostChunkInput.ButtonMask mask) {
                 Replayer = replayer;
                 Mask = (int) mask;
             }
-            public override bool Check => !MInput.Disabled && (Replayer.Frame.Buttons & Mask) == Mask;
-            public override bool Pressed => !MInput.Disabled && (Replayer.Frame.Buttons & Mask) == Mask && (Replayer.PrevFrame.Buttons & Mask) == 0;
-            public override bool Released => !MInput.Disabled && (Replayer.Frame.Buttons & Mask) == 0 && (Replayer.PrevFrame.Buttons & Mask) == Mask;
+            public override bool Check => !MInput.Disabled && (Replayer.Frame.Input.Buttons & Mask) == Mask;
+            public override bool Pressed => !MInput.Disabled && (Replayer.Frame.Input.Buttons & Mask) == Mask && (Replayer.PrevFrame.Input.Buttons & Mask) == 0;
+            public override bool Released => !MInput.Disabled && (Replayer.Frame.Input.Buttons & Mask) == 0 && (Replayer.PrevFrame.Input.Buttons & Mask) == Mask;
         }
 
     }

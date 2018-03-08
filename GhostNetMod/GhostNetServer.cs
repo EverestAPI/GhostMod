@@ -88,13 +88,13 @@ namespace Celeste.Mod.Ghost.Net {
             if (conReceived == null || !ConnectionMap.TryGetValue(remote, out con) || con == null)
                 return;
 
-            if (!frame.HasNetManagement0)
+            if (!frame.M0.IsValid)
                 return;
 
             SetNetHead(con, ref frame);
 
             // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
-            Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.PlayerID} {frame.Name} in {frame.SID} {frame.Level}");
+            Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.H0.PlayerID} {frame.M0.Name} in {frame.M0.SID} {frame.M0.Level}");
 
             // Propagate management frame to all other players.
             foreach (GhostNetConnection otherCon in Connections)
@@ -102,24 +102,18 @@ namespace Celeste.Mod.Ghost.Net {
                     otherCon.SendManagement(frame);
 
             // Inform the player about all existing ghosts.
-            GhostNetFrame prev;
-            if (!GhostMap.TryGetValue(frame.PlayerID, out prev) ||
-                prev.SID != frame.SID ||
-                prev.Level != frame.Level
-            ) {
-                foreach (KeyValuePair<uint, GhostNetFrame> otherFrame in GhostMap) {
-                    if ((!AllowLoopbackGhost && otherFrame.Key == frame.PlayerID) ||
-                        frame.SID != otherFrame.Value.SID ||
-                        frame.Level != otherFrame.Value.Level
-                    ) {
-                        continue;
-                    }
-                    con.SendManagement(otherFrame.Value);
+            foreach (KeyValuePair<uint, GhostNetFrame> otherFrame in GhostMap) {
+                if ((!AllowLoopbackGhost && otherFrame.Key == frame.H0.PlayerID) ||
+                    frame.M0.SID != otherFrame.Value.M0.SID ||
+                    frame.M0.Level != otherFrame.Value.M0.Level
+                ) {
+                    continue;
                 }
+                con.SendManagement(otherFrame.Value);
             }
 
-            GhostIndices[frame.PlayerID] = 0;
-            GhostMap[frame.PlayerID] = frame;
+            GhostIndices[frame.H0.PlayerID] = 0;
+            GhostMap[frame.H0.PlayerID] = frame;
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection conReceived, IPEndPoint remote, GhostNetFrame frame) {
@@ -143,7 +137,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            if (!frame.HasNetUpdate0) {
+            if (!frame.U0.IsValid) {
                 Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Update-less frame from {remote}");
                 return;
             }
@@ -151,18 +145,18 @@ namespace Celeste.Mod.Ghost.Net {
             SetNetHead(con, ref frame);
 
             GhostNetFrame managed;
-            if (!GhostMap.TryGetValue(frame.PlayerID, out managed)) {
+            if (!GhostMap.TryGetValue(frame.H0.PlayerID, out managed)) {
                 // Ghost not managed - ignore the update.
-                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unknown update from #{frame.PlayerID} ({remote}) - unmanaged ghost");
+                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unknown update from #{frame.H0.PlayerID} ({remote}) - unmanaged ghost");
                 return;
             }
 
             // Prevent unordered outdated frames from being handled.
-            if (frame.UpdateIndex < GhostIndices[frame.PlayerID]) {
-                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Out of order update from #{frame.PlayerID} ({remote}) - got {frame.UpdateIndex}, newest is {GhostIndices[frame.PlayerID]}");
+            if (frame.U0.UpdateIndex < GhostIndices[frame.H0.PlayerID]) {
+                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Out of order update from #{frame.H0.PlayerID} ({remote}) - got {frame.U0.UpdateIndex}, newest is {GhostIndices[frame.H0.PlayerID]}");
                 return;
             }
-            GhostIndices[frame.PlayerID] = frame.UpdateIndex;
+            GhostIndices[frame.H0.PlayerID] = frame.U0.UpdateIndex;
 
             // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nU0 from #{frame.PlayerID} ({remote})");
 
@@ -174,8 +168,8 @@ namespace Celeste.Mod.Ghost.Net {
 
                 GhostNetFrame otherManaged;
                 if (!GhostMap.TryGetValue((uint) i, out otherManaged) ||
-                    managed.SID != otherManaged.SID ||
-                    managed.Level != otherManaged.Level
+                    managed.M0.SID != otherManaged.M0.SID ||
+                    managed.M0.Level != otherManaged.M0.Level
                 ) {
                     continue;
                 }
@@ -206,13 +200,17 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Propagate disconnect to all other players.
             GhostNetFrame frame = new GhostNetFrame {
-                HasNetHead0 = true,
-                PlayerID = id,
+                H0 = new GhostChunkNetH0 {
+                    IsValid = true,
+                    PlayerID = id
+                },
 
-                HasNetManagement0 = true,
-                Name = "",
-                SID = "",
-                Level = ""
+                M0 = new GhostChunkNetM0 {
+                    IsValid = true,
+                    Name = "",
+                    SID = "",
+                    Level = ""
+                }
             };
             foreach (GhostNetConnection otherCon in Connections)
                 if (otherCon != null && otherCon != con)
@@ -220,8 +218,10 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected virtual void SetNetHead(GhostNetConnection con, ref GhostNetFrame frame) {
-            frame.HasNetHead0 = true;
-            frame.PlayerID = (uint) Connections.IndexOf(con);
+            frame.H0 = new GhostChunkNetH0 {
+                IsValid = true,
+                PlayerID = (uint) Connections.IndexOf(con)
+            };
         }
 
         public void Start() {

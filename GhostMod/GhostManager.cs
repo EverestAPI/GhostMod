@@ -59,7 +59,7 @@ namespace Celeste.Mod.Ghost {
                 // While we're at it, reset all colors.
                 ghost.Color = ColorNeutral;
 
-                if (!ghost.Frame.HasData)
+                if (!ghost.Frame.Data.IsValid)
                     continue;
                 
                 if (fastest == null || ghost.Data.Frames.Count < fastest.Data.Frames.Count) {

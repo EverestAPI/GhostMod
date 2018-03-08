@@ -64,6 +64,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GhostChunkInput.cs" />
+    <Compile Include="GhostChunkData.cs" />
     <Compile Include="GhostManager.cs" />
     <Compile Include="GhostName.cs" />
     <Compile Include="GhostInputReplayer.cs" />

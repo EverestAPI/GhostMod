@@ -13,125 +13,69 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     public struct GhostNetFrame {
 
-        public GhostFrame Frame;
+        public GhostChunkNetH0 H0;
+
+        public GhostChunkNetM0 M0;
+
+        public GhostChunkNetU0 U0;
+        public GhostChunkData Data;
+
+        public byte[] Extra;
 
         public void Read(BinaryReader reader) {
             string chunk;
             // The last "chunk" type, \r\n (Windows linebreak), doesn't contain a length.
-            while ((chunk = reader.ReadNullTerminatedString()) != "\r\n") {
-                uint length = reader.ReadUInt32();
-                switch (chunk) {
-                    case "nH0":
-                        ReadChunkNetHead0(reader);
-                        break;
+            using (MemoryStream extraBuffer = new MemoryStream())
+            using (BinaryWriter extraWriter = new BinaryWriter(extraBuffer)) {
+                while ((chunk = reader.ReadNullTerminatedString()) != "\r\n") {
+                    uint length = reader.ReadUInt32();
+                    switch (chunk) {
+                        case GhostChunkNetH0.Chunk:
+                            H0.Read(reader);
+                            break;
 
-                    case "nU0":
-                        ReadChunkNetUpdate0(reader);
-                        break;
+                        case GhostChunkNetM0.Chunk:
+                            M0.Read(reader);
+                            break;
 
-                    case "nM0":
-                        ReadChunkNetManagement0(reader);
-                        break;
+                        case GhostChunkNetU0.Chunk:
+                            U0.Read(reader);
+                            break;
+                        case GhostChunkData.Chunk:
+                            Data.Read(reader);
+                            break;
 
-                    case "data":
-                        Frame.ReadChunkData(reader);
-                        break;
-
-                    default:
-                        // Skip any unknown chunks.
-                        reader.BaseStream.Seek(length, SeekOrigin.Current);
-                        break;
+                        default:
+                            // Store any unknown chunks.
+                            extraWriter.WriteNullTerminatedString(chunk);
+                            extraWriter.Write(length);
+                            extraWriter.Write(reader.ReadBytes((int) length));
+                            break;
+                    }
                 }
+
+                extraWriter.Flush();
+                Extra = extraBuffer.ToArray();
             }
         }
 
-        public void WriteUpdate(BinaryWriter writer) {
-            WriteChunkNetHead0(writer);
+        public void Write(BinaryWriter writer) {
+            if (H0.IsValid)
+                GhostFrame.WriteChunk(writer, H0.Write, GhostChunkNetH0.Chunk);
 
-            WriteChunkNetUpdate0(writer);
+            if (M0.IsValid)
+                GhostFrame.WriteChunk(writer, M0.Write, GhostChunkNetM0.Chunk);
 
-            Frame.WriteChunkData(writer);
+            if (U0.IsValid)
+                GhostFrame.WriteChunk(writer, U0.Write, GhostChunkNetU0.Chunk);
 
-            writer.WriteNullTerminatedString("\r\n");
-        }
+            if (Data.IsValid)
+                GhostFrame.WriteChunk(writer, Data.Write, GhostChunkData.Chunk);
 
-        public void WriteManagement(BinaryWriter writer) {
-            WriteChunkNetHead0(writer);
+            if (Extra != null)
+                writer.Write(Extra);
 
-            WriteChunkNetManagement0(writer);
-
-            writer.WriteNullTerminatedString("\r\n");
-        }
-
-
-        public bool HasNetHead0;
-
-        public uint PlayerID;
-
-        public void ReadChunkNetHead0(BinaryReader reader) {
-            HasNetHead0 = true;
-
-            PlayerID = reader.ReadUInt32();
-        }
-
-        public void WriteChunkNetHead0(BinaryWriter writer) {
-            if (!HasNetHead0)
-                return;
-            long start = Frame.WriteChunkStart(writer, "nH0");
-
-            writer.Write(PlayerID);
-
-            Frame.WriteChunkEnd(writer, start);
-        }
-
-        public bool HasNetUpdate0;
-
-        public uint UpdateIndex;
-
-        public void ReadChunkNetUpdate0(BinaryReader reader) {
-            HasNetUpdate0 = true;
-
-            UpdateIndex = reader.ReadUInt32();
-        }
-
-        public void WriteChunkNetUpdate0(BinaryWriter writer) {
-            if (!HasNetUpdate0)
-                return;
-            long start = Frame.WriteChunkStart(writer, "nU0");
-
-            writer.Write(UpdateIndex);
-
-            Frame.WriteChunkEnd(writer, start);
-        }
-
-
-        public bool HasNetManagement0;
-
-        public string Name;
-
-        public string SID;
-        public string Level;
-
-        public void ReadChunkNetManagement0(BinaryReader reader) {
-            HasNetManagement0 = true;
-
-            Name = reader.ReadNullTerminatedString();
-
-            SID = reader.ReadNullTerminatedString();
-            Level = reader.ReadNullTerminatedString();
-        }
-
-        public void WriteChunkNetManagement0(BinaryWriter writer) {
-            if (!HasNetManagement0)
-                return;
-            long start = Frame.WriteChunkStart(writer, "nM0");
-
-            writer.WriteNullTerminatedString(Name);
-
-            writer.WriteNullTerminatedString(SID);
-            writer.WriteNullTerminatedString(Level);
-
-            Frame.WriteChunkEnd(writer, start);
+            writer.WriteNullTerminatedString(GhostFrame.End);
         }
 
     }

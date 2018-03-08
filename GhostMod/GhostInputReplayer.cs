@@ -33,20 +33,20 @@ namespace Celeste.Mod.Ghost {
             Input.Aim.Nodes.Add(new GhostInputNodes.Aim(this));
             Input.MountainAim.Nodes.Add(new GhostInputNodes.MountainAim(this));
 
-            Input.ESC.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.ESC));
-            Input.Pause.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.Pause));
-            Input.MenuLeft.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.MenuLeft));
-            Input.MenuRight.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.MenuRight));
-            Input.MenuUp.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.MenuUp));
-            Input.MenuDown.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.MenuDown));
-            Input.MenuConfirm.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.MenuConfirm));
-            Input.MenuCancel.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.MenuCancel));
-            Input.MenuJournal.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.MenuJournal));
-            Input.QuickRestart.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.QuickRestart));
-            Input.Jump.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.Jump));
-            Input.Dash.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.Dash));
-            Input.Grab.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.Grab));
-            Input.Talk.Nodes.Add(new GhostInputNodes.Button(this, GhostFrame.ButtonMask.Talk));
+            Input.ESC.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.ESC));
+            Input.Pause.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.Pause));
+            Input.MenuLeft.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.MenuLeft));
+            Input.MenuRight.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.MenuRight));
+            Input.MenuUp.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.MenuUp));
+            Input.MenuDown.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.MenuDown));
+            Input.MenuConfirm.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.MenuConfirm));
+            Input.MenuCancel.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.MenuCancel));
+            Input.MenuJournal.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.MenuJournal));
+            Input.QuickRestart.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.QuickRestart));
+            Input.Jump.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.Jump));
+            Input.Dash.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.Dash));
+            Input.Grab.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.Grab));
+            Input.Talk.Nodes.Add(new GhostInputNodes.Button(this, GhostChunkInput.ButtonMask.Talk));
 
             Logger.Log("ghost", "GhostReplayer hooked input.");
         }
@@ -57,7 +57,7 @@ namespace Celeste.Mod.Ghost {
             do {
                 FrameIndex++;
             } while (
-                (!Frame.HasInput && FrameIndex < Data.Frames.Count) // Skip any frames not containing the input chunk.
+                (!Frame.Input.IsValid && FrameIndex < Data.Frames.Count) // Skip any frames not containing the input chunk.
             );
 
             if (Data == null || FrameIndex >= Data.Frames.Count)
