@@ -1,5 +1,6 @@
 ﻿using Celeste.Mod;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using MonoMod.Detour;
 using System;
@@ -25,9 +26,10 @@ namespace Celeste.Mod.Ghost.Net {
         public Session Session;
         public GhostRecorder GhostRecorder;
         public GhostName PlayerName;
-        public GhostNetIconWheel IconWheel;
+        public GhostNetPopupWheel PopupWheel;
 
         public uint PlayerID;
+        public GhostChunkNetMPlayer PlayerInfo;
         public GhostChunkNetMServerInfo ServerInfo;
 
         public Dictionary<uint, GhostChunkNetMPlayer> PlayerMap = new Dictionary<uint, GhostChunkNetMPlayer>();
@@ -50,16 +52,16 @@ namespace Celeste.Mod.Ghost.Net {
             MInput.Disabled = false;
 
             if (!(Player?.Scene?.Paused ?? true)) {
-                string[] icons = GhostNetModule.Settings.Icons;
+                string[] emotes = GhostNetModule.Settings.Emotes;
 
-                IconWheel.Shown = Input.MountainAim.Value.LengthSquared() > 0.3f;
-                if (!IconWheel.Shown && IconWheel.Selected != -1) {
-                    SendMIcon(icons[IconWheel.Selected]);
-                    IconWheel.Selected = -1;
+                PopupWheel.Shown = Input.MountainAim.Value.LengthSquared() > 0.3f;
+                if (!PopupWheel.Shown && PopupWheel.Selected != -1) {
+                    SendMEmote(emotes[PopupWheel.Selected]);
+                    PopupWheel.Selected = -1;
                 }
             }
 
-            if (!(Player?.Scene?.Paused ?? false) && Input.MenuJournal.Pressed)
+            if (!(Player?.Scene?.Paused ?? false) && GhostNetModule.Instance.ButtonPlayerList.Pressed)
                 PlayerListVisible = !PlayerListVisible;
 
             MInput.Disabled = inputDisabled;
@@ -101,12 +103,34 @@ namespace Celeste.Mod.Ghost.Net {
             foreach (KeyValuePair<uint, GhostChunkNetMPlayer> player in PlayerMap) {
                 if (string.IsNullOrEmpty(player.Value.Name))
                     continue;
-                builder.Append("#").Append(player.Key).Append(": ").Append(player.Value.Name);
+                builder
+                    .Append("#")
+                    .Append(player.Key)
+                    .Append(": ")
+                    .Append(Escape(player.Value.Name, Monocle.Draw.DefaultFont))
+                ;
                 if (!string.IsNullOrEmpty(player.Value.SID)) {
-                    builder.Append(" @ ").Append(AreaDataExt.Get(player.Value.SID)?.Name?.DialogCleanOrNull() ?? player.Value.SID).Append(" ").Append(player.Value.Level);
+                    builder
+                        .Append(" @ ")
+                        .Append(Escape(AreaDataExt.Get(player.Value.SID)?.Name?.DialogCleanOrNull(Dialog.Languages["english"]) ?? player.Value.SID, Monocle.Draw.DefaultFont))
+                        .Append(" ")
+                        .Append(Escape(player.Value.Level, Monocle.Draw.DefaultFont))
+                    ;
                 }
+                builder.AppendLine();
             }
             PlayerListText = builder.ToString().Trim();
+        }
+
+        public static string Escape(string text, SpriteFont font) {
+            StringBuilder escaped = new StringBuilder();
+            for (int i = 0; i < text.Length; i++) {
+                char c = text[i];
+                if (!font.Characters.Contains(c))
+                    c = ' ';
+                escaped.Append(c);
+            }
+            return escaped.ToString();
         }
 
         #region Frame Senders
@@ -125,13 +149,13 @@ namespace Celeste.Mod.Ghost.Net {
             UpdateIndex = 0;
         }
 
-        public void SendMIcon(string icon) {
-            if (string.IsNullOrEmpty(icon))
+        public void SendMEmote(string value) {
+            if (string.IsNullOrEmpty(value))
                 return;
             Connection?.SendManagement(new GhostNetFrame {
-                MIcon = new GhostChunkNetMIcon {
+                MEmote = new GhostChunkNetMEmote {
                     IsValid = true,
-                    Icon = icon
+                    Value = value
                 }
             });
         }
@@ -176,8 +200,8 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MPlayer.IsValid)
                 ParseMPlayer(con, ref frame);
 
-            if (frame.MIcon.IsValid)
-                ParseMIcon(con, ref frame);
+            if (frame.MEmote.IsValid)
+                ParseMEmote(con, ref frame);
 
             if (frame.UUpdate.IsValid)
                 ParseUUpdate(con, ref frame);
@@ -192,7 +216,9 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (frame.HHead.PlayerID == PlayerID) {
                 // TODO: Server told us to move... or just told us about our proper name.
-                PlayerName.Name = frame.MPlayer.Name;
+                PlayerInfo = frame.MPlayer;
+                if (PlayerName != null)
+                    PlayerName.Name = frame.MPlayer.Name;
                 return;
             }
 
@@ -229,11 +255,11 @@ namespace Celeste.Mod.Ghost.Net {
                 ghost.Name.Name = frame.MPlayer.Name;
         }
 
-        public virtual void ParseMIcon(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void ParseMEmote(GhostNetConnection con, ref GhostNetFrame frame) {
             if (Player?.Scene == null)
                 return;
 
-            Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} sent icon: {frame.MIcon.Icon}");
+            // Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
 
             Ghost ghost = null;
             if (frame.HHead.PlayerID != PlayerID) {
@@ -244,13 +270,21 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            if (!GFX.Gui.Has(frame.MIcon.Icon)) {
-                // We don't have the icon - ignore it.
-                return;
+            if (frame.MEmote.Value.StartsWith("i:")) {
+                string iconPath = frame.MEmote.Value.Substring(2);
+                if (!GFX.Gui.Has(iconPath)) {
+                    // We don't have the icon - ignore it.
+                    return;
+                }
+                Player.Scene.Add(new GhostNetPopup(ghost ?? (Entity) Player, GFX.Gui[iconPath]) {
+                    Pop = true
+                });
+
+            } else {
+                Player.Scene.Add(new GhostNetPopup(ghost ?? (Entity) Player, frame.MEmote.Value) {
+                    Pop = true
+                });
             }
-            Player.Scene.Add(new GhostNetIcon(ghost ?? (Entity) Player, GFX.Gui[frame.MIcon.Icon]) {
-                Pop = true
-            });
         }
 
         public virtual void ParseUUpdate(GhostNetConnection con, ref GhostNetFrame frame) {
@@ -331,10 +365,10 @@ namespace Celeste.Mod.Ghost.Net {
             level.Add(GhostRecorder = new GhostRecorder(Player));
 
             PlayerName?.RemoveSelf();
-            level.Add(PlayerName = new GhostName(Player, GhostModule.Settings.Name));
+            level.Add(PlayerName = new GhostName(Player, PlayerInfo.Name));
 
-            IconWheel?.RemoveSelf();
-            level.Add(IconWheel = new GhostNetIconWheel(Player));
+            PopupWheel?.RemoveSelf();
+            level.Add(PopupWheel = new GhostNetPopupWheel(Player));
 
             SendMPlayer();
         }
@@ -412,8 +446,8 @@ namespace Celeste.Mod.Ghost.Net {
             PlayerName?.RemoveSelf();
             PlayerName = null;
 
-            IconWheel?.RemoveSelf();
-            IconWheel = null;
+            PopupWheel?.RemoveSelf();
+            PopupWheel = null;
         }
 
         private bool disposed = false;

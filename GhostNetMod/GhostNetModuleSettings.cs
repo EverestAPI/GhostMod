@@ -38,7 +38,7 @@ namespace Celeste.Mod.Ghost.Net {
         public bool SendUFramesInMStream { get; set; } = false;
 
         [SettingIgnore]
-        public string[] Icons { get; set; }
+        public string[] Emotes { get; set; }
 
         [SettingIgnore]
         [YamlMember(Alias = "Server")]

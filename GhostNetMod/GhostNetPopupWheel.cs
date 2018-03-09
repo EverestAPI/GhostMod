@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
-    public class GhostNetIconWheel : Entity {
+    public class GhostNetPopupWheel : Entity {
 
         public Entity Tracking;
 
@@ -34,32 +34,35 @@ namespace Celeste.Mod.Ghost.Net {
         public MTexture Line = GFX.Gui["ghostnetmod/iconwheel/line"];
         public MTexture Indicator = GFX.Gui["ghostnetmod/iconwheel/indicator"];
 
-        public GhostNetIconWheel(Entity tracking)
+        public Color TextSelectColorA = Calc.HexToColor("84FF54");
+        public Color TextSelectColorB = Calc.HexToColor("FCFF59");
+
+        public GhostNetPopupWheel(Entity tracking)
             : base(Vector2.Zero) {
             Tracking = tracking;
 
             Tag = GhostModuleBackCompat.TagSubHUD;
-            Depth = 1;
+            Depth = -1;
         }
 
         public override void Render() {
             base.Render();
 
-            string[] icons = GhostNetModule.Settings.Icons;
+            string[] emotes = GhostNetModule.Settings.Emotes;
 
             // Update can halt in the pause menu.
 
             if (Shown) {
                 Angle = Input.MountainAim.Value.Angle();
                 float angle = (float) ((Angle + Math.PI * 2f) % (Math.PI * 2f));
-                float start = (-0.5f / icons.Length) * 2f * (float) Math.PI;
+                float start = (-0.5f / emotes.Length) * 2f * (float) Math.PI;
                 if (2f * (float) Math.PI + start < angle) {
                     // Angle should be start < angle < 0, but is (TAU + start) < angle < TAU
                     angle -= 2f * (float) Math.PI;
                 }
-                for (int i = 0; i < icons.Length; i++) {
-                    float min = ((i - 0.5f) / icons.Length) * 2f * (float) Math.PI;
-                    float max = ((i + 0.5f) / icons.Length) * 2f * (float) Math.PI;
+                for (int i = 0; i < emotes.Length; i++) {
+                    float min = ((i - 0.5f) / emotes.Length) * 2f * (float) Math.PI;
+                    float max = ((i + 0.5f) / emotes.Length) * 2f * (float) Math.PI;
                     if (min <= angle && angle <= max) {
                         Selected = i;
                         break;
@@ -90,8 +93,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
             popupShown = Shown;
 
-            if (popupTime < 0.2f) {
-                float t = popupTime / 0.2f;
+            if (popupTime < 0.1f) {
+                float t = popupTime / 0.1f;
                 // Pop in.
                 popupAlpha = Ease.CubeOut(t);
                 popupScale = Ease.ElasticOut(t);
@@ -102,7 +105,7 @@ namespace Celeste.Mod.Ghost.Net {
                 popupScale = 1f;
 
             } else {
-                float t = (popupTime - 1f) / 0.4f;
+                float t = (popupTime - 1f) / 0.2f;
                 // Fade out.
                 popupAlpha = 1f - Ease.CubeIn(t);
                 popupScale = 1f - 0.2f * Ease.CubeIn(t);
@@ -150,41 +153,49 @@ namespace Celeste.Mod.Ghost.Net {
                 Angle
             );
 
-            for (int i = 0; i < icons.Length; i++) {
-                string iconName = icons[i];
-                if (string.IsNullOrEmpty(iconName) || !GFX.Gui.Has(iconName))
-                    continue;
-                MTexture icon = GFX.Gui[iconName];
-                if (icon == null)
+            float selectedScale = 1.2f - 0.2f * Calc.Clamp(Ease.CubeOut(selectedTime / 0.1f), 0f, 1f) + (float) Math.Sin(time * 1.8f) * 0.05f;
+
+            for (int i = 0; i < emotes.Length; i++) {
+                string emote = emotes[i];
+                if (string.IsNullOrEmpty(emote))
                     continue;
 
-                float a = (i / (float) icons.Length) * 2f * (float) Math.PI;
-
-                Vector2 iconPos = pos + new Vector2(
+                float a = (i / (float) emotes.Length) * 2f * (float) Math.PI;
+                Vector2 emotePos = pos + new Vector2(
                     (float) Math.Cos(a),
                     (float) Math.Sin(a)
                 ) * radius;
 
-                Vector2 iconSize = new Vector2(icon.Width, icon.Height);
-                float iconScale = (GhostNetIcon.Size / Math.Max(icon.Width, icon.Height)) * 0.25f * popupScale;
-                iconSize *= iconScale;
+                if (emote.StartsWith("i:")) {
+                    string iconPath = emote.Substring(2);
+                    if (!GFX.Gui.Has(iconPath))
+                        continue;
+                    MTexture icon = GFX.Gui[iconPath];
+                    if (icon == null)
+                        continue;
 
-                if (Selected == i) {
-                    if (selectedTime < 0.1f) {
-                        iconSize *= 1.2f - 0.2f * Ease.CubeIn(selectedTime / 0.5f);
-                    }
+                    Vector2 iconSize = new Vector2(icon.Width, icon.Height);
+                    float iconScale = (GhostNetPopup.Size / Math.Max(iconSize.X, iconSize.Y)) * 0.25f * popupScale;
+
                     icon.DrawCentered(
-                        iconPos,
-                        Color.White * alpha,
-                        Vector2.One * iconScale * (1f + (float) Math.Sin(time * 1.8f) * 0.05f),
-                        (float) Math.Sin(time * 2f) * 0.05f
+                        emotePos,
+                        Color.White * (Selected == i ? (Calc.BetweenInterval(selectedTime, 0.1f) ? 0.9f : 1f) : 0.7f) * alpha,
+                        Vector2.One * (Selected == i ? selectedScale : 1f) * iconScale,
+                        Selected == i ? (float) Math.Sin(time * 2f) * 0.05f : 0f
                     );
 
                 } else {
-                    icon.DrawCentered(
-                        iconPos,
-                        Color.White * alpha * 0.7f,
-                        Vector2.One * iconScale
+                    Vector2 textSize = ActiveFont.Measure(emote);
+                    float textScale = (GhostNetPopup.Size / Math.Max(textSize.X, textSize.Y)) * 0.25f * popupScale;
+
+                    ActiveFont.DrawOutline(
+                        emote,
+                        emotePos,
+                        new Vector2(0.5f, 0.5f),
+                        Vector2.One * (Selected == i ? selectedScale : 1f) * textScale,
+                        (Selected == i ? (Calc.BetweenInterval(selectedTime, 0.1f) ? TextSelectColorA : TextSelectColorB) : Color.LightSlateGray) * alpha,
+                        2f,
+                        Color.Black * alpha * alpha * alpha
                     );
                 }
 
@@ -192,7 +203,7 @@ namespace Celeste.Mod.Ghost.Net {
                     pos,
                     Color.White * alpha * alpha * alpha,
                     Vector2.One * popupScale,
-                    ((i + 0.5f) / icons.Length) * 2f * (float) Math.PI
+                    ((i + 0.5f) / emotes.Length) * 2f * (float) Math.PI
                 );
             }
         }

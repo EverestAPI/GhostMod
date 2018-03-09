@@ -12,23 +12,23 @@ using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
     /// <summary>
-    /// Make an icon spawn above the player.
+    /// Make an emote spawn above the player.
     /// </summary>
-    public struct GhostChunkNetMIcon {
+    public struct GhostChunkNetMEmote {
 
-        public const string Chunk = "nMI";
+        public const string Chunk = "nME";
         public bool IsValid;
 
-        public string Icon;
+        public string Value;
 
         public void Read(BinaryReader reader) {
             IsValid = true;
 
-            Icon = reader.ReadNullTerminatedString();
+            Value = reader.ReadNullTerminatedString();
         }
 
         public void Write(BinaryWriter writer) {
-            writer.WriteNullTerminatedString(Icon);
+            writer.WriteNullTerminatedString(Value);
         }
 
     }

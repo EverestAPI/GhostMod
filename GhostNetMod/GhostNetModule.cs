@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using FMOD.Studio;
+using Microsoft.Xna.Framework.Input;
 
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetModule : EverestModule {
@@ -27,23 +28,43 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetServer Server;
         public GhostNetClient Client;
 
+        public VirtualButton ButtonPlayerList;
+
         public override void LoadSettings() {
             base.LoadSettings();
 
-            if (Settings.Icons == null || Settings.Icons.Length == 0) {
-                Settings.Icons = new string[] {
-                    "collectables/heartgem/0/spin00",
-                    "collectables/strawberry",
-                    "collectables/cassette",
-                    "feather/feather0"
+            if (Settings.Emotes == null || Settings.Emotes.Length == 0) {
+                Settings.Emotes = new string[] {
+                    "i:collectables/heartgem/0/spin00",
+                    "i:collectables/strawberry",
+                    "Hi!",
+                    "Too slow!"
                 };
             }
         }
 
         public override void Load() {
+            Everest.Events.Input.OnInitialize += OnInputInitialize;
+            Everest.Events.Input.OnDeregister += OnInputDeregister;
         }
 
         public override void Unload() {
+            Everest.Events.Input.OnInitialize -= OnInputInitialize;
+            Everest.Events.Input.OnDeregister -= OnInputDeregister;
+            OnInputDeregister();
+        }
+
+        public void OnInputInitialize() {
+            ButtonPlayerList = new VirtualButton(
+                new VirtualButton.KeyboardKey(Keys.Tab),
+                new VirtualButton.PadButton(Input.Gamepad, Buttons.Back)
+            );
+            // TODO: Expose this helper and allow custom binding entries.
+            // InputExt.AddButtonsTo(PlayerListButton, Settings.BtnPlayerList);
+        }
+
+        public void OnInputDeregister() {
+            ButtonPlayerList?.Deregister();
         }
 
         public void Start() {

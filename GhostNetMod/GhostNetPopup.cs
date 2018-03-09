@@ -10,12 +10,14 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
-    public class GhostNetIcon : Entity {
+    public class GhostNetPopup : Entity {
 
         public static float Size = 256f;
 
         public Entity Tracking;
+
         public MTexture Icon;
+        public string Text;
 
         protected Camera Camera;
 
@@ -24,13 +26,21 @@ namespace Celeste.Mod.Ghost.Net {
         public bool Pop = false;
         protected float popupTime;
 
-        public GhostNetIcon(Entity tracking, MTexture icon)
+        protected GhostNetPopup(Entity tracking)
             : base(Vector2.Zero) {
             Tracking = tracking;
-            Icon = icon;
 
             Tag = GhostModuleBackCompat.TagSubHUD;
-            Depth = 1;
+        }
+
+        public GhostNetPopup(Entity tracking, MTexture icon)
+            : this(tracking) {
+            Icon = icon;
+        }
+
+        public GhostNetPopup(Entity tracking, string text)
+            : this(tracking) {
+            Text = text;
         }
 
         public override void Render() {
@@ -57,17 +67,18 @@ namespace Celeste.Mod.Ghost.Net {
                     float t = popupTime - 1f;
                     // Fade out.
                     popupAlpha = 1f - Ease.CubeIn(t);
-                    popupScale = 1f - 0.2f * Ease.CubeIn(t);
+                    popupScale = 1f - 0.4f * Ease.CubeIn(t);
 
                 } else {
                     // Destroy.
                     RemoveSelf();
+                    return;
                 }
             }
 
             float alpha = Alpha * popupAlpha;
 
-            if (alpha <= 0f || Icon == null)
+            if (alpha <= 0f || (Icon == null && string.IsNullOrEmpty(Text)))
                 return;
 
             if (Tracking == null)
@@ -83,24 +94,47 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
 
             Vector2 pos = Tracking.Position;
-            pos.Y -= 32f;
+            // - name offset - popup offset
+            pos.Y -= 16f + 4f;
             pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
 
-            Vector2 size = new Vector2(Icon.Width, Icon.Height);
-            float scale = (GhostNetIcon.Size / Math.Max(Icon.Width, Icon.Height)) * 0.5f * popupScale;
-            size *= scale;
+            if (Icon != null) {
+                Vector2 size = new Vector2(Icon.Width, Icon.Height);
+                float scale = (Size / Math.Max(size.X, size.Y)) * 0.5f * popupScale;
+                size *= scale;
 
-            pos = pos.Clamp(
-                0f + size.X * 0.5f, 0f + size.Y * 1f,
-                1920f - size.X * 0.5f, 1080f
-            );
+                pos = pos.Clamp(
+                    0f + size.X * 0.5f, 0f + size.Y * 1f,
+                    1920f - size.X * 0.5f, 1080f
+                );
 
-            Icon.DrawJustified(
-                pos,
-                new Vector2(0.5f, 0.5f),
-                Color.White * alpha,
-                Vector2.One * scale
-            );
+                Icon.DrawJustified(
+                    pos,
+                    new Vector2(0.5f, 1f),
+                    Color.White * alpha,
+                    Vector2.One * scale
+                );
+
+            } else {
+                Vector2 size = ActiveFont.Measure(Text);
+                float scale = (Size / Math.Max(size.X, size.Y)) * 0.5f * popupScale;
+                size *= scale;
+
+                pos = pos.Clamp(
+                    0f + size.X * 0.5f, 0f + size.Y * 1f,
+                    1920f - size.X * 0.5f, 1080f
+                );
+
+                ActiveFont.DrawOutline(
+                    Text,
+                    pos,
+                    new Vector2(0.5f, 1f),
+                    Vector2.One * scale,
+                    Color.White * alpha,
+                    2f,
+                    Color.Black * alpha * alpha * alpha
+                );
+            }
         }
 
     }

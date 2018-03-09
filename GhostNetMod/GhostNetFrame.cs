@@ -21,7 +21,7 @@ namespace Celeste.Mod.Ghost.Net {
         // Management chunks.
         public GhostChunkNetMServerInfo MServerInfo;
         public GhostChunkNetMPlayer MPlayer;
-        public GhostChunkNetMIcon MIcon;
+        public GhostChunkNetMEmote MEmote;
 
         // Update chunks.
         public GhostChunkNetUUpdate UUpdate;
@@ -47,8 +47,8 @@ namespace Celeste.Mod.Ghost.Net {
                         case GhostChunkNetMPlayer.Chunk:
                             MPlayer.Read(reader);
                             break;
-                        case GhostChunkNetMIcon.Chunk:
-                            MIcon.Read(reader);
+                        case GhostChunkNetMEmote.Chunk:
+                            MEmote.Read(reader);
                             break;
                         
                         case GhostChunkNetUUpdate.Chunk:
@@ -77,8 +77,8 @@ namespace Celeste.Mod.Ghost.Net {
                 GhostFrame.WriteChunk(writer, MServerInfo.Write, GhostChunkNetMServerInfo.Chunk);
             if (MPlayer.IsValid)
                 GhostFrame.WriteChunk(writer, MPlayer.Write, GhostChunkNetMPlayer.Chunk);
-            if (MIcon.IsValid)
-                GhostFrame.WriteChunk(writer, MIcon.Write, GhostChunkNetMIcon.Chunk);
+            if (MEmote.IsValid)
+                GhostFrame.WriteChunk(writer, MEmote.Write, GhostChunkNetMEmote.Chunk);
 
             if (UUpdate.IsValid)
                 GhostFrame.WriteChunk(writer, UUpdate.Write, GhostChunkNetUUpdate.Chunk);

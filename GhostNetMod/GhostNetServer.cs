@@ -112,8 +112,10 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MPlayer.IsValid)
                 ParseMPlayer(con, ref frame);
 
-            // TODO: Propagate icon only to players in the same room.
-            if (frame.MIcon.IsValid) {
+            if (frame.MEmote.IsValid) {
+                // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
+                if (frame.MEmote.Value.Length > 128)
+                    frame.MEmote.Value = frame.MEmote.Value.Substring(0, 128);
                 PropagateM(con, ref frame);
             }
 
