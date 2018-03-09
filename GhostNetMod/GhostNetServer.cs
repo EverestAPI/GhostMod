@@ -115,7 +115,6 @@ namespace Celeste.Mod.Ghost.Net {
             // TODO: Propagate icon only to players in the same room.
             if (frame.MIcon.IsValid) {
                 PropagateM(con, ref frame);
-                con.SendManagement(frame);
             }
 
             if (frame.UUpdate.IsValid)
@@ -125,6 +124,10 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public virtual void ParseMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
+            frame.MPlayer.Name = frame.MPlayer.Name.Replace("*", "").Replace("\r", "").Replace("\n", "").Trim();
+            if (string.IsNullOrEmpty(frame.MPlayer.Name))
+                frame.MPlayer.Name = "#" + frame.HHead.PlayerID;
+
             // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
             Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {frame.MPlayer.Level}");
 
@@ -133,12 +136,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Inform the player about all existing ghosts.
             foreach (KeyValuePair<uint, GhostChunkNetMPlayer> otherStatus in GhostPlayers) {
-                if ((!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID) ||
-                    frame.MPlayer.SID != otherStatus.Value.SID ||
-                    frame.MPlayer.Level != otherStatus.Value.Level
-                ) {
+                if (!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID)
                     continue;
-                }
                 con.SendManagement(new GhostNetFrame {
                     HHead = {
                         IsValid = true,
@@ -185,7 +184,7 @@ namespace Celeste.Mod.Ghost.Net {
             frame.Propagated = true;
 
             foreach (GhostNetConnection otherCon in Connections)
-                if (otherCon != null && (AllowLoopbackGhost || otherCon != con))
+                if (otherCon != null)
                     otherCon.SendManagement(frame);
         }
 

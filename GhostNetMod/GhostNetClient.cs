@@ -15,7 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace Celeste.Mod.Ghost.Net {
-    public class GhostNetClient : GameComponent {
+    public class GhostNetClient : DrawableGameComponent {
 
         public GhostNetConnection Connection;
 
@@ -28,9 +28,14 @@ namespace Celeste.Mod.Ghost.Net {
         public uint PlayerID;
         public GhostChunkNetMServerInfo ServerInfo;
 
+        public Dictionary<uint, GhostChunkNetMPlayer> PlayerMap = new Dictionary<uint, GhostChunkNetMPlayer>();
+
         public List<Ghost> Ghosts = new List<Ghost>();
         public Dictionary<uint, Ghost> GhostMap = new Dictionary<uint, Ghost>();
         public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
+
+        protected string PlayerListText;
+        public bool PlayerListVisible;
 
         public GhostNetClient(Game game)
             : base(game) {
@@ -44,8 +49,13 @@ namespace Celeste.Mod.Ghost.Net {
 
             // TODO: Replace testing icon with "icon wheel" (right stick).
             // TODO: Show player list on MenuJournal.Check
+            /*
             if (!(Player?.Scene?.Paused ?? true) && Input.MenuJournal.Pressed)
                 SendMIcon("collectables/heartgem/0/spin00");
+            */
+
+            if (!(Player?.Scene?.Paused ?? false) && Input.MenuJournal.Pressed)
+                PlayerListVisible = !PlayerListVisible;
 
             MInput.Disabled = inputDisabled;
 
@@ -60,6 +70,38 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             base.Update(gameTime);
+        }
+
+        public override void Draw(GameTime gameTime) {
+            base.Draw(gameTime);
+
+            Monocle.Draw.SpriteBatch.Begin();
+
+            if (PlayerListVisible) {
+                Vector2 mouseTextSize = Monocle.Draw.DefaultFont.MeasureString(PlayerListText);
+                Monocle.Draw.Rect(10f, 10f, mouseTextSize.X + 20f, mouseTextSize.Y + 20f, Color.Black * 0.8f);
+                Monocle.Draw.SpriteBatch.DrawString(
+                    Monocle.Draw.DefaultFont,
+                    PlayerListText,
+                    new Vector2(20f, 20f),
+                    Color.White
+                );
+            }
+
+            Monocle.Draw.SpriteBatch.End();
+        }
+
+        protected virtual void RebuildPlayerList() {
+            StringBuilder builder = new StringBuilder();
+            foreach (KeyValuePair<uint, GhostChunkNetMPlayer> player in PlayerMap) {
+                if (string.IsNullOrEmpty(player.Value.Name))
+                    continue;
+                builder.Append("#").Append(player.Key).Append(": ").Append(player.Value.Name);
+                if (!string.IsNullOrEmpty(player.Value.SID)) {
+                    builder.Append(" @ ").Append(AreaDataExt.Get(player.Value.SID)?.Name?.DialogCleanOrNull() ?? player.Value.SID).Append(" ").Append(player.Value.Level);
+                }
+            }
+            PlayerListText = builder.ToString().Trim();
         }
 
         #region Frame Senders
@@ -135,16 +177,19 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public virtual void ParseMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
-            if (Player?.Scene == null)
-                return;
-
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
             Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {frame.MPlayer.Level}");
 
+            PlayerMap[frame.HHead.PlayerID] = frame.MPlayer;
+            RebuildPlayerList();
+
             if (frame.HHead.PlayerID == PlayerID) {
-                // TODO: Server told us to move.
+                // TODO: Server told us to move... or just told us about our proper name.
                 return;
             }
+
+            if (Player?.Scene == null)
+                return;
 
             Ghost ghost;
 
@@ -325,6 +370,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (Engine.Scene is Level)
                 OnLoadLevel((Level) Engine.Scene, Player.IntroTypes.Transition, true);
+            else
+                SendMPlayer();
         }
 
         public void Stop() {
