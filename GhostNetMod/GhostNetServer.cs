@@ -37,6 +37,8 @@ namespace Celeste.Mod.Ghost.Net {
         public Dictionary<uint, GhostChunkNetMPlayer> GhostPlayers = new Dictionary<uint, GhostChunkNetMPlayer>();
         public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
 
+        public List<GhostNetFrame> ChatLog = new List<GhostNetFrame>();
+
         public Thread ListenerThread;
 
         // Allows testing a subset of GhostNetMod's functions in an easy manner.
@@ -112,21 +114,62 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MPlayer.IsValid)
                 ParseMPlayer(con, ref frame);
 
+            GhostChunkNetMPlayer player;
+            if (!GhostPlayers.TryGetValue(frame.HHead.PlayerID, out player) || !player.IsValid) {
+                // Ghost not managed - ignore the frame.
+                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unexpected frame from #{frame.HHead.PlayerID} ({con.ManagementEndPoint}) - statusless ghost, possibly premature");
+                return;
+            }
+            // Temporarily attach the MPlayer chunk to make player identification easier.
+            bool mPlayerTemporary = !frame.MPlayer.IsValid;
+            frame.MPlayer = player;
+
             if (frame.MEmote.IsValid) {
                 // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
-                if (frame.MEmote.Value.Length > 128)
-                    frame.MEmote.Value = frame.MEmote.Value.Substring(0, 128);
-                PropagateM(con, ref frame);
+
+                if (frame.MEmote.Value.Length > GhostNetModule.Settings.ServerMaxEmoteLength)
+                    frame.MEmote.Value = frame.MEmote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteLength);
+
+                frame.PropagateM = true;
+            }
+
+            if (frame.MChat.IsValid) {
+                // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
+
+                // TODO: Parse commands.
+
+                frame.MChat.Text.Replace("\r", "").Replace("\n", "");
+                if (frame.MChat.Text.Length > GhostNetModule.Settings.ServerMaxChatLength)
+                    frame.MChat.Text = frame.MChat.Text.Substring(0, GhostNetModule.Settings.ServerMaxChatLength);
+
+                frame.MChat.Color = Color.White;
+
+                frame.MChat.ID = (uint) ChatLog.Count;
+                frame.MChat.Date = DateTime.UtcNow;
+                ChatLog.Add(frame);
+
+                frame.PropagateM = true;
             }
 
             if (frame.UUpdate.IsValid)
                 ParseUUpdate(con, ref frame);
 
             // TODO: Let mods parse extras.
+
+            if (mPlayerTemporary)
+                frame.MPlayer.IsValid = false;
+
+            if (frame.PropagateM)
+                PropagateM(con, ref frame);
+            else if (frame.PropagateU)
+                PropagateU(con, ref frame);
         }
 
         public virtual void ParseMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
             frame.MPlayer.Name = frame.MPlayer.Name.Replace("*", "").Replace("\r", "").Replace("\n", "").Trim();
+            if (frame.MPlayer.Name.Length > GhostNetModule.Settings.ServerMaxNameLength)
+                frame.MPlayer.Name = frame.MPlayer.Name.Substring(0, GhostNetModule.Settings.ServerMaxNameLength);
+
             if (string.IsNullOrEmpty(frame.MPlayer.Name))
                 frame.MPlayer.Name = "#" + frame.HHead.PlayerID;
 
@@ -134,7 +177,31 @@ namespace Celeste.Mod.Ghost.Net {
             Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {frame.MPlayer.Level}");
 
             // Propagate status to all other players.
-            PropagateM(con, ref frame);
+            frame.PropagateM = true;
+
+            if (!GhostPlayers.ContainsKey(frame.HHead.PlayerID)) {
+                // Player just connected.
+                if (!string.IsNullOrEmpty(GhostNetModule.Settings.ServerMessageGreeting)) {
+                    GhostNetFrame greeting = new GhostNetFrame {
+                        HHead = {
+                            IsValid = true,
+                            PlayerID = uint.MaxValue
+                        },
+
+                        MChat = {
+                            ID = (uint) ChatLog.Count,
+                            Text = GhostNetModule.Settings.ServerMessageGreeting
+                                .Replace("((player))", frame.MPlayer.Name)
+                                .Replace("((id))", frame.HHead.PlayerID.ToString())
+                                .Replace("((server))", GhostNetModule.Settings.ServerNameAuto),
+                            Color = Color.Yellow,
+                            Date = DateTime.UtcNow
+                        }
+                    };
+                    ChatLog.Add(greeting);
+                    PropagateM(con, ref greeting);
+                }
+            }
 
             // Inform the player about all existing ghosts.
             foreach (KeyValuePair<uint, GhostChunkNetMPlayer> otherStatus in GhostPlayers) {
@@ -155,13 +222,6 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public virtual void ParseUUpdate(GhostNetConnection con, ref GhostNetFrame frame) {
-            GhostChunkNetMPlayer player;
-            if (!GhostPlayers.TryGetValue(frame.HHead.PlayerID, out player)) {
-                // Ghost not managed - ignore the update.
-                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unknown update from #{frame.HHead.PlayerID} ({con.UpdateEndPoint}) - statusless ghost, possibly premature");
-                return;
-            }
-
             // Prevent unordered outdated frames from being handled.
             uint lastIndex;
             if (GhostIndices.TryGetValue(frame.HHead.PlayerID, out lastIndex) && frame.UUpdate.UpdateIndex < lastIndex) {
@@ -173,7 +233,7 @@ namespace Celeste.Mod.Ghost.Net {
             // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nU0 from #{frame.H0.PlayerID} ({con.UpdateEndPoint})");
 
             // Propagate update to all active players in the same room.
-            PropagateU(con, ref frame, player);
+            frame.PropagateU = true;
         }
 
         #endregion
@@ -181,21 +241,13 @@ namespace Celeste.Mod.Ghost.Net {
         #region Frame Senders
 
         public void PropagateM(GhostNetConnection con, ref GhostNetFrame frame) {
-            if (frame.Propagated)
-                return;
-            frame.Propagated = true;
-
             foreach (GhostNetConnection otherCon in Connections)
                 if (otherCon != null)
                     otherCon.SendManagement(frame);
         }
 
-        public void PropagateU(GhostNetConnection con, ref GhostNetFrame frame, GhostChunkNetMPlayer player) {
+        public void PropagateU(GhostNetConnection con, ref GhostNetFrame frame) {
             // U is always handled after M. Even if sending this fails, we shouldn't worry about loosing M chunks.
-            if (frame.Propagated)
-                return;
-            frame.Propagated = true;
-
             for (int i = 0; i < Connections.Count; i++) {
                 GhostNetConnection otherCon = Connections[i];
                 if (otherCon == null || (!AllowLoopbackGhost && otherCon == con))
@@ -203,8 +255,8 @@ namespace Celeste.Mod.Ghost.Net {
 
                 GhostChunkNetMPlayer otherPlayer;
                 if (!GhostPlayers.TryGetValue((uint) i, out otherPlayer) ||
-                    player.SID != otherPlayer.SID ||
-                    player.Level != otherPlayer.Level
+                    frame.MPlayer.SID != otherPlayer.SID ||
+                    frame.MPlayer.Level != otherPlayer.Level
                 ) {
                     continue;
                 }
@@ -285,6 +337,9 @@ namespace Celeste.Mod.Ghost.Net {
             }
             Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Client #{id} ({con.ManagementEndPoint}) disconnected");
 
+            GhostChunkNetMPlayer player;
+            GhostPlayers.TryGetValue(id, out player);
+
             Connections[(int) id] = null;
 
             ConnectionMap[con.ManagementEndPoint] = null;
@@ -293,6 +348,19 @@ namespace Celeste.Mod.Ghost.Net {
                 ConnectionMap[con.UpdateEndPoint] = null;
             } else {
                 UpdateConnectionQueue[con.ManagementEndPoint.Address] = null;
+            }
+
+            GhostChunkNetMChat leave = default(GhostChunkNetMChat);
+            if (player.IsValid && !string.IsNullOrEmpty(player.Name) && !string.IsNullOrEmpty(GhostNetModule.Settings.ServerMessageGreeting)) {
+                leave = new GhostChunkNetMChat {
+                    ID = (uint) ChatLog.Count,
+                    Text = GhostNetModule.Settings.ServerMessageLeave
+                        .Replace("((player))", player.Name)
+                        .Replace("((id))", id.ToString())
+                        .Replace("((server))", GhostNetModule.Settings.ServerNameAuto),
+                    Color = Color.Yellow,
+                    Date = DateTime.UtcNow
+                };
             }
 
             // Propagate disconnect to all other players.
@@ -307,11 +375,14 @@ namespace Celeste.Mod.Ghost.Net {
                     Name = "",
                     SID = "",
                     Level = ""
-                }
+                },
+                
+                MChat = leave
             };
-            foreach (GhostNetConnection otherCon in Connections)
-                if (otherCon != null && otherCon != con)
-                    otherCon.SendManagement(frame);
+            GhostPlayers[id] = frame.MPlayer;
+            if (frame.MChat.IsValid)
+                ChatLog.Add(frame);
+            PropagateM(con, ref frame);
         }
 
         #endregion

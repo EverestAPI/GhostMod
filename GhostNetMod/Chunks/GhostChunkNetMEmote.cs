@@ -17,13 +17,19 @@ namespace Celeste.Mod.Ghost.Net {
     public struct GhostChunkNetMEmote {
 
         public const string Chunk = "nME";
-        public bool IsValid;
+        public bool IsValid {
+            get {
+                return !string.IsNullOrEmpty(Value);
+            }
+            set {
+                if (!value)
+                    Value = "";
+            }
+        }
 
         public string Value;
 
         public void Read(BinaryReader reader) {
-            IsValid = true;
-
             Value = reader.ReadNullTerminatedString();
         }
 

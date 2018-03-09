@@ -17,18 +17,35 @@ namespace Celeste.Mod.Ghost.Net {
     public struct GhostChunkNetMChat {
 
         public const string Chunk = "nMC";
-        public bool IsValid;
+        public bool IsValid {
+            get {
+                return !string.IsNullOrEmpty(Text);
+            }
+            set {
+                if (!value)
+                    Text = "";
+            }
+        }
 
-        public string Value;
+        public uint ID;
+        public string Text;
+        public Color Color;
+        public DateTime Date;
 
         public void Read(BinaryReader reader) {
-            IsValid = true;
-
-            Value = reader.ReadNullTerminatedString();
+            ID = reader.ReadUInt32();
+            Text = reader.ReadNullTerminatedString();
+            Color = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), 1f);
+            Date = DateTime.FromBinary(reader.ReadInt64());
         }
 
         public void Write(BinaryWriter writer) {
-            writer.WriteNullTerminatedString(Value);
+            writer.Write(ID);
+            writer.WriteNullTerminatedString(Text);
+            writer.Write(Color.R);
+            writer.Write(Color.G);
+            writer.Write(Color.B);
+            writer.Write(Date.ToBinary());
         }
 
     }

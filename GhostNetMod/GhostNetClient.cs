@@ -20,6 +20,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public GhostNetConnection Connection;
 
+        protected float time;
+
         public int UpdateIndex = -1;
 
         public Player Player;
@@ -38,6 +40,10 @@ namespace Celeste.Mod.Ghost.Net {
         public Dictionary<uint, Ghost> GhostMap = new Dictionary<uint, Ghost>();
         public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
 
+        public List<ChatLine> ChatLog = new List<ChatLine>();
+        public bool ChatVisible;
+        public string ChatInput;
+
         protected string PlayerListText;
         public bool PlayerListVisible;
 
@@ -47,6 +53,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public override void Update(GameTime gameTime) {
             SendUUpdate();
+
+            time += Engine.DeltaTime;
 
             bool inputDisabled = MInput.Disabled;
             MInput.Disabled = false;
@@ -82,7 +90,42 @@ namespace Celeste.Mod.Ghost.Net {
         public override void Draw(GameTime gameTime) {
             base.Draw(gameTime);
 
+            int viewWidth = Engine.ViewWidth;
+            int viewHeight = Engine.ViewHeight;
+
             Monocle.Draw.SpriteBatch.Begin();
+
+            if (ChatVisible) {
+                Monocle.Draw.Rect(10f, viewHeight - 50f, viewWidth - 20f, 40f, Color.Black * 0.8f);
+
+                string text = ">" + ChatInput;
+                if (Calc.BetweenInterval(time, 0.5f))
+                    text += "_";
+                Monocle.Draw.SpriteBatch.DrawString(
+                    Monocle.Draw.DefaultFont,
+                    text,
+                    new Vector2(20f, viewHeight - 42f),
+                    Color.White
+                );
+            }
+
+            if (ChatLog.Count > 0) {
+                float height = 10f + 30f * ChatLog.Count;
+                // TODO: Chat fade out.
+                Monocle.Draw.Rect(10f, viewHeight - height - 60f, viewWidth - 20f, height, Color.Black * 0.8f);
+                for (int i = 0; i < ChatLog.Count; i++) {
+                    ChatLine line = ChatLog[i];
+                    Monocle.Draw.SpriteBatch.DrawString(
+                        Monocle.Draw.DefaultFont,
+                        Escape(
+                            $"[{line.Date.ToLocalTime().ToLongTimeString()}] {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}: {line.Text}",
+                            Monocle.Draw.DefaultFont
+                        ),
+                        new Vector2(20f, viewHeight - 92f - 30f * i),
+                        ChatLog[i].Color
+                    );
+                }
+            }
 
             if (PlayerListVisible) {
                 Vector2 mouseTextSize = Monocle.Draw.DefaultFont.MeasureString(PlayerListText);
@@ -104,10 +147,9 @@ namespace Celeste.Mod.Ghost.Net {
                 if (string.IsNullOrEmpty(player.Value.Name))
                     continue;
                 builder
+                    .Append(Escape(player.Value.Name, Monocle.Draw.DefaultFont))
                     .Append("#")
                     .Append(player.Key)
-                    .Append(": ")
-                    .Append(Escape(player.Value.Name, Monocle.Draw.DefaultFont))
                 ;
                 if (!string.IsNullOrEmpty(player.Value.SID)) {
                     builder
@@ -160,6 +202,17 @@ namespace Celeste.Mod.Ghost.Net {
             });
         }
 
+        public void SendMChat(string value) {
+            if (string.IsNullOrEmpty(value))
+                return;
+            Connection?.SendManagement(new GhostNetFrame {
+                MChat = new GhostChunkNetMChat {
+                    IsValid = true,
+                    Text = value
+                }
+            });
+        }
+
         public void SendUUpdate() {
             if (Connection == null || GhostRecorder == null || UpdateIndex == -1)
                 return;
@@ -203,8 +256,14 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MEmote.IsValid)
                 ParseMEmote(con, ref frame);
 
+            if (frame.MChat.IsValid)
+                ParseMChat(con, ref frame);
+
             if (frame.UUpdate.IsValid)
                 ParseUUpdate(con, ref frame);
+
+            // TODO: Let mods parse extras.
+
         }
 
         public virtual void ParseMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
@@ -284,6 +343,43 @@ namespace Celeste.Mod.Ghost.Net {
                 Player.Scene.Add(new GhostNetPopup(ghost ?? (Entity) Player, frame.MEmote.Value) {
                     Pop = true
                 });
+            }
+        }
+
+        public virtual void ParseMChat(GhostNetConnection con, ref GhostNetFrame frame) {
+            // Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} chat: {frame.MChat.Text}");
+
+            GhostChunkNetMPlayer player;
+            string playerName;
+            if (frame.HHead.PlayerID == uint.MaxValue) {
+                // We've received a message from the server.
+                playerName = "**SERVER**";
+
+            } else if (PlayerMap.TryGetValue(frame.HHead.PlayerID, out player)) {
+                // We've received a message from a living ghost.
+                playerName = player.Name;
+
+            } else {
+                // We've received a message from a dead ghost.
+                return;
+            }
+
+            ChatLine line = new ChatLine(frame.MChat.ID, frame.HHead.PlayerID, playerName, frame.MChat.Text, frame.MChat.Color);
+
+            // If there's already a chat line with the same message ID, replace it.
+            // Likewise for "unconfirmed" chatlines we've sent.
+            for (int i = 0; i < ChatLog.Count; i++) {
+                ChatLine existing = ChatLog[i];
+                if (existing.MessageID == line.MessageID ||
+                    (existing.PlayerID == line.PlayerID && existing.Unconfirmed)) {
+                    ChatLog[i] = line;
+                    return;
+                }
+            }
+
+            ChatLog.Insert(0, line);
+            if (ChatLog.Count >= GhostNetModule.Settings.ChatLogLength) {
+
             }
         }
 
@@ -463,6 +559,31 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             disposed = true;
+        }
+
+        public struct ChatLine {
+
+            public uint MessageID;
+            public uint PlayerID;
+            public string PlayerName;
+            public string Text;
+            public Color Color;
+            public DateTime Date;
+            public bool Unconfirmed;
+
+            public ChatLine(uint messageID, uint playerID, string playerName, string text)
+                : this(messageID, playerID, playerName, text, Color.White) {
+            }
+            public ChatLine(uint messageID, uint playerID, string playerName, string text, Color color) {
+                MessageID = messageID;
+                PlayerID = playerID;
+                PlayerName = playerName;
+                Text = text;
+                Color = color;
+                Date = DateTime.UtcNow;
+                Unconfirmed = false;
+            }
+
         }
 
     }

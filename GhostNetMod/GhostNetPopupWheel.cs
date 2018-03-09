@@ -175,7 +175,7 @@ namespace Celeste.Mod.Ghost.Net {
                         continue;
 
                     Vector2 iconSize = new Vector2(icon.Width, icon.Height);
-                    float iconScale = (GhostNetPopup.Size / Math.Max(iconSize.X, iconSize.Y)) * 0.25f * popupScale;
+                    float iconScale = (GhostNetPopup.Size / Math.Max(iconSize.X, iconSize.Y)) * 0.24f * popupScale;
 
                     icon.DrawCentered(
                         emotePos,
@@ -186,7 +186,7 @@ namespace Celeste.Mod.Ghost.Net {
 
                 } else {
                     Vector2 textSize = ActiveFont.Measure(emote);
-                    float textScale = (GhostNetPopup.Size / Math.Max(textSize.X, textSize.Y)) * 0.25f * popupScale;
+                    float textScale = (GhostNetPopup.Size / Math.Max(textSize.X, textSize.Y)) * 0.24f * popupScale;
 
                     ActiveFont.DrawOutline(
                         emote,

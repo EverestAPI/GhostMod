@@ -13,7 +13,8 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     public struct GhostNetFrame {
 
-        public bool Propagated;
+        public bool PropagateM;
+        public bool PropagateU;
 
         // Head chunks, always present.
         public GhostChunkNetHHead HHead;
@@ -22,6 +23,7 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostChunkNetMServerInfo MServerInfo;
         public GhostChunkNetMPlayer MPlayer;
         public GhostChunkNetMEmote MEmote;
+        public GhostChunkNetMChat MChat;
 
         // Update chunks.
         public GhostChunkNetUUpdate UUpdate;
@@ -50,7 +52,10 @@ namespace Celeste.Mod.Ghost.Net {
                         case GhostChunkNetMEmote.Chunk:
                             MEmote.Read(reader);
                             break;
-                        
+                        case GhostChunkNetMChat.Chunk:
+                            MChat.Read(reader);
+                            break;
+
                         case GhostChunkNetUUpdate.Chunk:
                             UUpdate.Read(reader);
                             break;
@@ -79,6 +84,8 @@ namespace Celeste.Mod.Ghost.Net {
                 GhostFrame.WriteChunk(writer, MPlayer.Write, GhostChunkNetMPlayer.Chunk);
             if (MEmote.IsValid)
                 GhostFrame.WriteChunk(writer, MEmote.Write, GhostChunkNetMEmote.Chunk);
+            if (MChat.IsValid)
+                GhostFrame.WriteChunk(writer, MChat.Write, GhostChunkNetMChat.Chunk);
 
             if (UUpdate.IsValid)
                 GhostFrame.WriteChunk(writer, UUpdate.Write, GhostChunkNetUUpdate.Chunk);

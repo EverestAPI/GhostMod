@@ -4,7 +4,6 @@ using Monocle;
 using MonoMod.Detour;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -52,6 +51,17 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Input.OnInitialize -= OnInputInitialize;
             Everest.Events.Input.OnDeregister -= OnInputDeregister;
             OnInputDeregister();
+        }
+
+        public override void CreateModMenuSection(TextMenu menu, bool inGame, EventInstance snapshot) {
+            base.CreateModMenuSection(menu, inGame, snapshot);
+
+            menu.Add(new TextMenu.Button("modoptions_ghostnetmodule_reload".DialogCleanOrNull() ?? "Reload Settings").Pressed(() => {
+                string server = Settings.Server;
+                LoadSettings();
+                if (Settings.Server != server)
+                    Settings.Server = Settings._Server;
+            }));
         }
 
         public void OnInputInitialize() {

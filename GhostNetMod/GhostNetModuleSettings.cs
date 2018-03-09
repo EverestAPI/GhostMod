@@ -31,15 +31,6 @@ namespace Celeste.Mod.Ghost.Net {
         [SettingIgnore]
         public TextMenu.OnOff EnabledEntry { get; protected set; }
 
-        [SettingRange(0, 3)]
-        public int SendSkip { get; set; } = 0;
-
-        [SettingIgnore]
-        public bool SendUFramesInMStream { get; set; } = false;
-
-        [SettingIgnore]
-        public string[] Emotes { get; set; }
-
         [SettingIgnore]
         [YamlMember(Alias = "Server")]
         public string _Server { get; set; } = "";
@@ -55,6 +46,37 @@ namespace Celeste.Mod.Ghost.Net {
                     GhostNetModule.Instance.Start();
             }
         }
+
+        [SettingRange(0, 3)]
+        public int SendSkip { get; set; } = 0;
+
+        [SettingRange(4, 16)]
+        public int ChatLogLength { get; set; } = 8;
+
+        [SettingIgnore]
+        public bool SendUFramesInMStream { get; set; } = false;
+
+        [SettingIgnore]
+        public string[] Emotes { get; set; }
+
+        [SettingIgnore]
+        public string ServerName { get; set; } = "";
+        [SettingIgnore]
+        [YamlIgnore]
+        public string ServerNameAuto =>
+            !string.IsNullOrEmpty(ServerName) ? ServerName :
+            $"{GhostModule.Settings.Name}'{(GhostModule.Settings.Name.ToLowerInvariant().EndsWith("s") ? "" : "s")} server";
+        [SettingIgnore]
+        public string ServerMessageGreeting { get; set; } = "Welcome ((player))#((id)), to ((server))!";
+        [SettingIgnore]
+        public string ServerMessageLeave { get; set; } = "Cya, ((player))#((id))!";
+        [SettingIgnore]
+        public int ServerMaxNameLength { get; set; } = 16;
+        [SettingIgnore]
+        public int ServerMaxEmoteLength { get; set; } = 64;
+        [SettingIgnore]
+        public int ServerMaxChatLength { get; set; } = 64;
+
 
         [SettingIgnore]
         [YamlIgnore]
@@ -101,7 +123,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void CreateEnabledEntry(TextMenu menu, bool inGame) {
             menu.Add(
-                (EnabledEntry = new TextMenu.OnOff(("modoptions_ghostnetmodule_enabled".DialogCleanOrNull() ?? "Enabled"), Connection))
+                (EnabledEntry = new TextMenu.OnOff("modoptions_ghostnetmodule_enabled".DialogCleanOrNull() ?? "Enabled", Connection))
                 .Change(v => Connection = v)
             );
         }
