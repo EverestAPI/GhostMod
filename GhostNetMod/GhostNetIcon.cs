@@ -9,8 +9,10 @@ using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
-namespace Celeste.Mod.Ghost {
+namespace Celeste.Mod.Ghost.Net {
     public class GhostNetIcon : Entity {
+
+        public static float Size = 256f;
 
         public Entity Tracking;
         public MTexture Icon;
@@ -19,10 +21,8 @@ namespace Celeste.Mod.Ghost {
 
         public float Alpha = 1f;
 
-        public bool Popup = false;
+        public bool Pop = false;
         protected float popupTime;
-        protected float popupAlpha = 1f;
-        protected float popupScale = 1f;
 
         public GhostNetIcon(Entity tracking, MTexture icon)
             : base(Vector2.Zero) {
@@ -36,8 +36,11 @@ namespace Celeste.Mod.Ghost {
         public override void Render() {
             base.Render();
 
+            float popupAlpha = 1f;
+            float popupScale = 1f;
+
             // Update can halt in the pause menu.
-            if (Popup) {
+            if (Pop) {
                 popupTime += Engine.DeltaTime;
                 if (popupTime < 0.1f) {
                     float t = popupTime / 0.1f;
@@ -84,7 +87,7 @@ namespace Celeste.Mod.Ghost {
             pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
 
             Vector2 size = new Vector2(Icon.Width, Icon.Height);
-            float scale = 0.5f * popupScale;
+            float scale = (GhostNetIcon.Size / Math.Max(Icon.Width, Icon.Height)) * 0.5f * popupScale;
             size *= scale;
 
             pos = pos.Clamp(

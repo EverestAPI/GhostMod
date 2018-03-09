@@ -20,6 +20,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
             set {
                 if (value) {
+                    GhostModule.Settings.Mode &= ~GhostModuleMode.Play;
                     GhostNetModule.Instance.Start();
                 } else {
                     GhostNetModule.Instance.Stop();
@@ -35,6 +36,9 @@ namespace Celeste.Mod.Ghost.Net {
 
         [SettingIgnore]
         public bool SendUFramesInMStream { get; set; } = false;
+
+        [SettingIgnore]
+        public string[] Icons { get; set; }
 
         [SettingIgnore]
         [YamlMember(Alias = "Server")]

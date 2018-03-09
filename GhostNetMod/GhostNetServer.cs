@@ -366,6 +366,8 @@ namespace Celeste.Mod.Ghost.Net {
             UpdateConnection.Dispose();
 
             LocalConnectionToServer.Dispose();
+
+            Celeste.Instance.Components.Remove(this);
         }
 
         protected override void Dispose(bool disposing) {

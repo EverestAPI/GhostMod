@@ -68,6 +68,7 @@
     <Compile Include="Chunks\GhostChunkNetMPlayer.cs" />
     <Compile Include="Connection\GhostNetRemoteConnection.cs" />
     <Compile Include="Connection\GhostNetLocalConnection.cs" />
+    <Compile Include="GhostNetIconWheel.cs" />
     <Compile Include="GhostNetIcon.cs" />
     <Compile Include="GhostNetFrame.cs" />
     <Compile Include="Connection\GhostNetConnection.cs" />
@@ -94,6 +95,17 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\bg.png">
+      <LogicalName>Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\bg.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\line.png">
+      <LogicalName>Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\line.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\indicator.png">
+      <LogicalName>Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\indicator.png</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

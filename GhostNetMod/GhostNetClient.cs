@@ -24,6 +24,8 @@ namespace Celeste.Mod.Ghost.Net {
         public Player Player;
         public Session Session;
         public GhostRecorder GhostRecorder;
+        public GhostName PlayerName;
+        public GhostNetIconWheel IconWheel;
 
         public uint PlayerID;
         public GhostChunkNetMServerInfo ServerInfo;
@@ -47,12 +49,15 @@ namespace Celeste.Mod.Ghost.Net {
             bool inputDisabled = MInput.Disabled;
             MInput.Disabled = false;
 
-            // TODO: Replace testing icon with "icon wheel" (right stick).
-            // TODO: Show player list on MenuJournal.Check
-            /*
-            if (!(Player?.Scene?.Paused ?? true) && Input.MenuJournal.Pressed)
-                SendMIcon("collectables/heartgem/0/spin00");
-            */
+            if (!(Player?.Scene?.Paused ?? true)) {
+                string[] icons = GhostNetModule.Settings.Icons;
+
+                IconWheel.Shown = Input.MountainAim.Value.LengthSquared() > 0.3f;
+                if (!IconWheel.Shown && IconWheel.Selected != -1) {
+                    SendMIcon(icons[IconWheel.Selected]);
+                    IconWheel.Selected = -1;
+                }
+            }
 
             if (!(Player?.Scene?.Paused ?? false) && Input.MenuJournal.Pressed)
                 PlayerListVisible = !PlayerListVisible;
@@ -121,6 +126,8 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public void SendMIcon(string icon) {
+            if (string.IsNullOrEmpty(icon))
+                return;
             Connection?.SendManagement(new GhostNetFrame {
                 MIcon = new GhostChunkNetMIcon {
                     IsValid = true,
@@ -185,6 +192,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (frame.HHead.PlayerID == PlayerID) {
                 // TODO: Server told us to move... or just told us about our proper name.
+                PlayerName.Name = frame.MPlayer.Name;
                 return;
             }
 
@@ -241,7 +249,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
             Player.Scene.Add(new GhostNetIcon(ghost ?? (Entity) Player, GFX.Gui[frame.MIcon.Icon]) {
-                Popup = true
+                Pop = true
             });
         }
 
@@ -297,6 +305,8 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Level.OnExit -= OnExit;
 
             OnExit(null, null, LevelExit.Mode.SaveAndQuit, null, null);
+
+            Celeste.Instance.Components.Remove(this);
         }
 
         #endregion
@@ -319,6 +329,12 @@ namespace Celeste.Mod.Ghost.Net {
 
             GhostRecorder?.RemoveSelf();
             level.Add(GhostRecorder = new GhostRecorder(Player));
+
+            PlayerName?.RemoveSelf();
+            level.Add(PlayerName = new GhostName(Player, GhostModule.Settings.Name));
+
+            IconWheel?.RemoveSelf();
+            level.Add(IconWheel = new GhostNetIconWheel(Player));
 
             SendMPlayer();
         }
@@ -377,6 +393,8 @@ namespace Celeste.Mod.Ghost.Net {
         public void Stop() {
             Logger.Log(LogLevel.Info, "ghostnet-c", "Stopping client");
 
+            Celeste.Instance.Components.Remove(this);
+
             Connection?.Dispose();
             Connection = null;
         }
@@ -390,6 +408,12 @@ namespace Celeste.Mod.Ghost.Net {
 
             GhostRecorder?.RemoveSelf();
             GhostRecorder = null;
+
+            PlayerName?.RemoveSelf();
+            PlayerName = null;
+
+            IconWheel?.RemoveSelf();
+            IconWheel = null;
         }
 
         private bool disposed = false;

@@ -27,6 +27,19 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetServer Server;
         public GhostNetClient Client;
 
+        public override void LoadSettings() {
+            base.LoadSettings();
+
+            if (Settings.Icons == null || Settings.Icons.Length == 0) {
+                Settings.Icons = new string[] {
+                    "collectables/heartgem/0/spin00",
+                    "collectables/strawberry",
+                    "collectables/cassette",
+                    "feather/feather0"
+                };
+            }
+        }
+
         public override void Load() {
         }
 
@@ -59,13 +72,11 @@ namespace Celeste.Mod.Ghost.Net {
         public void Stop() {
             if (Client != null) {
                 Client.Stop();
-                Celeste.Instance.Components.Remove(Client);
                 Client = null;
             }
 
             if (Server != null) {
                 Server.Stop();
-                Celeste.Instance.Components.Remove(Server);
                 Server = null;
             }
         }
