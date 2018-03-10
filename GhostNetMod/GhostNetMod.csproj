@@ -69,8 +69,8 @@
     <Compile Include="Chunks\GhostChunkNetMPlayer.cs" />
     <Compile Include="Connection\GhostNetRemoteConnection.cs" />
     <Compile Include="Connection\GhostNetLocalConnection.cs" />
-    <Compile Include="GhostNetPopupWheel.cs" />
-    <Compile Include="GhostNetPopup.cs" />
+    <Compile Include="GhostNetEmoteWheel.cs" />
+    <Compile Include="GhostNetEmote.cs" />
     <Compile Include="GhostNetFrame.cs" />
     <Compile Include="Connection\GhostNetConnection.cs" />
     <Compile Include="GhostNetClient.cs" />

@@ -28,7 +28,7 @@ namespace Celeste.Mod.Ghost.Net {
         public Session Session;
         public GhostRecorder GhostRecorder;
         public GhostName PlayerName;
-        public GhostNetPopupWheel PopupWheel;
+        public GhostNetEmoteWheel EmoteWheel;
 
         public uint PlayerID;
         public GhostChunkNetMPlayer PlayerInfo;
@@ -62,11 +62,14 @@ namespace Celeste.Mod.Ghost.Net {
             if (!(Player?.Scene?.Paused ?? true)) {
                 string[] emotes = GhostNetModule.Settings.Emotes;
 
-                PopupWheel.Shown = Input.MountainAim.Value.LengthSquared() > 0.3f;
-                if (!PopupWheel.Shown && PopupWheel.Selected != -1) {
-                    SendMEmote(emotes[PopupWheel.Selected]);
-                    PopupWheel.Selected = -1;
+                EmoteWheel.Shown = Input.MountainAim.Value.LengthSquared() > 0.3f;
+                if (!EmoteWheel.Shown && EmoteWheel.Selected != -1) {
+                    SendMEmote(emotes[EmoteWheel.Selected]);
+                    EmoteWheel.Selected = -1;
                 }
+            } else {
+                EmoteWheel.Shown = false;
+                EmoteWheel.Selected = -1;
             }
 
             if (!(Player?.Scene?.Paused ?? false) && GhostNetModule.Instance.ButtonPlayerList.Pressed)
@@ -349,12 +352,12 @@ namespace Celeste.Mod.Ghost.Net {
                     // We don't have the icon - ignore it.
                     return;
                 }
-                Player.Scene.Add(new GhostNetPopup(ghost ?? (Entity) Player, GFX.Gui[iconPath]) {
+                Player.Scene.Add(new GhostNetEmote(ghost ?? (Entity) Player, GFX.Gui[iconPath]) {
                     Pop = true
                 });
 
             } else {
-                Player.Scene.Add(new GhostNetPopup(ghost ?? (Entity) Player, frame.MEmote.Value) {
+                Player.Scene.Add(new GhostNetEmote(ghost ?? (Entity) Player, frame.MEmote.Value) {
                     Pop = true
                 });
             }
@@ -477,8 +480,8 @@ namespace Celeste.Mod.Ghost.Net {
             PlayerName?.RemoveSelf();
             level.Add(PlayerName = new GhostName(Player, PlayerInfo.Name));
 
-            PopupWheel?.RemoveSelf();
-            level.Add(PopupWheel = new GhostNetPopupWheel(Player));
+            EmoteWheel?.RemoveSelf();
+            level.Add(EmoteWheel = new GhostNetEmoteWheel(Player));
 
             SendMPlayer();
         }
@@ -556,8 +559,8 @@ namespace Celeste.Mod.Ghost.Net {
             PlayerName?.RemoveSelf();
             PlayerName = null;
 
-            PopupWheel?.RemoveSelf();
-            PopupWheel = null;
+            EmoteWheel?.RemoveSelf();
+            EmoteWheel = null;
         }
 
         private bool disposed = false;

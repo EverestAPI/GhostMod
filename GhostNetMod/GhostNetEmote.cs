@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
-    public class GhostNetPopup : Entity {
+    public class GhostNetEmote : Entity {
 
         public static float Size = 256f;
 
@@ -26,19 +26,19 @@ namespace Celeste.Mod.Ghost.Net {
         public bool Pop = false;
         protected float popupTime;
 
-        protected GhostNetPopup(Entity tracking)
+        protected GhostNetEmote(Entity tracking)
             : base(Vector2.Zero) {
             Tracking = tracking;
 
             Tag = GhostModuleBackCompat.TagSubHUD;
         }
 
-        public GhostNetPopup(Entity tracking, MTexture icon)
+        public GhostNetEmote(Entity tracking, MTexture icon)
             : this(tracking) {
             Icon = icon;
         }
 
-        public GhostNetPopup(Entity tracking, string text)
+        public GhostNetEmote(Entity tracking, string text)
             : this(tracking) {
             Text = text;
         }

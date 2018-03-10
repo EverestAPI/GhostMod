@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
-    public class GhostNetPopupWheel : Entity {
+    public class GhostNetEmoteWheel : Entity {
 
         public Entity Tracking;
 
@@ -37,7 +37,7 @@ namespace Celeste.Mod.Ghost.Net {
         public Color TextSelectColorA = Calc.HexToColor("84FF54");
         public Color TextSelectColorB = Calc.HexToColor("FCFF59");
 
-        public GhostNetPopupWheel(Entity tracking)
+        public GhostNetEmoteWheel(Entity tracking)
             : base(Vector2.Zero) {
             Tracking = tracking;
 
@@ -175,7 +175,7 @@ namespace Celeste.Mod.Ghost.Net {
                         continue;
 
                     Vector2 iconSize = new Vector2(icon.Width, icon.Height);
-                    float iconScale = (GhostNetPopup.Size / Math.Max(iconSize.X, iconSize.Y)) * 0.24f * popupScale;
+                    float iconScale = (GhostNetEmote.Size / Math.Max(iconSize.X, iconSize.Y)) * 0.24f * popupScale;
 
                     icon.DrawCentered(
                         emotePos,
@@ -186,7 +186,7 @@ namespace Celeste.Mod.Ghost.Net {
 
                 } else {
                     Vector2 textSize = ActiveFont.Measure(emote);
-                    float textScale = (GhostNetPopup.Size / Math.Max(textSize.X, textSize.Y)) * 0.24f * popupScale;
+                    float textScale = (GhostNetEmote.Size / Math.Max(textSize.X, textSize.Y)) * 0.24f * popupScale;
 
                     ActiveFont.DrawOutline(
                         emote,
