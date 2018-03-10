@@ -30,7 +30,7 @@ namespace Celeste.Mod.Ghost {
         public override void Render() {
             base.Render();
 
-            if (Alpha <= 0f || string.IsNullOrEmpty(Name))
+            if (Alpha <= 0f || string.IsNullOrWhiteSpace(Name))
                 return;
 
             if (!GhostModule.Settings.ShowNames ||

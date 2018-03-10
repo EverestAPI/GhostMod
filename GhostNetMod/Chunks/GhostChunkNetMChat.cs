@@ -19,13 +19,18 @@ namespace Celeste.Mod.Ghost.Net {
         public const string Chunk = "nMC";
         public bool IsValid {
             get {
-                return !string.IsNullOrEmpty(Text);
+                return !string.IsNullOrWhiteSpace(Text);
             }
             set {
                 if (!value)
                     Text = "";
             }
         }
+
+        /// <summary>
+        /// Server-internal field.
+        /// </summary>
+        public bool KeepColor;
 
         public uint ID;
         public string Text;

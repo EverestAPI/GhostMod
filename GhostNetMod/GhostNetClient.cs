@@ -1,6 +1,7 @@
 ﻿using Celeste.Mod;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using Monocle;
 using MonoMod.Detour;
 using System;
@@ -41,8 +42,38 @@ namespace Celeste.Mod.Ghost.Net {
         public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
 
         public List<ChatLine> ChatLog = new List<ChatLine>();
-        public bool ChatVisible;
-        public string ChatInput;
+        public string ChatInput = "";
+
+        protected bool _ChatVisible;
+        protected bool _ChatWasPaused;
+        protected Overlay _ChatLevelOverlay;
+        protected int _ChatConsumeInput = 0;
+        public bool ChatVisible {
+            get {
+                return _ChatVisible;
+            }
+            set {
+                if (_ChatVisible == value)
+                    return;
+
+                if (value) {
+                    _ChatWasPaused = Engine.Scene.Paused;
+                    Engine.Scene.Paused = true;
+                    // If we're in a level, add a dummy overlay to prevent the pause menu from handling input.
+                    if (Player != null)
+                        Player.SceneAs<Level>().Overlay = _ChatLevelOverlay = new Overlay();
+
+                } else {
+                    ChatInput = "";
+                    Engine.Scene.Paused = _ChatWasPaused;
+                    _ChatConsumeInput = 2;
+                    if (_ChatLevelOverlay != null && Player?.SceneAs<Level>().Overlay == _ChatLevelOverlay)
+                        Player.SceneAs<Level>().Overlay = null;
+                }
+
+                _ChatVisible = value;
+            }
+        }
 
         protected string PlayerListText;
         public bool PlayerListVisible;
@@ -60,16 +91,62 @@ namespace Celeste.Mod.Ghost.Net {
             MInput.Disabled = false;
 
             if (!(Player?.Scene?.Paused ?? true)) {
-                string[] emotes = GhostNetModule.Settings.Emotes;
-
-                EmoteWheel.Shown = Input.MountainAim.Value.LengthSquared() >= 0.36f;
+                EmoteWheel.Shown = GhostNetModule.Instance.JoystickEmoteWheel.Value.LengthSquared() >= 0.36f;
                 if (EmoteWheel.Shown && EmoteWheel.Selected != -1 && GhostNetModule.Instance.ButtonEmoteSend.Pressed) {
-                    SendMEmote(emotes[EmoteWheel.Selected]);
+                    SendMEmote(EmoteWheel.Selected);
                     EmoteWheel.Selected = -1;
                 }
             } else if (EmoteWheel != null) {
                 EmoteWheel.Shown = false;
                 EmoteWheel.Selected = -1;
+            }
+
+            if (!ChatVisible && GhostNetModule.Instance.ButtonChat.Pressed) {
+                // Was hidden, but player pressed chat button.
+                ChatVisible = true;
+
+            } else if (ChatVisible && MInput.Keyboard.Pressed(Keys.Enter)) {
+                // Was visible and player pressed enter to send.
+                SendMChat(ChatInput);
+                ChatVisible = false;
+
+            } else if (ChatVisible && (Input.ESC.Pressed || Input.Pause.Pressed)) {
+                // Was visible and player escaped.
+                ChatVisible = false;
+            }
+
+            if (!ChatVisible) {
+                if (MInput.Keyboard.Pressed(Keys.D1))
+                    SendMEmote(0);
+                else if (MInput.Keyboard.Pressed(Keys.D2))
+                    SendMEmote(1);
+                else if (MInput.Keyboard.Pressed(Keys.D3))
+                    SendMEmote(2);
+                else if (MInput.Keyboard.Pressed(Keys.D4))
+                    SendMEmote(3);
+                else if (MInput.Keyboard.Pressed(Keys.D5))
+                    SendMEmote(4);
+                else if (MInput.Keyboard.Pressed(Keys.D6))
+                    SendMEmote(5);
+                else if (MInput.Keyboard.Pressed(Keys.D7))
+                    SendMEmote(6);
+                else if (MInput.Keyboard.Pressed(Keys.D8))
+                    SendMEmote(7);
+                else if (MInput.Keyboard.Pressed(Keys.D9))
+                    SendMEmote(8);
+                else if (MInput.Keyboard.Pressed(Keys.D0))
+                    SendMEmote(9);
+            }
+
+            // Prevent the menus from reacting to player input after exiting the chat.
+            if (_ChatConsumeInput > 0) {
+                Input.MenuConfirm.ConsumeBuffer();
+                Input.MenuConfirm.ConsumePress();
+                Input.ESC.ConsumeBuffer();
+                Input.ESC.ConsumePress();
+                Input.Pause.ConsumeBuffer();
+                Input.Pause.ConsumePress();
+                _ChatConsumeInput--;
             }
 
             if (!(Player?.Scene?.Paused ?? false) && GhostNetModule.Instance.ButtonPlayerList.Pressed)
@@ -101,54 +178,77 @@ namespace Celeste.Mod.Ghost.Net {
             if (ChatVisible) {
                 Monocle.Draw.Rect(10f, viewHeight - 50f, viewWidth - 20f, 40f, Color.Black * 0.8f);
 
-                string text = ">" + ChatInput;
-                if (Calc.BetweenInterval(time, 0.5f))
-                    text += "_";
-                Monocle.Draw.SpriteBatch.DrawString(
-                    Monocle.Draw.DefaultFont,
-                    text,
-                    new Vector2(20f, viewHeight - 42f),
-                    Color.White
-                );
-            }
-
-            if (ChatLog.Count > 0) {
-                DateTime now = DateTime.UtcNow;
-                for (int i = 0; i < ChatLog.Count; i++) {
-                    ChatLine line = ChatLog[i];
-
-                    float alpha = 1f;
-
-                    float delta = (float) (now - line.Date).TotalSeconds;
-                    if (!ChatVisible && delta > 3f) {
-                        alpha = 1f - Ease.CubeIn(delta - 3f);
-                    }
-
-                    if (alpha <= 0f)
-                        continue;
-
-                    string text = Escape(
-                        $"[{line.Date.ToLocalTime().ToLongTimeString()}] {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}: {line.Text}",
-                        Monocle.Draw.DefaultFont
+                if (!GhostNetModuleBackCompat.HasTextInputEvent) {
+                    Monocle.Draw.SpriteBatch.DrawString(
+                        Monocle.Draw.DefaultFont,
+                        "TextInput not found - update Everest to 0.0.305 or newer!",
+                        new Vector2(20f, viewHeight - 42f),
+                        Color.Red
                     );
-                    float y = viewHeight - 92f - 40f * i;
-                    Monocle.Draw.Rect(10f, y, Monocle.Draw.DefaultFont.MeasureString(text).X + 20f, 40f, Color.Black * 0.8f * alpha);
+
+                } else {
+                    string text = ">" + ChatInput;
+                    if (Calc.BetweenInterval(time, 0.5f))
+                        text += "_";
                     Monocle.Draw.SpriteBatch.DrawString(
                         Monocle.Draw.DefaultFont,
                         text,
-                        new Vector2(20f, y + 10f),
-                        line.Color * alpha * (line.Unconfirmed ? 0.6f : 1f)
+                        new Vector2(20f, viewHeight - 42f),
+                        Color.White
                     );
                 }
             }
 
+            lock (ChatLog) {
+                if (ChatLog.Count > 0) {
+                    DateTime now = DateTime.UtcNow;
+                    float y = viewHeight - 20f;
+                    if (ChatVisible)
+                        y -= 40f + 2f;
+                    for (int i = 0; i < ChatLog.Count && i < GhostNetModule.Settings.ChatLogLength; i++) {
+                        ChatLine line = ChatLog[i];
+
+                        float alpha = 1f;
+
+                        float delta = (float) (now - line.Date).TotalSeconds;
+                        if (!ChatVisible && delta > 3f) {
+                            alpha = 1f - Ease.CubeIn(delta - 3f);
+                        }
+
+                        if (alpha <= 0f)
+                            continue;
+
+                        string text = Escape(
+                            $"[{line.Date.ToLocalTime().ToLongTimeString()}] {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}:{(line.Text.Contains('\n') ? "\n" : " ")}{line.Text}",
+                            Monocle.Draw.DefaultFont
+                        );
+                        Vector2 size = Monocle.Draw.DefaultFont.MeasureString(text);
+                        float height = 20f + size.Y;
+
+                        y -= height;
+
+                        Monocle.Draw.Rect(10f, y, size.X + 20f, height, Color.Black * 0.8f * alpha);
+                        Monocle.Draw.SpriteBatch.DrawString(
+                            Monocle.Draw.DefaultFont,
+                            text,
+                            new Vector2(20f, y + 10f),
+                            line.Color * alpha * (line.Unconfirmed ? 0.6f : 1f)
+                        );
+                    }
+                }
+            }
+
             if (PlayerListVisible) {
-                Vector2 mouseTextSize = Monocle.Draw.DefaultFont.MeasureString(PlayerListText);
-                Monocle.Draw.Rect(10f, 10f, mouseTextSize.X + 20f, mouseTextSize.Y + 20f, Color.Black * 0.8f);
+                float y = 0f;
+                if ((Settings.Instance?.SpeedrunClock ?? SpeedrunType.Off) != SpeedrunType.Off) {
+                    y += 192f * (viewHeight / 1920f);
+                }
+                Vector2 size = Monocle.Draw.DefaultFont.MeasureString(PlayerListText);
+                Monocle.Draw.Rect(10f, 10f + y, size.X + 20f, size.Y + 20f, Color.Black * 0.8f);
                 Monocle.Draw.SpriteBatch.DrawString(
                     Monocle.Draw.DefaultFont,
                     PlayerListText,
-                    new Vector2(20f, 20f),
+                    new Vector2(20f, 20f + y),
                     Color.White
                 );
             }
@@ -159,17 +259,19 @@ namespace Celeste.Mod.Ghost.Net {
         protected virtual void RebuildPlayerList() {
             StringBuilder builder = new StringBuilder();
             foreach (KeyValuePair<uint, GhostChunkNetMPlayer> player in PlayerMap) {
-                if (string.IsNullOrEmpty(player.Value.Name))
+                if (string.IsNullOrWhiteSpace(player.Value.Name))
                     continue;
                 builder
                     .Append(Escape(player.Value.Name, Monocle.Draw.DefaultFont))
                     .Append("#")
                     .Append(player.Key)
                 ;
-                if (!string.IsNullOrEmpty(player.Value.SID)) {
+                if (!string.IsNullOrWhiteSpace(player.Value.SID)) {
                     builder
                         .Append(" @ ")
                         .Append(Escape(AreaDataExt.Get(player.Value.SID)?.Name?.DialogCleanOrNull(Dialog.Languages["english"]) ?? player.Value.SID, Monocle.Draw.DefaultFont))
+                        .Append(" ")
+                        .Append((char) ('A' + (int) player.Value.Mode))
                         .Append(" ")
                         .Append(Escape(player.Value.Level, Monocle.Draw.DefaultFont))
                     ;
@@ -183,7 +285,7 @@ namespace Celeste.Mod.Ghost.Net {
             StringBuilder escaped = new StringBuilder();
             for (int i = 0; i < text.Length; i++) {
                 char c = text[i];
-                if (!font.Characters.Contains(c))
+                if (!font.Characters.Contains(c) && c != '\n')
                     c = ' ';
                 escaped.Append(c);
             }
@@ -206,21 +308,26 @@ namespace Celeste.Mod.Ghost.Net {
             UpdateIndex = 0;
         }
 
+        public void SendMEmote(int index) {
+            string[] emotes = GhostNetModule.Settings.EmoteFavs;
+            if (index < 0 || emotes.Length <= index)
+                return;
+            SendMEmote(emotes[index]);
+        }
+
         public void SendMEmote(string value) {
-            if (string.IsNullOrEmpty(value))
+            if (string.IsNullOrWhiteSpace(value))
                 return;
             Connection?.SendManagement(new GhostNetFrame {
                 MEmote = {
-                    Value = value
-                },
-                MChat = {
-                    Text = value.StartsWith("i:") ? "" : value
+                    Value = value.Trim()
                 }
             });
         }
 
         public void SendMChat(string text) {
-            if (string.IsNullOrEmpty(text))
+            text = text.TrimEnd();
+            if (string.IsNullOrWhiteSpace(text))
                 return;
             ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, PlayerInfo.Name, text));
             Connection?.SendManagement(new GhostNetFrame {
@@ -234,7 +341,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (Connection == null || GhostRecorder == null || UpdateIndex == -1)
                 return;
 
-            if ((UpdateIndex % (GhostNetModule.Settings.SendSkip + 1)) != 0)
+            if ((UpdateIndex % (GhostNetModule.Settings.SendFrameSkip + 1)) != 0)
                 return;
 
             GhostNetFrame frame = new GhostNetFrame {
@@ -270,6 +377,13 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MPlayer.IsValid)
                 ParseMPlayer(con, ref frame);
 
+            GhostChunkNetMPlayer player;
+            if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || !player.IsValid) {
+                // Ghost not managed, possibly the server.
+            }
+            // Temporarily attach the MPlayer chunk to make player identification easier.
+            frame.MPlayer = player;
+
             if (frame.MEmote.IsValid)
                 ParseMEmote(con, ref frame);
 
@@ -291,10 +405,25 @@ namespace Celeste.Mod.Ghost.Net {
             RebuildPlayerList();
 
             if (frame.HHead.PlayerID == PlayerID) {
-                // TODO: Server told us to move... or just told us about our proper name.
+                // Server told us to move... or just told us about our proper name.
                 PlayerInfo = frame.MPlayer;
                 if (PlayerName != null)
                     PlayerName.Name = frame.MPlayer.Name;
+
+                if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
+                    frame.MPlayer.Level != (Session?.Level ?? "")) {
+                    // Server told us to move.
+                    AreaData area = AreaDataExt.Get(frame.MPlayer.SID);
+                    if (area != null) {
+                        Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode));
+                        if (!string.IsNullOrEmpty(frame.MPlayer.Level) && Session.MapData.Get(frame.MPlayer.Level) != null) {
+                            Session.Level = frame.MPlayer.Level;
+                            Session.FirstLevel = false;
+                        }
+                        Engine.Scene = new LevelLoader(Session);
+                    }
+                }
+
                 return;
             }
 
@@ -303,9 +432,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             Ghost ghost;
 
-            if (frame.MPlayer.SID != Session.Area.GetSID() ||
-                frame.MPlayer.Level != Session.Level) {
-                // Ghost not in the same room.
+            if (frame.MPlayer.SID != Session.Area.GetSID()) {
+                // Ghost not in the same level.
                 // Find the ghost and remove it if it exists.
                 if (GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) && ghost != null) {
                     ghost.RemoveSelf();
@@ -346,35 +474,23 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            if (frame.MEmote.Value.StartsWith("i:")) {
-                string iconPath = frame.MEmote.Value.Substring(2);
-                if (!GFX.Gui.Has(iconPath)) {
-                    // We don't have the icon - ignore it.
-                    return;
-                }
-                Player.Scene.Add(new GhostNetEmote(ghost ?? (Entity) Player, GFX.Gui[iconPath]) {
-                    Pop = true
-                });
-
-            } else {
-                Player.Scene.Add(new GhostNetEmote(ghost ?? (Entity) Player, frame.MEmote.Value) {
-                    Pop = true
-                });
-            }
+            GhostNetEmote emote = new GhostNetEmote(ghost ?? (Entity) Player, frame.MEmote.Value) {
+                Pop = true
+            };
+            Player.Scene.Add(emote);
         }
 
         public virtual void ParseMChat(GhostNetConnection con, ref GhostNetFrame frame) {
             // Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} chat: {frame.MChat.Text}");
 
-            GhostChunkNetMPlayer player;
             string playerName;
             if (frame.HHead.PlayerID == uint.MaxValue) {
                 // We've received a message from the server.
                 playerName = "**SERVER**";
 
-            } else if (PlayerMap.TryGetValue(frame.HHead.PlayerID, out player)) {
+            } else if (frame.MPlayer.IsValid) {
                 // We've received a message from a living ghost.
-                playerName = player.Name;
+                playerName = frame.MPlayer.Name;
 
             } else {
                 // We've received a message from a dead ghost.
@@ -384,20 +500,29 @@ namespace Celeste.Mod.Ghost.Net {
             ChatLine line = new ChatLine(frame.MChat.ID, frame.HHead.PlayerID, playerName, frame.MChat.Text, frame.MChat.Color);
 
             // If there's already a chat line with the same message ID, replace it.
-            // Likewise for "unconfirmed" chatlines we've sent.
-            for (int i = ChatLog.Count - 1; i > -1; --i) {
-                ChatLine existing = ChatLog[i];
-                if (existing.MessageID == line.MessageID ||
-                    (existing.PlayerID == line.PlayerID && existing.Unconfirmed)) {
-                    ChatLog[i] = line;
-                    return;
+            // Also remove any "unconfirmed" messages.
+            bool locked = false;
+            try {
+                for (int i = ChatLog.Count - 1; i > -1; --i) {
+                    ChatLine existing = ChatLog[i];
+                    if (existing.MessageID == line.MessageID) {
+                        ChatLog[i] = line;
+                        return;
+                    }
+                    if (existing.PlayerID == line.PlayerID && existing.Unconfirmed) {
+                        if (!locked) {
+                            // Enter the lock only if we remove items.
+                            Monitor.Enter(ChatLog, ref locked);
+                        }
+                        ChatLog.RemoveAt(i);
+                    }
                 }
+            } finally {
+                if (locked)
+                    Monitor.Exit(ChatLog);
             }
 
             ChatLog.Insert(0, line);
-            while (ChatLog.Count > GhostNetModule.Settings.ChatLogLength) {
-                ChatLog.RemoveAt(ChatLog.Count - 1);
-            }
         }
 
         public virtual void ParseUUpdate(GhostNetConnection con, ref GhostNetFrame frame) {
@@ -450,6 +575,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
             Everest.Events.Level.OnExit -= OnExit;
+            GhostNetModuleBackCompat.OnTextInput -= OnTextInput;
 
             OnExit(null, null, LevelExit.Mode.SaveAndQuit, null, null);
 
@@ -497,6 +623,27 @@ namespace Celeste.Mod.Ghost.Net {
             SendMPlayer();
         }
 
+        public void OnTextInput(char c) {
+            if (!ChatVisible)
+                return;
+            if (c == (char) 13) {
+                // Enter - send.
+                // Handled in Update.
+
+            } else if (c == (char) 8) {
+                // Backspace - trim.
+                if (ChatInput.Length > 0)
+                    ChatInput = ChatInput.Substring(0, ChatInput.Length - 1);
+
+            } else if (c == (char) 127) {
+                // Delete - currenly not handled.
+
+            } else if (!char.IsControl(c)) {
+                // Any other character - append.
+                ChatInput += c;
+            }
+        }
+
         #endregion
 
         public void Start() {
@@ -530,6 +677,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             Everest.Events.Level.OnLoadLevel += OnLoadLevel;
             Everest.Events.Level.OnExit += OnExit;
+            GhostNetModuleBackCompat.OnTextInput += OnTextInput;
 
             if (Engine.Scene is Level)
                 OnLoadLevel((Level) Engine.Scene, Player.IntroTypes.Transition, true);

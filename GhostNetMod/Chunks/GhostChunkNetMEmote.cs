@@ -19,7 +19,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string Chunk = "nME";
         public bool IsValid {
             get {
-                return !string.IsNullOrEmpty(Value);
+                return !string.IsNullOrWhiteSpace(Value);
             }
             set {
                 if (!value)

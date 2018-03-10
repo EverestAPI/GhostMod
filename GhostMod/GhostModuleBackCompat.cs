@@ -21,7 +21,7 @@ namespace Celeste.Mod.Ghost {
                     return _TagSubHUD;
 
                 return _TagSubHUD =
-                    (typeof(Everest).Assembly.GetType("Celeste.TagsExt")?.GetField("SubHUD")?.GetValue(null) as BitTag) ??
+                    (Assembly.GetEntryAssembly().GetType("Celeste.TagsExt")?.GetField("SubHUD")?.GetValue(null) as BitTag) ??
                     Tags.HUD;
             }
         }

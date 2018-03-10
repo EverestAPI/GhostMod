@@ -24,6 +24,7 @@ namespace Celeste.Mod.Ghost.Net {
         public string Name;
 
         public string SID;
+        public AreaMode Mode;
         public string Level;
 
         public void Read(BinaryReader reader) {
@@ -32,6 +33,7 @@ namespace Celeste.Mod.Ghost.Net {
             Name = reader.ReadNullTerminatedString();
 
             SID = reader.ReadNullTerminatedString();
+            Mode = (AreaMode) reader.ReadByte();
             Level = reader.ReadNullTerminatedString();
         }
 
@@ -39,6 +41,7 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(Name);
 
             writer.WriteNullTerminatedString(SID);
+            writer.Write((byte) Mode);
             writer.WriteNullTerminatedString(Level);
         }
 

@@ -28,17 +28,23 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetClient Client;
 
         public VirtualButton ButtonPlayerList;
+        public VirtualJoystick JoystickEmoteWheel;
         public VirtualButton ButtonEmoteSend;
+        public VirtualButton ButtonChat;
 
         public override void LoadSettings() {
             base.LoadSettings();
 
-            if (Settings.Emotes == null || Settings.Emotes.Length == 0) {
-                Settings.Emotes = new string[] {
+            if (Settings.EmoteFavs == null || Settings.EmoteFavs.Length == 0) {
+                Settings.EmoteFavs = new string[] {
                     "i:collectables/heartgem/0/spin00",
                     "i:collectables/strawberry",
                     "Hi!",
-                    "Too slow!"
+                    "Too slow!",
+                    "p:madeline/normal04",
+                    "p:ghost/scoff00",
+                    "p:theo/yolo02",
+                    "p:granny/laugh00",
                 };
             }
         }
@@ -70,17 +76,42 @@ namespace Celeste.Mod.Ghost.Net {
                 new VirtualButton.KeyboardKey(Keys.Tab),
                 new VirtualButton.PadButton(Input.Gamepad, Buttons.Back)
             );
+            AddButtonsTo(ButtonPlayerList, Settings.ButtonPlayerList);
+
+            JoystickEmoteWheel = new VirtualJoystick(true,
+                new VirtualJoystick.PadRightStick(Input.Gamepad, 0.2f)
+            );
             ButtonEmoteSend = new VirtualButton(
                 new VirtualButton.KeyboardKey(Keys.Q),
                 new VirtualButton.PadButton(Input.Gamepad, Buttons.RightStick)
             );
-            // TODO: Expose this helper and allow custom binding entries.
-            // InputExt.AddButtonsTo(PlayerListButton, Settings.BtnPlayerList);
+            AddButtonsTo(ButtonEmoteSend, Settings.ButtonEmoteSend);
+
+            ButtonChat = new VirtualButton(
+                new VirtualButton.KeyboardKey(Keys.T)
+            );
+            AddButtonsTo(ButtonEmoteSend, Settings.ButtonChat);
         }
 
         public void OnInputDeregister() {
             ButtonPlayerList?.Deregister();
+            JoystickEmoteWheel?.Deregister();
             ButtonEmoteSend?.Deregister();
+            ButtonChat?.Deregister();
+        }
+
+        private static void AddButtonsTo(VirtualButton vbtn, List<Buttons> buttons) {
+            if (buttons == null)
+                return;
+            foreach (Buttons button in buttons) {
+                if (button == Buttons.LeftTrigger) {
+                    vbtn.Nodes.Add(new VirtualButton.PadLeftTrigger(Input.Gamepad, 0.25f));
+                } else if (button == Buttons.RightTrigger) {
+                    vbtn.Nodes.Add(new VirtualButton.PadRightTrigger(Input.Gamepad, 0.25f));
+                } else {
+                    vbtn.Nodes.Add(new VirtualButton.PadButton(Input.Gamepad, button));
+                }
+            }
         }
 
         public void Start() {

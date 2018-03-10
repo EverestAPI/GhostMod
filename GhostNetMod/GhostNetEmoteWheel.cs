@@ -48,12 +48,12 @@ namespace Celeste.Mod.Ghost.Net {
         public override void Render() {
             base.Render();
 
-            string[] emotes = GhostNetModule.Settings.Emotes;
+            string[] emotes = GhostNetModule.Settings.EmoteFavs;
 
             // Update can halt in the pause menu.
 
             if (Shown) {
-                Angle = Input.MountainAim.Value.Angle();
+                Angle = GhostNetModule.Instance.JoystickEmoteWheel.Value.Angle();
                 float angle = (float) ((Angle + Math.PI * 2f) % (Math.PI * 2f));
                 float start = (-0.5f / emotes.Length) * 2f * (float) Math.PI;
                 if (2f * (float) Math.PI + start < angle) {
@@ -173,11 +173,8 @@ namespace Celeste.Mod.Ghost.Net {
                     (float) Math.Sin(a)
                 ) * radius;
 
-                if (emote.StartsWith("i:")) {
-                    string iconPath = emote.Substring(2);
-                    if (!GFX.Gui.Has(iconPath))
-                        continue;
-                    MTexture icon = GFX.Gui[iconPath];
+                if (GhostNetEmote.IsIcon(emote)) {
+                    MTexture icon = GhostNetEmote.GetIcon(emote);
                     if (icon == null)
                         continue;
 

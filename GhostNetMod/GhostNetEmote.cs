@@ -33,14 +33,14 @@ namespace Celeste.Mod.Ghost.Net {
             Tag = GhostModuleBackCompat.TagSubHUD;
         }
 
-        public GhostNetEmote(Entity tracking, MTexture icon)
+        public GhostNetEmote(Entity tracking, string value)
             : this(tracking) {
-            Icon = icon;
-        }
+            if (IsIcon(value)) {
+                Icon = GetIcon(value);
 
-        public GhostNetEmote(Entity tracking, string text)
-            : this(tracking) {
-            Text = text;
+            } else {
+                Text = value;
+            }
         }
 
         public override void Render() {
@@ -78,7 +78,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             float alpha = Alpha * popupAlpha;
 
-            if (alpha <= 0f || (Icon == null && string.IsNullOrEmpty(Text)))
+            if (alpha <= 0f || (Icon == null && string.IsNullOrWhiteSpace(Text)))
                 return;
 
             if (Tracking == null)
@@ -135,6 +135,42 @@ namespace Celeste.Mod.Ghost.Net {
                     Color.Black * alpha * alpha * alpha
                 );
             }
+        }
+
+        public static bool IsText(string emote) {
+            return !IsIcon(emote);
+        }
+
+        public static bool IsIcon(string emote) {
+            return GetIconAtlas(ref emote) != null;
+        }
+
+        public static Atlas GetIconAtlas(ref string emote) {
+            if (emote.StartsWith("i:")) {
+                emote = emote.Substring(2);
+                return GFX.Gui;
+            }
+
+            if (emote.StartsWith("g:")) {
+                emote = emote.Substring(2);
+                return GFX.Game;
+            }
+
+            if (emote.StartsWith("p:")) {
+                emote = emote.Substring(2);
+                return GFX.Portraits;
+            }
+
+            return null;
+        }
+
+        public static MTexture GetIcon(string emote) {
+            Atlas atlas;
+            if ((atlas = GetIconAtlas(ref emote)) == null)
+                return null;
+            if (!atlas.Has(emote))
+                return null;
+            return atlas[emote];
         }
 
     }
