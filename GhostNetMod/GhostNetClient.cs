@@ -67,7 +67,7 @@ namespace Celeste.Mod.Ghost.Net {
                     SendMEmote(emotes[EmoteWheel.Selected]);
                     EmoteWheel.Selected = -1;
                 }
-            } else {
+            } else if (EmoteWheel != null) {
                 EmoteWheel.Shown = false;
                 EmoteWheel.Selected = -1;
             }
