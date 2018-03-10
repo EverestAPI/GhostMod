@@ -156,6 +156,13 @@ namespace Celeste.Mod.Ghost.Net {
             float selectedScale = 1.2f - 0.2f * Calc.Clamp(Ease.CubeOut(selectedTime / 0.1f), 0f, 1f) + (float) Math.Sin(time * 1.8f) * 0.05f;
 
             for (int i = 0; i < emotes.Length; i++) {
+                Line.DrawCentered(
+                    pos,
+                    Color.White * alpha * alpha * alpha,
+                    Vector2.One * popupScale,
+                    ((i + 0.5f) / emotes.Length) * 2f * (float) Math.PI
+                );
+
                 string emote = emotes[i];
                 if (string.IsNullOrEmpty(emote))
                     continue;
@@ -198,13 +205,6 @@ namespace Celeste.Mod.Ghost.Net {
                         Color.Black * alpha * alpha * alpha
                     );
                 }
-
-                Line.DrawCentered(
-                    pos,
-                    Color.White * alpha * alpha * alpha,
-                    Vector2.One * popupScale,
-                    ((i + 0.5f) / emotes.Length) * 2f * (float) Math.PI
-                );
             }
         }
 

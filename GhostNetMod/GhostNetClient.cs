@@ -62,8 +62,8 @@ namespace Celeste.Mod.Ghost.Net {
             if (!(Player?.Scene?.Paused ?? true)) {
                 string[] emotes = GhostNetModule.Settings.Emotes;
 
-                EmoteWheel.Shown = Input.MountainAim.Value.LengthSquared() > 0.3f;
-                if (!EmoteWheel.Shown && EmoteWheel.Selected != -1) {
+                EmoteWheel.Shown = Input.MountainAim.Value.LengthSquared() >= 0.36f;
+                if (EmoteWheel.Shown && EmoteWheel.Selected != -1 && GhostNetModule.Instance.ButtonEmoteSend.Pressed) {
                     SendMEmote(emotes[EmoteWheel.Selected]);
                     EmoteWheel.Selected = -1;
                 }

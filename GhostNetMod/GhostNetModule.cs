@@ -28,6 +28,7 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetClient Client;
 
         public VirtualButton ButtonPlayerList;
+        public VirtualButton ButtonEmoteSend;
 
         public override void LoadSettings() {
             base.LoadSettings();
@@ -69,12 +70,17 @@ namespace Celeste.Mod.Ghost.Net {
                 new VirtualButton.KeyboardKey(Keys.Tab),
                 new VirtualButton.PadButton(Input.Gamepad, Buttons.Back)
             );
+            ButtonEmoteSend = new VirtualButton(
+                new VirtualButton.KeyboardKey(Keys.Q),
+                new VirtualButton.PadButton(Input.Gamepad, Buttons.RightStick)
+            );
             // TODO: Expose this helper and allow custom binding entries.
             // InputExt.AddButtonsTo(PlayerListButton, Settings.BtnPlayerList);
         }
 
         public void OnInputDeregister() {
             ButtonPlayerList?.Deregister();
+            ButtonEmoteSend?.Deregister();
         }
 
         public void Start() {
