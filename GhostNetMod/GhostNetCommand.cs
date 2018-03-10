@@ -138,7 +138,7 @@ namespace Celeste.Mod.Ghost.Net {
                     throw new Exception("ID out of range!");
 
                 GhostNetFrame player;
-                if (!Env.Server.PlayerMap.TryGetValue((uint) Int, out player) || !player.HHead.IsValid)
+                if (!Env.Server.PlayerMap.TryGetValue((uint) Int, out player) || string.IsNullOrEmpty(player.MPlayer.Name))
                     throw new Exception("ID already disconnected!");
 
                 return player;

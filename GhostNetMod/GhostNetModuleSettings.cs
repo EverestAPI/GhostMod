@@ -267,12 +267,12 @@ Send /help for a list of all commands.";
         #region Custom Entry Creators
 
         public void CreateConnectionEntry(TextMenu menu, bool inGame) {
+            if (Celeste.PlayMode == Celeste.PlayModes.Debug)
+                menu.Add(new TextMenu.SubHeader("modoptions_ghostnetmodule_debugwarn".DialogCleanOrNull() ?? "WARNING: DEBUG MODE DETECTED!"));
             menu.Add(
-                (EnabledEntry = new TextMenu.OnOff("modoptions_ghostnetmodule_enabled".DialogCleanOrNull() ?? "Enabled", Connection))
+                (EnabledEntry = new TextMenu.OnOff("modoptions_ghostnetmodule_connected".DialogCleanOrNull() ?? "Connected", Connection))
                 .Change(v => Connection = v)
             );
-            if (Celeste.PlayMode == Celeste.PlayModes.Debug)
-                EnabledEntry.Disabled = true;
         }
 
         public void CreateServerEntry(TextMenu menu, bool inGame) {

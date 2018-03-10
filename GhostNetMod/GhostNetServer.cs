@@ -468,12 +468,12 @@ namespace Celeste.Mod.Ghost.Net {
             // Propagate disconnect to all other players.
             GhostNetFrame frame = new GhostNetFrame {
                 HHead = {
-                    IsValid = false,
+                    IsValid = true,
                     PlayerID = id
                 },
 
                 MPlayer = {
-                    IsValid = false,
+                    IsValid = true,
                     Name = "",
                     SID = "",
                     Level = ""
