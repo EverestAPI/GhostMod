@@ -447,9 +447,6 @@ namespace Celeste.Mod.Ghost.Net {
             }
             Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Client #{id} ({con.ManagementEndPoint}) disconnected");
 
-            GhostNetFrame player;
-            PlayerMap.TryGetValue(id, out player);
-
             Connections[(int) id] = null;
 
             ConnectionMap[con.ManagementEndPoint] = null;
@@ -460,9 +457,10 @@ namespace Celeste.Mod.Ghost.Net {
                 UpdateConnectionQueue[con.ManagementEndPoint.Address] = null;
             }
 
-            if (player.MPlayer.IsValid && !string.IsNullOrWhiteSpace(player.MPlayer.Name) &&
-                !string.IsNullOrWhiteSpace(GhostNetModule.Settings.ServerMessageGreeting)) {
-                BroadcastMChat(null, player, GhostNetModule.Settings.ServerMessageGreeting, fillVars: true);
+            GhostNetFrame player;
+            if (PlayerMap.TryGetValue(id, out player) && !string.IsNullOrWhiteSpace(player.MPlayer.Name) &&
+                !string.IsNullOrWhiteSpace(GhostNetModule.Settings.ServerMessageLeave)) {
+                BroadcastMChat(null, player, GhostNetModule.Settings.ServerMessageLeave, fillVars: true);
             }
 
             // Propagate disconnect to all other players.
