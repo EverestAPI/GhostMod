@@ -110,19 +110,31 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             if (ChatLog.Count > 0) {
-                float height = 10f + 30f * ChatLog.Count;
-                // TODO: Chat fade out.
-                Monocle.Draw.Rect(10f, viewHeight - height - 60f, viewWidth - 20f, height, Color.Black * 0.8f);
+                DateTime now = DateTime.UtcNow;
                 for (int i = 0; i < ChatLog.Count; i++) {
                     ChatLine line = ChatLog[i];
+
+                    float alpha = 1f;
+
+                    float delta = (float) (now - line.Date).TotalSeconds;
+                    if (!ChatVisible && delta > 3f) {
+                        alpha = 1f - Ease.CubeIn(delta - 3f);
+                    }
+
+                    if (alpha <= 0f)
+                        continue;
+
+                    string text = Escape(
+                        $"[{line.Date.ToLocalTime().ToLongTimeString()}] {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}: {line.Text}",
+                        Monocle.Draw.DefaultFont
+                    );
+                    float y = viewHeight - 92f - 40f * i;
+                    Monocle.Draw.Rect(10f, y, Monocle.Draw.DefaultFont.MeasureString(text).X + 20f, 40f, Color.Black * 0.8f * alpha);
                     Monocle.Draw.SpriteBatch.DrawString(
                         Monocle.Draw.DefaultFont,
-                        Escape(
-                            $"[{line.Date.ToLocalTime().ToLongTimeString()}] {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}: {line.Text}",
-                            Monocle.Draw.DefaultFont
-                        ),
-                        new Vector2(20f, viewHeight - 92f - 30f * i),
-                        ChatLog[i].Color
+                        text,
+                        new Vector2(20f, y + 10f),
+                        line.Color * alpha * (line.Unconfirmed ? 0.6f : 1f)
                     );
                 }
             }
@@ -181,7 +193,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (Connection == null)
                 return;
             Connection.SendManagement(new GhostNetFrame {
-                MPlayer = new GhostChunkNetMPlayer {
+                MPlayer = {
                     IsValid = true,
                     Name = GhostModule.Settings.Name,
                     SID = Session?.Area.GetSID() ?? "",
@@ -195,20 +207,22 @@ namespace Celeste.Mod.Ghost.Net {
             if (string.IsNullOrEmpty(value))
                 return;
             Connection?.SendManagement(new GhostNetFrame {
-                MEmote = new GhostChunkNetMEmote {
-                    IsValid = true,
+                MEmote = {
                     Value = value
+                },
+                MChat = {
+                    Text = value.StartsWith("i:") ? "" : value
                 }
             });
         }
 
-        public void SendMChat(string value) {
-            if (string.IsNullOrEmpty(value))
+        public void SendMChat(string text) {
+            if (string.IsNullOrEmpty(text))
                 return;
+            ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, PlayerInfo.Name, text));
             Connection?.SendManagement(new GhostNetFrame {
-                MChat = new GhostChunkNetMChat {
-                    IsValid = true,
-                    Text = value
+                MChat = {
+                    Text = text
                 }
             });
         }
@@ -221,7 +235,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
 
             GhostNetFrame frame = new GhostNetFrame {
-                UUpdate = new GhostChunkNetUUpdate {
+                UUpdate = {
                     IsValid = true,
                     UpdateIndex = (uint) UpdateIndex,
                     Data = GhostRecorder.LastFrameData.Data
@@ -368,7 +382,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             // If there's already a chat line with the same message ID, replace it.
             // Likewise for "unconfirmed" chatlines we've sent.
-            for (int i = 0; i < ChatLog.Count; i++) {
+            for (int i = ChatLog.Count - 1; i > -1; --i) {
                 ChatLine existing = ChatLog[i];
                 if (existing.MessageID == line.MessageID ||
                     (existing.PlayerID == line.PlayerID && existing.Unconfirmed)) {
@@ -378,8 +392,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             ChatLog.Insert(0, line);
-            if (ChatLog.Count >= GhostNetModule.Settings.ChatLogLength) {
-
+            while (ChatLog.Count > GhostNetModule.Settings.ChatLogLength) {
+                ChatLog.RemoveAt(ChatLog.Count - 1);
             }
         }
 
@@ -569,7 +583,7 @@ namespace Celeste.Mod.Ghost.Net {
             public string Text;
             public Color Color;
             public DateTime Date;
-            public bool Unconfirmed;
+            public bool Unconfirmed => MessageID == uint.MaxValue;
 
             public ChatLine(uint messageID, uint playerID, string playerName, string text)
                 : this(messageID, playerID, playerName, text, Color.White) {
@@ -581,7 +595,6 @@ namespace Celeste.Mod.Ghost.Net {
                 Text = text;
                 Color = color;
                 Date = DateTime.UtcNow;
-                Unconfirmed = false;
             }
 
         }

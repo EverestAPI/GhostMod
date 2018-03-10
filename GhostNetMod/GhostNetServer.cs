@@ -81,12 +81,12 @@ namespace Celeste.Mod.Ghost.Net {
             ConnectionMap[con.ManagementEndPoint] = con;
             UpdateConnectionQueue[con.ManagementEndPoint.Address] = con;
             con.SendManagement(new GhostNetFrame {
-                HHead = new GhostChunkNetHHead {
+                HHead = {
                     IsValid = true,
                     PlayerID = id
                 },
 
-                MServerInfo = new GhostChunkNetMServerInfo {
+                MServerInfo = {
                     IsValid = true
                 }
             });
@@ -365,12 +365,12 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Propagate disconnect to all other players.
             GhostNetFrame frame = new GhostNetFrame {
-                HHead = new GhostChunkNetHHead {
+                HHead = {
                     IsValid = true,
                     PlayerID = id
                 },
 
-                MPlayer = new GhostChunkNetMPlayer {
+                MPlayer = {
                     IsValid = true,
                     Name = "",
                     SID = "",

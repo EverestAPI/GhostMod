@@ -121,7 +121,7 @@ namespace Celeste.Mod.Ghost.Net {
             Host == "127.0.0.1"
         ;
 
-        public void CreateEnabledEntry(TextMenu menu, bool inGame) {
+        public void CreateConnectionEntry(TextMenu menu, bool inGame) {
             menu.Add(
                 (EnabledEntry = new TextMenu.OnOff("modoptions_ghostnetmodule_enabled".DialogCleanOrNull() ?? "Enabled", Connection))
                 .Change(v => Connection = v)
