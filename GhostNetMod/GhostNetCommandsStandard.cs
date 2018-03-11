@@ -147,37 +147,7 @@ namespace Celeste.Mod.Ghost.Net {
                 if (other.MPlayer.SID != env.Frame.MPlayer.SID ||
                     other.MPlayer.Mode != env.Frame.MPlayer.Mode) {
                     // Request the current session information from the other player.
-                    // TODO: Make requesting info easier, add timeouts.
-                    GhostNetFrame response = null;
-
-                    // Temporary Handler to grab the response.
-                    GhostNetFrameHandler Handle = (GhostNetConnection con, ref GhostNetFrame received) => {
-                        if (received.HHead.PlayerID != other.HHead.PlayerID)
-                            return;
-                        if (received.MSession == null)
-                            return;
-                        response = received;
-                    };
-                    env.Server.OnHandle += Handle;
-
-                    // Request an MSession.
-                    args[0].Connection.SendManagement(new GhostNetFrame {
-                        HHead = env.Frame.HHead, // Tell the other player who requested it.
-
-                        MRequest = new ChunkMRequest {
-                            ID = ChunkMSession.ChunkID
-                        }
-                    });
-
-                    // Wait for the response.
-                    // TODO: Timeout.
-                    while (response == null)
-                        Thread.Sleep(0);
-                    
-                    env.Server.OnHandle -= Handle;
-
-                    if (response.MSession.InSession)
-                        session = response.MSession;
+                    session = env.Server.Request<ChunkMSession>(args[0].Connection)?.MSession;
                 }
 
                 env.Connection.SendManagement(new GhostNetFrame {
@@ -230,7 +200,7 @@ p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
                         Value = args[0]
                     }
                 };
-                env.Server.Handle(env.Connection, ref frame);
+                env.Server.Handle(env.Connection, frame);
             }
         };
 

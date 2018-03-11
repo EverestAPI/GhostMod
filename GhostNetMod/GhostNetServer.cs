@@ -110,6 +110,49 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        public GhostNetFrame Request<T>(int playerID, long timeout = 5000) where T : IChunk
+            => Request<T>(Connections[playerID], timeout);
+        public GhostNetFrame Request<T>(GhostNetConnection con, long timeout = 5000) where T : IChunk
+            => Request(typeof(T), con, timeout);
+        public GhostNetFrame Request(Type type, GhostNetConnection con, long timeout = 5000) {
+            GhostNetFrame response = null;
+
+            // Temporary handler to grab the response.
+            GhostNetFrameHandler filter = (filterCon, filterFrame) => {
+                if (response != null)
+                    return; // Already received a response.
+                if (filterCon != con)
+                    return; // Not the player we sent the request to.
+                if (filterFrame.Get(type) == null)
+                    return; // Doesn't contain our response.
+
+                response = filterFrame;
+            };
+            OnHandle += Handle;
+
+            // Send a request.
+            con.SendManagement(new GhostNetFrame {
+                HHead = new ChunkHHead {
+                    PlayerID = int.MaxValue,
+                },
+
+                MRequest = new ChunkMRequest {
+                    ID = GhostNetFrame.GetChunkID(type)
+                }
+            });
+
+            // Wait for the response.
+            Stopwatch timeoutWatch = new Stopwatch();
+            timeoutWatch.Start();
+            while (response == null && timeoutWatch.ElapsedMilliseconds < timeout)
+                Thread.Sleep(0);
+
+            // If we still get a response after the timeout elapsed but before the handler has been removed, deal with it.
+            OnHandle -= Handle;
+
+            return response;
+        }
+
         #region Management Connection Listener
 
         protected virtual void ListenerLoop() {
@@ -153,7 +196,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Frame Handlers
 
-        protected virtual void SetNetHead(GhostNetConnection con, ref GhostNetFrame frame) {
+        protected virtual void SetNetHead(GhostNetConnection con, GhostNetFrame frame) {
             frame.HHead = new ChunkHHead {
                 PlayerID = (uint) Connections.IndexOf(con)
             };
@@ -162,14 +205,14 @@ namespace Celeste.Mod.Ghost.Net {
             frame.MServerInfo = null;
         }
 
-        public virtual void Handle(GhostNetConnection con, ref GhostNetFrame frame) {
-            SetNetHead(con, ref frame);
+        public virtual void Handle(GhostNetConnection con, GhostNetFrame frame) {
+            SetNetHead(con, frame);
 
             if (frame.HHead == null)
                 return;
 
             if (frame.MPlayer != null)
-                HandleMPlayer(con, ref frame);
+                HandleMPlayer(con, frame);
 
             GhostNetFrame player;
             if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player.HHead == null) {
@@ -188,26 +231,26 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             if (frame.MEmote != null)
-                HandleMEmote(con, ref frame);
+                HandleMEmote(con, frame);
 
             if (frame.MChat != null)
-                HandleMChat(con, ref frame);
+                HandleMChat(con, frame);
 
             if (frame.UUpdate != null)
-                HandleUUpdate(con, ref frame);
+                HandleUUpdate(con, frame);
 
-            OnHandle?.Invoke(con, ref frame);
+            OnHandle?.Invoke(con, frame);
 
             if (mPlayerTemporary)
                 frame.MPlayer = null;
 
             if (frame.PropagateM)
-                PropagateM(con, ref frame);
+                PropagateM(con, frame);
             else if (frame.PropagateU)
-                PropagateU(con, ref frame);
+                PropagateU(con, frame);
         }
 
-        public virtual void HandleMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMPlayer(GhostNetConnection con, GhostNetFrame frame) {
             frame.MPlayer.Name = frame.MPlayer.Name.Replace("*", "").Replace("\r", "").Replace("\n", "").Trim();
             if (frame.MPlayer.Name.Length > GhostNetModule.Settings.ServerMaxNameLength)
                 frame.MPlayer.Name = frame.MPlayer.Name.Substring(0, GhostNetModule.Settings.ServerMaxNameLength);
@@ -246,7 +289,7 @@ namespace Celeste.Mod.Ghost.Net {
             PlayerMap[frame.HHead.PlayerID] = frame;
         }
 
-        public virtual void HandleMEmote(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMEmote(GhostNetConnection con, GhostNetFrame frame) {
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
 
             frame.MEmote.Value = frame.MEmote.Value.Trim();
@@ -260,7 +303,7 @@ namespace Celeste.Mod.Ghost.Net {
             frame.PropagateM = true;
         }
 
-        public virtual void HandleMChat(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMChat(GhostNetConnection con, GhostNetFrame frame) {
             frame.MChat.Text = frame.MChat.Text.TrimEnd();
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} said: {frame.MChat.Text}");
 
@@ -329,7 +372,7 @@ namespace Celeste.Mod.Ghost.Net {
             frame.PropagateM = true;
         }
 
-        public virtual void HandleUUpdate(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleUUpdate(GhostNetConnection con, GhostNetFrame frame) {
             // Prevent unordered outdated frames from being handled.
             uint lastIndex;
             if (GhostIndices.TryGetValue(frame.HHead.PlayerID, out lastIndex) && frame.UUpdate.UpdateIndex < lastIndex) {
@@ -349,13 +392,13 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Frame Senders
 
-        public void PropagateM(GhostNetConnection con, ref GhostNetFrame frame) {
+        public void PropagateM(GhostNetConnection con, GhostNetFrame frame) {
             foreach (GhostNetConnection otherCon in Connections)
                 if (otherCon != null)
                     otherCon.SendManagement(frame);
         }
 
-        public void PropagateU(GhostNetConnection con, ref GhostNetFrame frame) {
+        public void PropagateU(GhostNetConnection con, GhostNetFrame frame) {
             // U is always handled after M. Even if sending this fails, we shouldn't worry about loosing M chunks.
             for (int i = 0; i < Connections.Count; i++) {
                 GhostNetConnection otherCon = Connections[i];
@@ -383,7 +426,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public GhostNetFrame BroadcastMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
             GhostNetFrame msg = CreateMChat(con, frame, text, color ?? GhostNetModule.Settings.ServerColorBroadcast, fillVars);
-            PropagateM(con, ref msg);
+            PropagateM(con, msg);
             return msg;
         }
 
@@ -416,7 +459,7 @@ namespace Celeste.Mod.Ghost.Net {
                 UpdateConnectionQueue[con.ManagementEndPoint.Address] = con;
             }
 
-            Handle(con, ref frame);
+            Handle(con, frame);
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection conReceived, IPEndPoint remote, GhostNetFrame frame) {
@@ -444,7 +487,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            Handle(con, ref frame);
+            Handle(con, frame);
         }
 
         protected virtual void OnDisconnect(GhostNetConnection con) {
@@ -488,7 +531,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             };
             PlayerMap[id] = frame;
-            PropagateM(con, ref frame);
+            PropagateM(con, frame);
         }
 
         #endregion

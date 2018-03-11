@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
-    public delegate void GhostNetFrameHandler(GhostNetConnection con, ref GhostNetFrame frame);
+    public delegate void GhostNetFrameHandler(GhostNetConnection con, GhostNetFrame frame);
     public delegate IChunk GhostNetChunkParser(BinaryReader reader);
     /// <summary>
     /// A GhostNetFrame is a collection of many individual Chunks, which can have an individual or combined meaning.
@@ -23,6 +23,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         private static IDictionary<string, GhostNetChunkParser> ChunkParsers = new FastDictionary<string, GhostNetChunkParser>();
         private static IDictionary<Type, string> ChunkIDs = new FastDictionary<Type, string>();
+
+        // TODO: Wrapper for objects that don't natively implement IChunk.
 
         public static void RegisterChunk(Type type, string id, Func<BinaryReader, object> parser)
             => RegisterChunk(type, id, reader => parser(reader) as IChunk);
@@ -182,19 +184,26 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(GhostFrame.End);
         }
 
-        public void Set<T>(T chunk) where T : IChunk {
-            ChunkMap[typeof(T)] = chunk;
+        public void Set<T>(T chunk) where T : IChunk
+            => Set(typeof(T), chunk);
+        public void Set(Type t, IChunk chunk) {
+            // Assume that chunk is t for performance reasons.
+            ChunkMap[t] = chunk;
         }
 
-        public T Get<T>() where T : IChunk {
+        public T Get<T>() where T : IChunk
+            => (T) Get(typeof(T));
+        public IChunk Get(Type t) {
             IChunk chunk;
-            if (ChunkMap.TryGetValue(typeof(T), out chunk) && chunk != null && chunk.IsValid)
-                return (T) chunk;
-            return default(T);
+            if (ChunkMap.TryGetValue(t, out chunk) && chunk != null && chunk.IsValid)
+                return chunk;
+            return null;
         }
 
-        public void Remove<T>() {
-            ChunkMap[typeof(T)] = null;
+        public void Remove<T>() where T : IChunk
+            => Remove(typeof(T));
+        public void Remove(Type t) {
+            ChunkMap[t] = null;
         }
 
     }

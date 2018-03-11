@@ -411,7 +411,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Frame Handlers
 
-        public virtual void Handle(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void Handle(GhostNetConnection con, GhostNetFrame frame) {
             if (frame.HHead == null)
                 return;
 
@@ -423,7 +423,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             if (frame.MPlayer != null)
-                HandleMPlayer(con, ref frame);
+                HandleMPlayer(con, frame);
 
             ChunkMPlayer player;
             if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player == null) {
@@ -433,21 +433,21 @@ namespace Celeste.Mod.Ghost.Net {
             frame.MPlayer = player;
 
             if (frame.MRequest != null)
-                HandleMRequest(con, ref frame);
+                HandleMRequest(con, frame);
 
             if (frame.MEmote != null)
-                HandleMEmote(con, ref frame);
+                HandleMEmote(con, frame);
 
             if (frame.MChat != null)
-                HandleMChat(con, ref frame);
+                HandleMChat(con, frame);
 
             if (frame.UUpdate != null)
-                HandleUUpdate(con, ref frame);
+                HandleUUpdate(con, frame);
 
-            OnHandle?.Invoke(con, ref frame);
+            OnHandle?.Invoke(con, frame);
         }
 
-        public virtual void HandleMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMPlayer(GhostNetConnection con, GhostNetFrame frame) {
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
             Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {(char) ('A' + frame.MPlayer.Mode)} {frame.MPlayer.Level}");
 
@@ -484,7 +484,7 @@ namespace Celeste.Mod.Ghost.Net {
                             Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode), null, SaveData.Instance.Areas[area.ID]);
                             if (Session != null && frame.MSession != null && frame.MSession.InSession) {
                                 // We received additional session data from the server.
-                                HandleMSession(con, ref frame);
+                                HandleMSession(con, frame);
                             }
                             SaveData.Instance.CurrentSession = Session;
                         }
@@ -548,7 +548,7 @@ namespace Celeste.Mod.Ghost.Net {
                 ghost.Name.Name = frame.MPlayer.Name;
         }
 
-        public virtual void HandleMRequest(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMRequest(GhostNetConnection con, GhostNetFrame frame) {
             // TODO: Event for request by server in client.
             switch (frame.MRequest.ID) {
                 case ChunkMPlayer.ChunkID:
@@ -567,7 +567,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public virtual void HandleMSession(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMSession(GhostNetConnection con, GhostNetFrame frame) {
             if (Session == null)
                 return;
 
@@ -596,7 +596,7 @@ namespace Celeste.Mod.Ghost.Net {
             Session.CoreMode = frame.MSession.CoreMode;
         }
 
-        public virtual void HandleMEmote(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMEmote(GhostNetConnection con, GhostNetFrame frame) {
             if (Player?.Scene == null)
                 return;
 
@@ -617,7 +617,7 @@ namespace Celeste.Mod.Ghost.Net {
             Player.Scene.Add(emote);
         }
 
-        public virtual void HandleMChat(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMChat(GhostNetConnection con, GhostNetFrame frame) {
             // Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} chat: {frame.MChat.Text}");
 
             string playerName;
@@ -662,7 +662,7 @@ namespace Celeste.Mod.Ghost.Net {
             ChatLog.Insert(0, line);
         }
 
-        public virtual void HandleUUpdate(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleUUpdate(GhostNetConnection con, GhostNetFrame frame) {
             if (Player?.Scene == null)
                 return;
 
@@ -694,11 +694,11 @@ namespace Celeste.Mod.Ghost.Net {
         #region Connection Handlers
 
         protected virtual void OnReceiveManagement(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
-            Handle(con, ref frame);
+            Handle(con, frame);
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
-            Handle(con, ref frame);
+            Handle(con, frame);
         }
 
         protected virtual void OnDisconnect(GhostNetConnection con) {

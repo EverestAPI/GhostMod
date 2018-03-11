@@ -74,6 +74,7 @@
     <Compile Include="Connection\GhostNetLocalConnection.cs" />
     <Compile Include="GhostNetCommandsStandard.cs" />
     <Compile Include="GhostNetCommand.cs" />
+    <Compile Include="GhostNetFrames.cs" />
     <Compile Include="GhostNetModuleBackCompat.cs" />
     <Compile Include="GhostNetEmoteWheel.cs" />
     <Compile Include="GhostNetEmote.cs" />
