@@ -96,9 +96,9 @@ Send /help for a list of all commands.";
         [SettingIgnore]
         public int ServerMaxNameLength { get; set; } = 16;
         [SettingIgnore]
-        public int ServerMaxEmoteLength { get; set; } = 64;
+        public int ServerMaxEmoteValueLength { get; set; } = 2048;
         [SettingIgnore]
-        public int ServerMaxChatLength { get; set; } = 64;
+        public int ServerMaxChatTextLength { get; set; } = 256;
         [SettingIgnore]
         public string ServerCommandPrefix { get; set; } = "/";
 

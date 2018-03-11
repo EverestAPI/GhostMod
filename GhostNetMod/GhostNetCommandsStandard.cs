@@ -215,9 +215,11 @@ namespace Celeste.Mod.Ghost.Net {
             Help =
 @"Send an emote appearing over your player.
 Normal text appears over your player.
-i: shows images from the ""GUI"" atlas.
-p: shows images from the ""Portraits"" atlas.
-",
+This syntax also works for your ""favorites"" (settings file).
+i:TEXTURE shows TEXTURE from the GUI atlas.
+p:TEXTURE shows TEXTURE from the Portraits atlas.
+p:FRM1 FRM2 FRM3 plays an animation, 5 FPS by default.
+p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
             OnParse = GhostNetDCommand.Parsers.Everything,
             OnRun = (cmd, env, args) => {
                 if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))

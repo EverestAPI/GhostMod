@@ -174,7 +174,7 @@ namespace Celeste.Mod.Ghost.Net {
                 ) * radius;
 
                 if (GhostNetEmote.IsIcon(emote)) {
-                    MTexture icon = GhostNetEmote.GetIcon(emote);
+                    MTexture icon = GhostNetEmote.GetIcon(emote, Selected == i ? selectedTime : 0f);
                     if (icon == null)
                         continue;
 

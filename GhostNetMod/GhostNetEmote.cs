@@ -16,8 +16,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public Entity Tracking;
 
-        public MTexture Icon;
-        public string Text;
+        public string Value;
 
         protected Camera Camera;
 
@@ -25,6 +24,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public bool Pop = false;
         protected float popupTime;
+
+        protected float time;
 
         protected GhostNetEmote(Entity tracking)
             : base(Vector2.Zero) {
@@ -35,12 +36,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public GhostNetEmote(Entity tracking, string value)
             : this(tracking) {
-            if (IsIcon(value)) {
-                Icon = GetIcon(value);
-
-            } else {
-                Text = value;
-            }
+            Value = value;
         }
 
         public override void Render() {
@@ -76,9 +72,21 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
+            time += Engine.DeltaTime;
+
+            MTexture icon = null;
+            string text = null;
+
+            if (IsIcon(Value)) {
+                icon = GetIcon(Value, time);
+
+            } else {
+                text = Value;
+            }
+
             float alpha = Alpha * popupAlpha;
 
-            if (alpha <= 0f || (Icon == null && string.IsNullOrWhiteSpace(Text)))
+            if (alpha <= 0f || (icon == null && string.IsNullOrWhiteSpace(text)))
                 return;
 
             if (Tracking == null)
@@ -98,8 +106,8 @@ namespace Celeste.Mod.Ghost.Net {
             pos.Y -= 16f + 4f;
             pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
 
-            if (Icon != null) {
-                Vector2 size = new Vector2(Icon.Width, Icon.Height);
+            if (icon != null) {
+                Vector2 size = new Vector2(icon.Width, icon.Height);
                 float scale = (Size / Math.Max(size.X, size.Y)) * 0.5f * popupScale;
                 size *= scale;
 
@@ -108,7 +116,7 @@ namespace Celeste.Mod.Ghost.Net {
                     1920f - size.X * 0.5f, 1080f
                 );
 
-                Icon.DrawJustified(
+                icon.DrawJustified(
                     pos,
                     new Vector2(0.5f, 1f),
                     Color.White * alpha,
@@ -116,7 +124,7 @@ namespace Celeste.Mod.Ghost.Net {
                 );
 
             } else {
-                Vector2 size = ActiveFont.Measure(Text);
+                Vector2 size = ActiveFont.Measure(text);
                 float scale = (Size / Math.Max(size.X, size.Y)) * 0.5f * popupScale;
                 size *= scale;
 
@@ -126,7 +134,7 @@ namespace Celeste.Mod.Ghost.Net {
                 );
 
                 ActiveFont.DrawOutline(
-                    Text,
+                    text,
                     pos,
                     new Vector2(0.5f, 1f),
                     Vector2.One * scale,
@@ -164,10 +172,25 @@ namespace Celeste.Mod.Ghost.Net {
             return null;
         }
 
-        public static MTexture GetIcon(string emote) {
+        public static MTexture GetIcon(string emote, float time) {
             Atlas atlas;
             if ((atlas = GetIconAtlas(ref emote)) == null)
                 return null;
+
+            string[] split = emote.Split(' ');
+            if (split.Length > 1) {
+                int fps;
+                int offset = 1;
+                if (!int.TryParse(split[0], out fps)) {
+                    fps = 5;
+                    offset = 0;
+                }
+
+                float timeTotal = (split.Length - offset) / (float) fps;
+                int index = (int) Math.Floor((time % timeTotal) * fps) + offset;
+                emote = split[index].Trim();
+            }
+
             if (!atlas.Has(emote))
                 return null;
             return atlas[emote];

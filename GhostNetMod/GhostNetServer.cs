@@ -253,8 +253,8 @@ namespace Celeste.Mod.Ghost.Net {
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
 
             frame.MEmote.Value = frame.MEmote.Value.Trim();
-            if (frame.MEmote.Value.Length > GhostNetModule.Settings.ServerMaxEmoteLength)
-                frame.MEmote.Value = frame.MEmote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteLength);
+            if (frame.MEmote.Value.Length > GhostNetModule.Settings.ServerMaxEmoteValueLength)
+                frame.MEmote.Value = frame.MEmote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteValueLength);
 
             if (GhostNetEmote.IsText(frame.MEmote.Value)) {
                 frame.MChat = CreateMChat(con, frame, frame.MEmote.Value, GhostNetModule.Settings.ServerColorEmote).MChat;
@@ -314,8 +314,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             frame.MChat.Text.Replace("\r", "").Replace("\n", "");
-            if (frame.MChat.Text.Length > GhostNetModule.Settings.ServerMaxChatLength)
-                frame.MChat.Text = frame.MChat.Text.Substring(0, GhostNetModule.Settings.ServerMaxChatLength);
+            if (frame.MChat.Text.Length > GhostNetModule.Settings.ServerMaxChatTextLength)
+                frame.MChat.Text = frame.MChat.Text.Substring(0, GhostNetModule.Settings.ServerMaxChatTextLength);
 
             if (!frame.MChat.KeepColor)
                 frame.MChat.Color = Color.White;

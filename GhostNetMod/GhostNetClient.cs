@@ -33,6 +33,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public uint PlayerID;
         public GhostChunkNetMPlayer PlayerInfo;
+        public int PlayerInfoAwaitedEcho = 0;
         public GhostChunkNetMServerInfo ServerInfo;
 
         public Dictionary<uint, GhostChunkNetMPlayer> PlayerMap = new Dictionary<uint, GhostChunkNetMPlayer>();
@@ -302,6 +303,7 @@ namespace Celeste.Mod.Ghost.Net {
         public void SendMPlayer() {
             if (Connection == null)
                 return;
+            PlayerInfoAwaitedEcho++;
             Connection.SendManagement(new GhostNetFrame {
                 MPlayer = {
                     IsValid = true,
@@ -461,13 +463,20 @@ namespace Celeste.Mod.Ghost.Net {
                 if (PlayerName != null)
                     PlayerName.Name = frame.MPlayer.Name;
 
+                if (PlayerInfoAwaitedEcho > 0) {
+                    // If we're receiving a MPlayer after having sent one, ignore it.
+                    // This fixes the client being thrown back if the player moves too quickly between rooms.
+                    PlayerInfoAwaitedEcho--;
+                    return;
+                }
+
                 if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
                     frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
                     frame.MPlayer.Level != (Session?.Level ?? "")) {
                     // Server told us to move.
 
                     if (SaveData.Instance == null) {
-                        return;
+                        SaveData.InitializeDebugMode();
                     }
 
                     AreaData area = AreaDataExt.Get(frame.MPlayer.SID);
@@ -480,7 +489,7 @@ namespace Celeste.Mod.Ghost.Net {
                                 // We received additional session data from the server.
                                 ParseMSession(con, ref frame);
                             }
-
+                            SaveData.Instance.CurrentSession = Session;
                         }
 
                         if (!string.IsNullOrEmpty(frame.MPlayer.Level) && Session.MapData.Get(frame.MPlayer.Level) != null) {
