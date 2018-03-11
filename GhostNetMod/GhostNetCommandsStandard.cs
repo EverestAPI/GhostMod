@@ -165,6 +165,7 @@ namespace Celeste.Mod.Ghost.Net {
                         HHead = env.Frame.HHead, // Tell the other player who requested it.
 
                         MRequest = {
+                            ID = GhostChunkNetMSession.Chunk
                         }
                     });
 
