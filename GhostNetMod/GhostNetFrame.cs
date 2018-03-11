@@ -19,9 +19,27 @@ namespace Celeste.Mod.Ghost.Net {
     /// <summary>
     /// A GhostNetFrame is a collection of many individual Chunks, which can have an individual or combined meaning.
     /// </summary>
-    public class GhostNetFrame {
+    public sealed class GhostNetFrame {
 
-        public static IDictionary<string, GhostNetChunkParser> ChunkParsers = new FastDictionary<string, GhostNetChunkParser>();
+        private static IDictionary<string, GhostNetChunkParser> ChunkParsers = new FastDictionary<string, GhostNetChunkParser>();
+        private static IDictionary<Type, string> ChunkIDs = new FastDictionary<Type, string>();
+
+        public static void RegisterChunk(Type type, string id, Func<BinaryReader, object> parser)
+            => RegisterChunk(type, id, reader => parser(reader) as IChunk);
+        public static void RegisterChunk(Type type, string id, GhostNetChunkParser parser) {
+            ChunkIDs[type] = id;
+            ChunkParsers[id] = parser;
+        }
+
+        public static string GetChunkID(Type type) {
+            string id;
+            if (ChunkIDs.TryGetValue(type, out id))
+                return id;
+            ChunkAttribute chunkInfo = type.GetCustomAttribute<ChunkAttribute>();
+            if (chunkInfo != null)
+                return ChunkIDs[type] = chunkInfo.ID;
+            throw new InvalidDataException("Unregistered chunk type");
+        }
 
         static GhostNetFrame() {
             // Find all chunk types in all mods.
@@ -30,11 +48,11 @@ namespace Celeste.Mod.Ghost.Net {
                 if (chunkInfo == null)
                     continue;
                 // TODO: Can be optimized. Who wants to write a DynamicMethod generator for this? :^)
-                ChunkParsers[chunkInfo.ID] = reader => {
+                RegisterChunk(type, chunkInfo.ID, reader => {
                     IChunk chunk = (IChunk) Activator.CreateInstance(type);
                     chunk.Read(reader);
                     return chunk;
-                };
+                });
             }
         }
 
@@ -156,7 +174,7 @@ namespace Celeste.Mod.Ghost.Net {
         public void Write(BinaryWriter writer) {
             foreach (IChunk chunk in ChunkMap.Values)
                 if (chunk.IsValid)
-                    GhostFrame.WriteChunk(writer, chunk.Write, chunk.GetType().GetCustomAttribute<ChunkAttribute>().ID);
+                    GhostFrame.WriteChunk(writer, chunk.Write, GetChunkID(chunk.GetType()));
 
             if (Extra != null)
                 writer.Write(Extra);
