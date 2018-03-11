@@ -44,6 +44,7 @@ namespace Celeste.Mod.Ghost.Net {
         public float LightingAlphaAdd;
         public float BloomBaseAdd;
         public float DarkRoomAlpha;
+        public long Time;
         public Session.CoreModes CoreMode;
 
         public void Read(BinaryReader reader) {
@@ -122,6 +123,8 @@ namespace Celeste.Mod.Ghost.Net {
             BloomBaseAdd = reader.ReadSingle();
             DarkRoomAlpha = reader.ReadSingle();
 
+            Time = reader.ReadInt64();
+
             CoreMode = (Session.CoreModes) reader.ReadByte();
         }
 
@@ -199,6 +202,8 @@ namespace Celeste.Mod.Ghost.Net {
             writer.Write(LightingAlphaAdd);
             writer.Write(BloomBaseAdd);
             writer.Write(DarkRoomAlpha);
+
+            writer.Write(Time);
 
             writer.Write((byte) CoreMode);
         }

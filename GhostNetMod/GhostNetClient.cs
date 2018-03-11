@@ -351,6 +351,7 @@ namespace Celeste.Mod.Ghost.Net {
                     LightingAlphaAdd = Session.LightingAlphaAdd,
                     BloomBaseAdd = Session.BloomBaseAdd,
                     DarkRoomAlpha = Session.DarkRoomAlpha,
+                    Time = Session.Time,
                     CoreMode = Session.CoreMode
                 }
             });
@@ -585,6 +586,7 @@ namespace Celeste.Mod.Ghost.Net {
             Session.LightingAlphaAdd = frame.MSession.LightingAlphaAdd;
             Session.BloomBaseAdd = frame.MSession.BloomBaseAdd;
             Session.DarkRoomAlpha = frame.MSession.DarkRoomAlpha;
+            Session.Time = frame.MSession.Time;
             Session.CoreMode = frame.MSession.CoreMode;
         }
 
