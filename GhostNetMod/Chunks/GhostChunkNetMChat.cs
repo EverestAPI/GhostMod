@@ -31,6 +31,10 @@ namespace Celeste.Mod.Ghost.Net {
         /// Server-internal field.
         /// </summary>
         public bool KeepColor;
+        /// <summary>
+        /// Server-internal field.
+        /// </summary>
+        public bool Logged;
 
         public uint ID;
         public string Text;

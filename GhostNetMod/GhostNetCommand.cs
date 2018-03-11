@@ -245,9 +245,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public bool IsOP => Frame.HHead.PlayerID == 0;
 
-        public void Send(string text, Color? color = null, bool fillVars = false) {
-            Server.SendMChat(Connection, Frame, text, color, fillVars);
-        }
+        public GhostNetFrame Send(string text, Color? color = null, bool fillVars = false)
+            => Server.SendMChat(Connection, Frame, text, color, fillVars);
 
     }
 

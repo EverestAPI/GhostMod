@@ -141,6 +141,44 @@ namespace Celeste.Mod.Ghost.Net {
                 if (!other.UUpdate.IsValid)
                     throw new Exception("Player position not known!");
 
+                GhostNetFrame msg = env.Send($"Teleporting to {other.MPlayer.Name}#{other.HHead.PlayerID}...");
+
+                GhostChunkNetMSession session = new GhostChunkNetMSession();
+                if (other.MPlayer.SID != env.Frame.MPlayer.SID ||
+                    other.MPlayer.Mode != env.Frame.MPlayer.Mode) {
+                    // Request the current session information from the other player.
+                    // TODO: Make requesting info easier, add timeouts.
+                    GhostNetFrame? response = null;
+
+                    // Temporary parser to grab the response.
+                    GhostNetFrameParser parse = (GhostNetConnection con, ref GhostNetFrame received) => {
+                        if (received.HHead.PlayerID != other.HHead.PlayerID)
+                            return;
+                        if (!received.MSession.IsValid)
+                            return;
+                        response = received;
+                    };
+                    env.Server.OnParse += parse;
+
+                    // Request an MSession.
+                    args[0].Connection.SendManagement(new GhostNetFrame {
+                        HHead = env.Frame.HHead, // Tell the other player who requested it.
+
+                        MRequest = {
+                        }
+                    });
+
+                    // Wait for the response.
+                    // TODO: Timeout.
+                    while (response == null)
+                        Thread.Sleep(0);
+                    
+                    env.Server.OnParse -= parse;
+
+                    if (response.Value.MSession.InSession)
+                        session = response.Value.MSession;
+                }
+
                 env.Connection.SendManagement(new GhostNetFrame {
                     HHead = {
                         IsValid = true,
@@ -155,12 +193,17 @@ namespace Celeste.Mod.Ghost.Net {
                         Level = other.MPlayer.Level
                     },
 
+                    // This is only sent if the two players are in incompatible sessions.
+                    MSession = session,
+
                     // This also sends other info such as the player rotation, scale, color, ...
                     // ... but the client should know what to do.
                     UUpdate = other.UUpdate
                 });
 
-                env.Send($"Teleporting to {other.MPlayer.Name}#{other.HHead.PlayerID}");
+                msg.MChat.Text = $"Teleported to {other.MPlayer.Name}#{other.HHead.PlayerID}";
+                env.Connection.SendManagement(msg);
+
             }
         };
 

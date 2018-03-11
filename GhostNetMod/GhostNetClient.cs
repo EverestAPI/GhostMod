@@ -78,8 +78,13 @@ namespace Celeste.Mod.Ghost.Net {
         protected string PlayerListText;
         public bool PlayerListVisible;
 
+        public static event Action<GhostNetClient> OnCreate;
+        public event GhostNetFrameParser OnParse;
+        // TODO: More events.
+
         public GhostNetClient(Game game)
             : base(game) {
+            OnCreate?.Invoke(this);
         }
 
         public override void Update(GameTime gameTime) {
@@ -306,7 +311,49 @@ namespace Celeste.Mod.Ghost.Net {
                     Level = Session?.Level ?? ""
                 }
             });
-            UpdateIndex = 0;
+        }
+
+        public void SendMSession() {
+            if (Connection == null)
+                return;
+            if (Session == null) {
+                Connection.SendManagement(new GhostNetFrame {
+                    MSession = {
+                        IsValid = true,
+                        InSession = false
+                    }
+                });
+                return;
+            }
+            Connection.SendManagement(new GhostNetFrame {
+                MSession = {
+                    IsValid = true,
+                    InSession = true,
+
+                    RespawnPoint = Session.RespawnPoint,
+                    Inventory = Session.Inventory,
+                    Flags = Session.Flags,
+                    LevelFlags = Session.LevelFlags,
+                    Strawberries = Session.Strawberries,
+                    DoNotLoad = Session.DoNotLoad,
+                    Keys = Session.Keys,
+                    Counters = Session.Counters,
+                    FurthestSeenLevel = Session.FurthestSeenLevel,
+                    StartCheckpoint = Session.StartCheckpoint,
+                    ColorGrade = Session.ColorGrade,
+                    SummitGems = Session.SummitGems,
+                    FirstLevel = Session.FirstLevel,
+                    Cassette = Session.Cassette,
+                    HeartGem = Session.HeartGem,
+                    Dreaming = Session.Dreaming,
+                    GrabbedGolden = Session.GrabbedGolden,
+                    HitCheckpoint = Session.HitCheckpoint,
+                    LightingAlphaAdd = Session.LightingAlphaAdd,
+                    BloomBaseAdd = Session.BloomBaseAdd,
+                    DarkRoomAlpha = Session.DarkRoomAlpha,
+                    CoreMode = Session.CoreMode
+                }
+            });
         }
 
         public void SendMEmote(int index) {
@@ -385,6 +432,9 @@ namespace Celeste.Mod.Ghost.Net {
             // Temporarily attach the MPlayer chunk to make player identification easier.
             frame.MPlayer = player;
 
+            if (frame.MRequest.IsValid)
+                ParseMRequest(con, ref frame);
+
             if (frame.MEmote.IsValid)
                 ParseMEmote(con, ref frame);
 
@@ -394,8 +444,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.UUpdate.IsValid)
                 ParseUUpdate(con, ref frame);
 
-            // TODO: Let mods parse extras.
-
+            OnParse?.Invoke(con, ref frame);
         }
 
         public virtual void ParseMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
@@ -415,14 +464,42 @@ namespace Celeste.Mod.Ghost.Net {
                     frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
                     frame.MPlayer.Level != (Session?.Level ?? "")) {
                     // Server told us to move.
+
+                    if (SaveData.Instance == null) {
+                        return;
+                    }
+
                     AreaData area = AreaDataExt.Get(frame.MPlayer.SID);
                     if (area != null) {
-                        Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode));
+                        if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
+                            frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal)) {
+                            // Different SID or mode - create new session.
+                            Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode), null, SaveData.Instance.Areas[area.ID]);
+                            if (Session != null && frame.MSession.IsValid && frame.MSession.InSession) {
+                                // We received additional session data from the server.
+                                ParseMSession(con, ref frame);
+                            }
+
+                        }
+
                         if (!string.IsNullOrEmpty(frame.MPlayer.Level) && Session.MapData.Get(frame.MPlayer.Level) != null) {
                             Session.Level = frame.MPlayer.Level;
                             Session.FirstLevel = false;
                         }
-                        Engine.Scene = new LevelLoader(Session);
+                        Engine.Scene = new LevelLoader(Session, frame.UUpdate.IsValid ? frame.UUpdate.Data.Position : default(Vector2?));
+
+                    } else {
+                        string message = Dialog.Get("postcard_levelgone");
+                        if (string.IsNullOrEmpty(frame.MPlayer.SID)) {
+                            message = Dialog.Has("postcard_ghostnetmodule_backtomenu") ? Dialog.Get("postcard_ghostnetmodule_backtomenu") :
+@"{big}Oops!{/big}{n}The server has sent you back to the main menu.";
+                        }
+
+                        message = message.Replace("((player))", SaveData.Instance.Name);
+                        message = message.Replace("((sid))", frame.MPlayer.SID);
+
+                        LevelEnterExt.ErrorMessage = message;
+                        LevelEnter.Go(new Session(new AreaKey(1).SetSID("")), false);
                     }
                 }
 
@@ -460,6 +537,53 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (ghost != null && ghost.Name != null)
                 ghost.Name.Name = frame.MPlayer.Name;
+        }
+
+        public virtual void ParseMRequest(GhostNetConnection con, ref GhostNetFrame frame) {
+            // TODO: Event for request by server in client.
+            switch (frame.MRequest.ID) {
+                case GhostChunkNetMPlayer.Chunk:
+                    SendMPlayer();
+                    break;
+                case GhostChunkNetMSession.Chunk:
+                    SendMSession();
+                    break;
+
+                case GhostChunkNetUUpdate.Chunk:
+                    SendUUpdate();
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        public virtual void ParseMSession(GhostNetConnection con, ref GhostNetFrame frame) {
+            if (Session == null)
+                return;
+
+            Session.RespawnPoint = frame.MSession.RespawnPoint;
+            Session.Inventory = frame.MSession.Inventory;
+            Session.Flags = frame.MSession.Flags;
+            Session.LevelFlags = frame.MSession.LevelFlags;
+            Session.Strawberries = frame.MSession.Strawberries;
+            Session.DoNotLoad = frame.MSession.DoNotLoad;
+            Session.Keys = frame.MSession.Keys;
+            Session.Counters = frame.MSession.Counters;
+            Session.FurthestSeenLevel = frame.MSession.FurthestSeenLevel;
+            Session.StartCheckpoint = frame.MSession.StartCheckpoint;
+            Session.ColorGrade = frame.MSession.ColorGrade;
+            Session.SummitGems = frame.MSession.SummitGems;
+            Session.FirstLevel = frame.MSession.FirstLevel;
+            Session.Cassette = frame.MSession.Cassette;
+            Session.HeartGem = frame.MSession.HeartGem;
+            Session.Dreaming = frame.MSession.Dreaming;
+            Session.GrabbedGolden = frame.MSession.GrabbedGolden;
+            Session.HitCheckpoint = frame.MSession.HitCheckpoint;
+            Session.LightingAlphaAdd = frame.MSession.LightingAlphaAdd;
+            Session.BloomBaseAdd = frame.MSession.BloomBaseAdd;
+            Session.DarkRoomAlpha = frame.MSession.DarkRoomAlpha;
+            Session.CoreMode = frame.MSession.CoreMode;
         }
 
         public virtual void ParseMEmote(GhostNetConnection con, ref GhostNetFrame frame) {

@@ -64,6 +64,8 @@
     <Compile Include="Chunks\GhostChunkNetHHead.cs" />
     <Compile Include="Chunks\GhostChunkNetMChat.cs" />
     <Compile Include="Chunks\GhostChunkNetMEmote.cs" />
+    <Compile Include="Chunks\GhostChunkNetMRequest.cs" />
+    <Compile Include="Chunks\GhostChunkNetMSession.cs" />
     <Compile Include="Chunks\GhostChunkNetMServerInfo.cs" />
     <Compile Include="Chunks\GhostChunkNetUUpdate.cs" />
     <Compile Include="Chunks\GhostChunkNetMPlayer.cs" />

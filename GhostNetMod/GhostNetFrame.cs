@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    public delegate void GhostNetFrameParser(GhostNetConnection con, ref GhostNetFrame frame);
     public struct GhostNetFrame {
 
         public bool PropagateM;
@@ -19,9 +20,13 @@ namespace Celeste.Mod.Ghost.Net {
         // Head chunks, always present.
         public GhostChunkNetHHead HHead;
 
+        // TODO: Better way to manage chunks.
+
         // Management chunks.
         public GhostChunkNetMServerInfo MServerInfo;
         public GhostChunkNetMPlayer MPlayer;
+        public GhostChunkNetMRequest MRequest;
+        public GhostChunkNetMSession MSession;
         public GhostChunkNetMEmote MEmote;
         public GhostChunkNetMChat MChat;
 
@@ -48,6 +53,12 @@ namespace Celeste.Mod.Ghost.Net {
                             break;
                         case GhostChunkNetMPlayer.Chunk:
                             MPlayer.Read(reader);
+                            break;
+                        case GhostChunkNetMRequest.Chunk:
+                            MRequest.Read(reader);
+                            break;
+                        case GhostChunkNetMSession.Chunk:
+                            MSession.Read(reader);
                             break;
                         case GhostChunkNetMEmote.Chunk:
                             MEmote.Read(reader);
@@ -82,6 +93,10 @@ namespace Celeste.Mod.Ghost.Net {
                 GhostFrame.WriteChunk(writer, MServerInfo.Write, GhostChunkNetMServerInfo.Chunk);
             if (MPlayer.IsValid)
                 GhostFrame.WriteChunk(writer, MPlayer.Write, GhostChunkNetMPlayer.Chunk);
+            if (MSession.IsValid)
+                GhostFrame.WriteChunk(writer, MSession.Write, GhostChunkNetMSession.Chunk);
+            if (MRequest.IsValid)
+                GhostFrame.WriteChunk(writer, MRequest.Write, GhostChunkNetMRequest.Chunk);
             if (MEmote.IsValid)
                 GhostFrame.WriteChunk(writer, MEmote.Write, GhostChunkNetMEmote.Chunk);
             if (MChat.IsValid)
