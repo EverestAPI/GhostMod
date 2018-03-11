@@ -60,15 +60,15 @@ namespace Celeste.Mod.Ghost.Net {
                     _ChatWasPaused = Engine.Scene.Paused;
                     Engine.Scene.Paused = true;
                     // If we're in a level, add a dummy overlay to prevent the pause menu from handling input.
-                    if (Player != null)
-                        Player.SceneAs<Level>().Overlay = _ChatLevelOverlay = new Overlay();
+                    if (Engine.Scene is Level)
+                        ((Level) Engine.Scene).Overlay = _ChatLevelOverlay = new Overlay();
 
                 } else {
                     ChatInput = "";
                     Engine.Scene.Paused = _ChatWasPaused;
                     _ChatConsumeInput = 2;
-                    if (_ChatLevelOverlay != null && Player?.SceneAs<Level>().Overlay == _ChatLevelOverlay)
-                        Player.SceneAs<Level>().Overlay = null;
+                    if (_ChatLevelOverlay != null && (Engine.Scene as Level)?.Overlay == _ChatLevelOverlay)
+                        ((Level) Engine.Scene).Overlay = null;
                 }
 
                 _ChatVisible = value;
@@ -302,6 +302,7 @@ namespace Celeste.Mod.Ghost.Net {
                     IsValid = true,
                     Name = GhostModule.Settings.Name,
                     SID = Session?.Area.GetSID() ?? "",
+                    Mode = Session?.Area.Mode ?? AreaMode.Normal,
                     Level = Session?.Level ?? ""
                 }
             });
@@ -411,6 +412,7 @@ namespace Celeste.Mod.Ghost.Net {
                     PlayerName.Name = frame.MPlayer.Name;
 
                 if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
+                    frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
                     frame.MPlayer.Level != (Session?.Level ?? "")) {
                     // Server told us to move.
                     AreaData area = AreaDataExt.Get(frame.MPlayer.SID);
@@ -432,7 +434,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             Ghost ghost;
 
-            if (frame.MPlayer.SID != Session.Area.GetSID()) {
+            if (frame.MPlayer.SID != Session.Area.GetSID() ||
+                frame.MPlayer.Mode != Session.Area.Mode) {
                 // Ghost not in the same level.
                 // Find the ghost and remove it if it exists.
                 if (GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) && ghost != null) {

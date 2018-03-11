@@ -200,7 +200,7 @@ namespace Celeste.Mod.Ghost.Net {
                 frame.MPlayer.Name = "#" + frame.HHead.PlayerID;
 
             // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
-            Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {frame.MPlayer.Level}");
+            Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {(char) ('A' + frame.MPlayer.Mode)} {frame.MPlayer.Level}");
 
             // Propagate status to all other players.
             frame.PropagateM = true;
@@ -354,7 +354,8 @@ namespace Celeste.Mod.Ghost.Net {
 
                 GhostNetFrame otherPlayer;
                 if (!PlayerMap.TryGetValue((uint) i, out otherPlayer) ||
-                    frame.MPlayer.SID != otherPlayer.MPlayer.SID
+                    frame.MPlayer.SID != otherPlayer.MPlayer.SID ||
+                    frame.MPlayer.Mode != otherPlayer.MPlayer.Mode
                 ) {
                     continue;
                 }
@@ -474,6 +475,7 @@ namespace Celeste.Mod.Ghost.Net {
                     IsValid = true,
                     Name = "",
                     SID = "",
+                    Mode = AreaMode.Normal,
                     Level = ""
                 }
             };

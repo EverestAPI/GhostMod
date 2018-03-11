@@ -137,7 +137,7 @@ namespace Celeste.Mod.Ghost.Net {
 
                 GhostNetFrame other = args[0].Player;
                 if (string.IsNullOrEmpty(other.MPlayer.SID))
-                    throw new Exception("Player not in level!");
+                    throw new Exception("Player in menu!");
                 if (!other.UUpdate.IsValid)
                     throw new Exception("Player position not known!");
 
@@ -151,6 +151,7 @@ namespace Celeste.Mod.Ghost.Net {
                         IsValid = true,
                         Name = env.Frame.MPlayer.Name,
                         SID = other.MPlayer.SID,
+                        Mode = other.MPlayer.Mode,
                         Level = other.MPlayer.Level
                     },
 
