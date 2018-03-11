@@ -336,13 +336,13 @@ namespace Celeste.Mod.Ghost.Net {
             // Prevent unordered outdated frames from being handled.
             uint lastIndex;
             if (GhostIndices.TryGetValue(frame.HHead.PlayerID, out lastIndex) && frame.UUpdate.UpdateIndex < lastIndex) {
-                // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Out of order update from #{frame.H0.PlayerID} ({con.UpdateEndPoint}) - got {frame.U0.UpdateIndex}, newest is {lastIndex]}");
+                // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Out of order update from #{frame.HHead.PlayerID} ({con.UpdateEndPoint}) - got {frame.UUpdate.UpdateIndex}, newest is {lastIndex}");
                 return;
             }
             GhostIndices[frame.HHead.PlayerID] = frame.UUpdate.UpdateIndex;
             PlayerMap[frame.HHead.PlayerID] = frame;
 
-            // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received nU0 from #{frame.H0.PlayerID} ({con.UpdateEndPoint})");
+            // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received UUpdate from #{frame.HHead.PlayerID} ({con.UpdateEndPoint})");
 
             // Propagate update to all active players in the same room.
             frame.PropagateU = true;

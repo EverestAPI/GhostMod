@@ -23,7 +23,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         protected float time;
 
-        public int UpdateIndex = -1;
+        public int UpdateIndex;
 
         public Player Player;
         public Session Session;
@@ -386,7 +386,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public void SendUUpdate() {
-            if (Connection == null || GhostRecorder == null || UpdateIndex == -1)
+            if (Connection == null || GhostRecorder == null)
                 return;
 
             if ((UpdateIndex % (GhostNetModule.Settings.SendFrameSkip + 1)) != 0)
@@ -449,7 +449,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public virtual void ParseMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
-            Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {frame.MPlayer.Level}");
+            Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {(char) ('A' + frame.MPlayer.Mode)} {frame.MPlayer.Level}");
 
             PlayerMap[frame.HHead.PlayerID] = frame.MPlayer;
             RebuildPlayerList();
@@ -489,6 +489,8 @@ namespace Celeste.Mod.Ghost.Net {
                         Engine.Scene = new LevelLoader(Session, frame.UUpdate.IsValid ? frame.UUpdate.Data.Position : default(Vector2?));
 
                     } else {
+                        OnExit(null, null, LevelExit.Mode.SaveAndQuit, null, null);
+
                         string message = Dialog.Get("postcard_levelgone");
                         if (string.IsNullOrEmpty(frame.MPlayer.SID)) {
                             message = Dialog.Has("postcard_ghostnetmodule_backtomenu") ? Dialog.Get("postcard_ghostnetmodule_backtomenu") :
