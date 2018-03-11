@@ -11,21 +11,23 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    [Chunk(ChunkID)]
     /// <summary>
     /// Update chunk sent on (best case) each frame.
     /// If the player receives this with their own player ID, the server is moving the player.
     /// </summary>
-    public struct GhostChunkNetUUpdate {
+    public class ChunkUUpdate : IChunk {
 
-        public const string Chunk = "nU";
-        public bool IsValid;
+        public const string ChunkID = "nU";
+
+        public IChunk Next { get; set; }
+
+        public bool IsValid => true;
 
         public uint UpdateIndex;
         public GhostChunkData Data;
 
         public void Read(BinaryReader reader) {
-            IsValid = true;
-
             UpdateIndex = reader.ReadUInt32();
             Data.Read(reader);
         }

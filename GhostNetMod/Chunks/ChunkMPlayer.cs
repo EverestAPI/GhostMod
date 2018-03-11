@@ -11,15 +11,19 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    [Chunk(ChunkID)]
     /// <summary>
     /// "Status" chunk sent on connection and on room change.
     /// Server remembers this and responds with all other players in the same room.
     /// If the player receives this with their own player ID, the server is moving the player.
     /// </summary>
-    public struct GhostChunkNetMPlayer {
+    public class ChunkMPlayer : IChunk {
 
-        public const string Chunk = "nM";
-        public bool IsValid;
+        public const string ChunkID = "nM";
+
+        public IChunk Next { get; set; }
+
+        public bool IsValid => true;
 
         public string Name;
 
@@ -28,8 +32,6 @@ namespace Celeste.Mod.Ghost.Net {
         public string Level;
 
         public void Read(BinaryReader reader) {
-            IsValid = true;
-
             Name = reader.ReadNullTerminatedString();
 
             SID = reader.ReadNullTerminatedString();

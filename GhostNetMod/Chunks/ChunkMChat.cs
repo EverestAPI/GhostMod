@@ -11,21 +11,17 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    [Chunk(ChunkID)]
     /// <summary>
     /// A simple chat message.
     /// </summary>
-    public struct GhostChunkNetMChat {
+    public class ChunkMChat : IChunk {
 
-        public const string Chunk = "nMC";
-        public bool IsValid {
-            get {
-                return !string.IsNullOrWhiteSpace(Text);
-            }
-            set {
-                if (!value)
-                    Text = "";
-            }
-        }
+        public const string ChunkID = "nMC";
+
+        public IChunk Next { get; set; }
+
+        public bool IsValid => !string.IsNullOrWhiteSpace(Text);
 
         /// <summary>
         /// Server-internal field.

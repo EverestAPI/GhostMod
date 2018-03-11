@@ -26,7 +26,7 @@ namespace Celeste.Mod.Ghost.Net {
         public abstract string Args { get; set; }
         public abstract string Help { get; set; }
 
-        public virtual void Parse(GhostNetCommandEnv env) {
+        public virtual void Handle(GhostNetCommandEnv env) {
             string raw = env.Text;
 
             int index = GhostNetModule.Settings.ServerCommandPrefix.Length + Name.Length - 1; // - 1 because next space required
@@ -43,15 +43,15 @@ namespace Celeste.Mod.Ghost.Net {
                 string argString = raw.Substring(argIndex, argLength);
 
                 // + 1 because space
-                args.Add(new GhostNetCommandArg(env).Parse(raw, argIndex, argLength));
+                args.Add(new GhostNetCommandArg(env).Handle(raw, argIndex, argLength));
 
-                // Parse a range
+                // Handle a range
                 if (args.Count >= 3 &&
                     args[args.Count - 3].Type == GhostNetCommandArg.EType.Int &&
                     (args[args.Count - 2].String == "-" || args[args.Count - 2].String == "+") &&
                     args[args.Count - 1].Type == GhostNetCommandArg.EType.Int
                 ) {
-                    args.Add(new GhostNetCommandArg(env).Parse(raw, args[args.Count - 3].Index, next - args[args.Count - 3].Index));
+                    args.Add(new GhostNetCommandArg(env).Handle(raw, args[args.Count - 3].Index, next - args[args.Count - 3].Index));
                     args.RemoveRange(args.Count - 4, 3);
                     continue;
                 }
@@ -72,25 +72,25 @@ namespace Celeste.Mod.Ghost.Net {
         public override string Args { get; set; }
         public override string Help { get; set; }
 
-        public Action<GhostNetCommand, GhostNetCommandEnv> OnParse;
-        public override void Parse(GhostNetCommandEnv env) {
-            if (OnParse != null) {
-                OnParse(this, env);
+        public Action<GhostNetCommand, GhostNetCommandEnv> OnHandle;
+        public override void Handle(GhostNetCommandEnv env) {
+            if (OnHandle != null) {
+                OnHandle(this, env);
                 return;
             }
-            base.Parse(env);
+            base.Handle(env);
         }
 
         public Action<GhostNetCommand, GhostNetCommandEnv, GhostNetCommandArg[]> OnRun;
         public override void Run(GhostNetCommandEnv env, params GhostNetCommandArg[] args)
             => OnRun(this, env, args);
 
-        public static class Parsers {
+        public static class Handlers {
             /// <summary>
-            /// Parse everything as one argument and run the command.
+            /// Handle everything as one argument and run the command.
             /// </summary>
             public static void Everything(GhostNetCommand cmd, GhostNetCommandEnv env)
-                => cmd.Run(env, new GhostNetCommandArg(env).Parse(env.Text, GhostNetModule.Settings.ServerCommandPrefix.Length + cmd.Name.Length + 1));
+                => cmd.Run(env, new GhostNetCommandArg(env).Handle(env.Text, GhostNetModule.Settings.ServerCommandPrefix.Length + cmd.Name.Length + 1));
         }
 
     }
@@ -138,7 +138,7 @@ namespace Celeste.Mod.Ghost.Net {
                     throw new Exception("ID out of range!");
 
                 GhostNetFrame player;
-                if (!Env.Server.PlayerMap.TryGetValue((uint) Int, out player) || string.IsNullOrEmpty(player.MPlayer.Name))
+                if (!Env.Server.PlayerMap.TryGetValue((uint) Int, out player) || string.IsNullOrEmpty(player.MPlayer?.Name))
                     throw new Exception("ID already disconnected!");
 
                 return player;
@@ -149,7 +149,7 @@ namespace Celeste.Mod.Ghost.Net {
             Env = env;
         }
 
-        public virtual GhostNetCommandArg Parse(string raw, int index) {
+        public virtual GhostNetCommandArg Handle(string raw, int index) {
             RawText = raw;
             if (index < 0 || raw.Length <= index) {
                 String = "";
@@ -159,17 +159,17 @@ namespace Celeste.Mod.Ghost.Net {
             String = raw.Substring(index);
             Index = index;
 
-            return Parse();
+            return Handle();
         }
-        public virtual GhostNetCommandArg Parse(string raw, int index, int length) {
+        public virtual GhostNetCommandArg Handle(string raw, int index, int length) {
             RawText = raw;
             String = raw.Substring(index, length);
             Index = index;
 
-            return Parse();
+            return Handle();
         }
 
-        public virtual GhostNetCommandArg Parse() {
+        public virtual GhostNetCommandArg Handle() {
             if (int.TryParse(String, out Int)) {
                 Type = EType.Int;
                 Long = IntRangeFrom = IntRangeTo = Int;
@@ -241,7 +241,7 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetConnection Connection;
         public GhostNetFrame Frame;
 
-        public string Text => Frame.MChat.Text;
+        public string Text => Frame.MChat?.Text;
 
         public bool IsOP => Frame.HHead.PlayerID == 0;
 

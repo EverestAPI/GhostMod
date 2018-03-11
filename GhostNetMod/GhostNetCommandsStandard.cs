@@ -115,7 +115,7 @@ namespace Celeste.Mod.Ghost.Net {
             Name = "broadcast",
             Args = "<text>",
             Help = "OP: Broadcast something as the server.",
-            OnParse = GhostNetDCommand.Parsers.Everything,
+            OnHandle = GhostNetDCommand.Handlers.Everything,
             OnRun = (cmd, env, args) => {
                 if (!env.IsOP)
                     throw new Exception("You're not OP!");
@@ -138,34 +138,34 @@ namespace Celeste.Mod.Ghost.Net {
                 GhostNetFrame other = args[0].Player;
                 if (string.IsNullOrEmpty(other.MPlayer.SID))
                     throw new Exception("Player in menu!");
-                if (!other.UUpdate.IsValid)
+                if (other.UUpdate == null)
                     throw new Exception("Player position not known!");
 
                 GhostNetFrame msg = env.Send($"Teleporting to {other.MPlayer.Name}#{other.HHead.PlayerID}...");
 
-                GhostChunkNetMSession session = new GhostChunkNetMSession();
+                ChunkMSession session = new ChunkMSession();
                 if (other.MPlayer.SID != env.Frame.MPlayer.SID ||
                     other.MPlayer.Mode != env.Frame.MPlayer.Mode) {
                     // Request the current session information from the other player.
                     // TODO: Make requesting info easier, add timeouts.
-                    GhostNetFrame? response = null;
+                    GhostNetFrame response = null;
 
-                    // Temporary parser to grab the response.
-                    GhostNetFrameParser parse = (GhostNetConnection con, ref GhostNetFrame received) => {
+                    // Temporary Handler to grab the response.
+                    GhostNetFrameHandler Handle = (GhostNetConnection con, ref GhostNetFrame received) => {
                         if (received.HHead.PlayerID != other.HHead.PlayerID)
                             return;
-                        if (!received.MSession.IsValid)
+                        if (received.MSession == null)
                             return;
                         response = received;
                     };
-                    env.Server.OnParse += parse;
+                    env.Server.OnHandle += Handle;
 
                     // Request an MSession.
                     args[0].Connection.SendManagement(new GhostNetFrame {
                         HHead = env.Frame.HHead, // Tell the other player who requested it.
 
-                        MRequest = {
-                            ID = GhostChunkNetMSession.Chunk
+                        MRequest = new ChunkMRequest {
+                            ID = ChunkMSession.ChunkID
                         }
                     });
 
@@ -174,20 +174,18 @@ namespace Celeste.Mod.Ghost.Net {
                     while (response == null)
                         Thread.Sleep(0);
                     
-                    env.Server.OnParse -= parse;
+                    env.Server.OnHandle -= Handle;
 
-                    if (response.Value.MSession.InSession)
-                        session = response.Value.MSession;
+                    if (response.MSession.InSession)
+                        session = response.MSession;
                 }
 
                 env.Connection.SendManagement(new GhostNetFrame {
-                    HHead = {
-                        IsValid = true,
+                    HHead = new ChunkHHead {
                         PlayerID = env.Frame.HHead.PlayerID
                     },
 
-                    MPlayer = {
-                        IsValid = true,
+                    MPlayer = new ChunkMPlayer {
                         Name = env.Frame.MPlayer.Name,
                         SID = other.MPlayer.SID,
                         Mode = other.MPlayer.Mode,
@@ -220,7 +218,7 @@ i:TEXTURE shows TEXTURE from the GUI atlas.
 p:TEXTURE shows TEXTURE from the Portraits atlas.
 p:FRM1 FRM2 FRM3 plays an animation, 5 FPS by default.
 p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
-            OnParse = GhostNetDCommand.Parsers.Everything,
+            OnHandle = GhostNetDCommand.Handlers.Everything,
             OnRun = (cmd, env, args) => {
                 if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
                     return;
@@ -228,11 +226,11 @@ p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
                 GhostNetFrame frame = new GhostNetFrame {
                     HHead = env.Frame.HHead,
 
-                    MEmote = {
+                    MEmote = new ChunkMEmote {
                         Value = args[0]
                     }
                 };
-                env.Server.Parse(env.Connection, ref frame);
+                env.Server.Handle(env.Connection, ref frame);
             }
         };
 

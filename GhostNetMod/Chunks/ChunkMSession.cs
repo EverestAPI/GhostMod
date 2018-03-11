@@ -11,15 +11,19 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    [Chunk(ChunkID)]
     /// <summary>
     /// Session "status" chunk sent on connection and on room change.
     /// Used when teleporting.
     /// The player can receive this with an MPlayer chunk to change the session.
     /// </summary>
-    public struct GhostChunkNetMSession {
+    public class ChunkMSession : IChunk {
 
-        public const string Chunk = "nMS";
-        public bool IsValid;
+        public const string ChunkID = "nMS";
+
+        public IChunk Next { get; set; }
+
+        public bool IsValid => true;
 
         public bool InSession;
 
@@ -48,8 +52,6 @@ namespace Celeste.Mod.Ghost.Net {
         public Session.CoreModes CoreMode;
 
         public void Read(BinaryReader reader) {
-            IsValid = true;
-
             if (!reader.ReadBoolean())
                 return;
 

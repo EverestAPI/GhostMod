@@ -11,21 +11,17 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    [Chunk(ChunkID)]
     /// <summary>
     /// Make an emote spawn above the player.
     /// </summary>
-    public struct GhostChunkNetMEmote {
+    public class ChunkMEmote : IChunk {
 
-        public const string Chunk = "nME";
-        public bool IsValid {
-            get {
-                return !string.IsNullOrWhiteSpace(Value);
-            }
-            set {
-                if (!value)
-                    Value = "";
-            }
-        }
+        public const string ChunkID = "nME";
+
+        public IChunk Next { get; set; }
+
+        public bool IsValid => !string.IsNullOrWhiteSpace(Value);
 
         public string Value;
 

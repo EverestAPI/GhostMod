@@ -11,21 +11,17 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    [Chunk(ChunkID)]
     /// <summary>
     /// Chunk sent by the server if it's requesting another "requestable" from the player.
     /// </summary>
-    public struct GhostChunkNetMRequest {
+    public class ChunkMRequest : IChunk {
 
-        public const string Chunk = "nMR";
-        public bool IsValid {
-            get {
-                return !string.IsNullOrWhiteSpace(ID);
-            }
-            set {
-                if (!value)
-                    ID = "";
-            }
-        }
+        public const string ChunkID = "nMR";
+
+        public IChunk Next { get; set; }
+
+        public bool IsValid => !string.IsNullOrWhiteSpace(ID);
 
         public string ID;
 

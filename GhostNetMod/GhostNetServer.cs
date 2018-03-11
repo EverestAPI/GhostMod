@@ -45,7 +45,7 @@ namespace Celeste.Mod.Ghost.Net {
         public List<GhostNetCommand> Commands = new List<GhostNetCommand>();
 
         public static event Action<GhostNetServer> OnCreate;
-        public event GhostNetFrameParser OnParse;
+        public event GhostNetFrameHandler OnHandle;
         // TODO: More events.
 
         // Allows testing a subset of GhostNetMod's functions in an easy manner.
@@ -92,12 +92,11 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetFrame CreateMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
             lock (ChatLog) {
                 GhostNetFrame msg = new GhostNetFrame {
-                    HHead = {
-                        IsValid = true,
+                    HHead = new ChunkHHead {
                         PlayerID = uint.MaxValue
                     },
 
-                    MChat = {
+                    MChat = new ChunkMChat {
                         ID = (uint) ChatLog.Count,
                         Text = fillVars ? FillVariables(text, frame) : text,
                         Color = color ?? GhostNetModule.Settings.ServerColorDefault,
@@ -140,68 +139,67 @@ namespace Celeste.Mod.Ghost.Net {
             ConnectionMap[con.ManagementEndPoint] = con;
             UpdateConnectionQueue[con.ManagementEndPoint.Address] = con;
             con.SendManagement(new GhostNetFrame {
-                HHead = {
-                    IsValid = true,
+                HHead = new ChunkHHead {
                     PlayerID = id
                 },
 
-                MServerInfo = {
-                    IsValid = true
+                MServerInfo = new ChunkMServerInfo {
+                    Name = GhostNetModule.Settings.ServerNameAuto
                 }
             });
         }
 
         #endregion
 
-        #region Frame Parsers
+        #region Frame Handlers
 
         protected virtual void SetNetHead(GhostNetConnection con, ref GhostNetFrame frame) {
-            frame.HHead = new GhostChunkNetHHead {
-                IsValid = true,
+            frame.HHead = new ChunkHHead {
                 PlayerID = (uint) Connections.IndexOf(con)
             };
 
-            frame.MServerInfo.IsValid = false;
+            // Prevent MServerInfo from being propagated.
+            frame.MServerInfo = null;
         }
 
-        public virtual void Parse(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void Handle(GhostNetConnection con, ref GhostNetFrame frame) {
             SetNetHead(con, ref frame);
 
-            if (!frame.HHead.IsValid)
+            if (frame.HHead == null)
                 return;
 
-            if (frame.MPlayer.IsValid)
-                ParseMPlayer(con, ref frame);
+            if (frame.MPlayer != null)
+                HandleMPlayer(con, ref frame);
 
             GhostNetFrame player;
-            if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || !player.HHead.IsValid) {
+            if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player.HHead == null) {
                 // Ghost not managed - ignore the frame.
-                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unexpected frame from #{frame.HHead.PlayerID} ({con.ManagementEndPoint}) - statusless ghost, possibly premature");
+                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unexpected frame from #{frame.HHead?.PlayerID.ToString() ?? "???"} ({con.ManagementEndPoint}) - statusless ghost, possibly premature");
                 return;
             }
             // Temporarily attach the MPlayer chunk to make player identification easier.
-            bool mPlayerTemporary = !frame.MPlayer.IsValid;
+            bool mPlayerTemporary = frame.MPlayer == null;
             frame.MPlayer = player.MPlayer;
 
-            if (frame.MRequest.IsValid) {
+            if (frame.MRequest != null) {
                 // TODO: Handle requests by client in server.
 
-                frame.MRequest.IsValid = false;
+                frame.MRequest = null; // Prevent request from being propagated.
             }
 
-            if (frame.MEmote.IsValid)
-                ParseMEmote(con, ref frame);
+            if (frame.MEmote != null)
+                HandleMEmote(con, ref frame);
 
-            if (frame.MChat.IsValid)
-                ParseMChat(con, ref frame);
+            if (frame.MChat != null)
+                HandleMChat(con, ref frame);
 
-            if (frame.UUpdate.IsValid)
-                ParseUUpdate(con, ref frame);
+            if (frame.UUpdate != null)
+                HandleUUpdate(con, ref frame);
 
-            OnParse?.Invoke(con, ref frame);
+            OnHandle?.Invoke(con, ref frame);
 
             if (mPlayerTemporary)
-                frame.MPlayer.IsValid = false;
+                frame.MPlayer = null;
 
             if (frame.PropagateM)
                 PropagateM(con, ref frame);
@@ -209,7 +207,7 @@ namespace Celeste.Mod.Ghost.Net {
                 PropagateU(con, ref frame);
         }
 
-        public virtual void ParseMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMPlayer(GhostNetConnection con, ref GhostNetFrame frame) {
             frame.MPlayer.Name = frame.MPlayer.Name.Replace("*", "").Replace("\r", "").Replace("\n", "").Trim();
             if (frame.MPlayer.Name.Length > GhostNetModule.Settings.ServerMaxNameLength)
                 frame.MPlayer.Name = frame.MPlayer.Name.Substring(0, GhostNetModule.Settings.ServerMaxNameLength);
@@ -236,8 +234,7 @@ namespace Celeste.Mod.Ghost.Net {
                 if (!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID)
                     continue;
                 con.SendManagement(new GhostNetFrame {
-                    HHead = {
-                        IsValid = true,
+                    HHead = new ChunkHHead {
                         PlayerID = otherStatus.Key
                     },
 
@@ -249,7 +246,7 @@ namespace Celeste.Mod.Ghost.Net {
             PlayerMap[frame.HHead.PlayerID] = frame;
         }
 
-        public virtual void ParseMEmote(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMEmote(GhostNetConnection con, ref GhostNetFrame frame) {
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
 
             frame.MEmote.Value = frame.MEmote.Value.Trim();
@@ -263,11 +260,11 @@ namespace Celeste.Mod.Ghost.Net {
             frame.PropagateM = true;
         }
 
-        public virtual void ParseMChat(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleMChat(GhostNetConnection con, ref GhostNetFrame frame) {
             frame.MChat.Text = frame.MChat.Text.TrimEnd();
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} said: {frame.MChat.Text}");
 
-            // Parse commands if necessary.
+            // Handle commands if necessary.
             if (frame.MChat.Text.StartsWith(GhostNetModule.Settings.ServerCommandPrefix)) {
                 // Echo the chat chunk separately.
                 con.SendManagement(new GhostNetFrame {
@@ -284,7 +281,7 @@ namespace Celeste.Mod.Ghost.Net {
 
                 string prefix = GhostNetModule.Settings.ServerCommandPrefix;
 
-                // TODO: This is basically a port of disbot-neo's parser.
+                // TODO: This is basically a port of disbot-neo's Handler.
 
                 string cmdName = env.Text.Substring(prefix.Length);
                 cmdName = cmdName.Split(GhostNetCommand.CommandNameDelimiters)[0].ToLowerInvariant();
@@ -296,7 +293,7 @@ namespace Celeste.Mod.Ghost.Net {
                     GhostNetFrame cmdFrame = frame;
                     Task.Run(() => {
                         try {
-                            cmd.Parse(env);
+                            cmd.Handle(env);
                         } catch (Exception e) {
                             SendMChat(con, cmdFrame, $"Command {cmdName} failed: {e.Message}", color: GhostNetModule.Settings.ServerColorError, fillVars: false);
                             if (e.GetType() != typeof(Exception)) {
@@ -332,7 +329,7 @@ namespace Celeste.Mod.Ghost.Net {
             frame.PropagateM = true;
         }
 
-        public virtual void ParseUUpdate(GhostNetConnection con, ref GhostNetFrame frame) {
+        public virtual void HandleUUpdate(GhostNetConnection con, ref GhostNetFrame frame) {
             // Prevent unordered outdated frames from being handled.
             uint lastIndex;
             if (GhostIndices.TryGetValue(frame.HHead.PlayerID, out lastIndex) && frame.UUpdate.UpdateIndex < lastIndex) {
@@ -407,7 +404,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
 
             // If we received an update via the managed con, forget about the update con.
-            if (frame.UUpdate.IsValid) {
+            if (frame.UUpdate != null) {
                 if (con.UpdateEndPoint != null) {
                     ConnectionMap[con.UpdateEndPoint] = null;
                     ConnectionMap[con.ManagementEndPoint] = con; // In case Managed == Update
@@ -419,7 +416,7 @@ namespace Celeste.Mod.Ghost.Net {
                 UpdateConnectionQueue[con.ManagementEndPoint.Address] = con;
             }
 
-            Parse(con, ref frame);
+            Handle(con, ref frame);
         }
 
         protected virtual void OnReceiveUpdate(GhostNetConnection conReceived, IPEndPoint remote, GhostNetFrame frame) {
@@ -447,7 +444,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            Parse(con, ref frame);
+            Handle(con, ref frame);
         }
 
         protected virtual void OnDisconnect(GhostNetConnection con) {
@@ -479,13 +476,11 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Propagate disconnect to all other players.
             GhostNetFrame frame = new GhostNetFrame {
-                HHead = {
-                    IsValid = true,
+                HHead = new ChunkHHead {
                     PlayerID = id
                 },
 
-                MPlayer = {
-                    IsValid = true,
+                MPlayer = new ChunkMPlayer {
                     Name = "",
                     SID = "",
                     Mode = AreaMode.Normal,

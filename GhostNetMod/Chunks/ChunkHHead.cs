@@ -11,21 +11,26 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
+    [Chunk(ChunkID)]
     /// <summary>
-    /// Sent by the server, chunk containing some basic connection info.
+    /// Not sent by client, but attached to all frames by client.
     /// </summary>
-    public struct GhostChunkNetMServerInfo {
+    public class ChunkHHead : IChunk {
 
-        public const string Chunk = "nM?";
-        public bool IsValid;
+        public const string ChunkID = "nH";
 
-        // PlayerID contained in HHead.
+        public IChunk Next { get; set; }
+
+        public bool IsValid => true;
+
+        public uint PlayerID;
 
         public void Read(BinaryReader reader) {
-            IsValid = true;
+            PlayerID = reader.ReadUInt32();
         }
 
         public void Write(BinaryWriter writer) {
+            writer.Write(PlayerID);
         }
 
     }

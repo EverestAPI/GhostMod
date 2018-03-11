@@ -61,14 +61,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Chunks\GhostChunkNetHHead.cs" />
-    <Compile Include="Chunks\GhostChunkNetMChat.cs" />
-    <Compile Include="Chunks\GhostChunkNetMEmote.cs" />
-    <Compile Include="Chunks\GhostChunkNetMRequest.cs" />
-    <Compile Include="Chunks\GhostChunkNetMSession.cs" />
-    <Compile Include="Chunks\GhostChunkNetMServerInfo.cs" />
-    <Compile Include="Chunks\GhostChunkNetUUpdate.cs" />
-    <Compile Include="Chunks\GhostChunkNetMPlayer.cs" />
+    <Compile Include="Chunks\IChunk.cs" />
+    <Compile Include="Chunks\ChunkHHead.cs" />
+    <Compile Include="Chunks\ChunkMChat.cs" />
+    <Compile Include="Chunks\ChunkMEmote.cs" />
+    <Compile Include="Chunks\ChunkMRequest.cs" />
+    <Compile Include="Chunks\ChunkMSession.cs" />
+    <Compile Include="Chunks\ChunkMServerInfo.cs" />
+    <Compile Include="Chunks\ChunkUUpdate.cs" />
+    <Compile Include="Chunks\ChunkMPlayer.cs" />
     <Compile Include="Connection\GhostNetRemoteConnection.cs" />
     <Compile Include="Connection\GhostNetLocalConnection.cs" />
     <Compile Include="GhostNetCommandsStandard.cs" />
