@@ -92,17 +92,21 @@ namespace Celeste.Mod.Ghost.Net {
                 .Replace("((id))", frame.HHead.PlayerID.ToString())
                 .Replace("((server))", GhostNetModule.Settings.ServerNameAuto);
 
-        public ChunkMChat CreateMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
+        public ChunkMChat CreateMChat(GhostNetFrame frame, string text, string tag = null, Color? color = null, bool fillVars = false, uint? id = null) {
             lock (ChatLog) {
                 ChunkMChat chunk = new ChunkMChat {
-                    ID = (uint) ChatLog.Count,
+                    ID = id ?? (uint) ChatLog.Count,
                     Text = fillVars ? FillVariables(text, frame) : text,
+                    Tag = tag ?? "",
                     Color = color ?? GhostNetModule.Settings.ServerColorDefault,
                     Date = DateTime.UtcNow,
-                    KeepColor = true,
+                    CreatedByServer = true,
                     Logged = true
                 };
-                ChatLog.Add(chunk);
+                if (id == null)
+                    ChatLog.Add(chunk);
+                else
+                    ChatLog[(int) id] = chunk;
                 return chunk;
             }
         }
@@ -242,9 +246,9 @@ namespace Celeste.Mod.Ghost.Net {
                 frame.MPlayer = null;
 
             if (frame.PropagateM)
-                PropagateM(con, frame);
+                PropagateM(frame);
             else if (frame.PropagateU)
-                PropagateU(con, frame);
+                PropagateU(frame);
         }
 
         public virtual void HandleMPlayer(GhostNetConnection con, GhostNetFrame frame) {
@@ -264,7 +268,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (!PlayerMap.ContainsKey(frame.HHead.PlayerID)) {
                 // Player just connected.
                 if (!string.IsNullOrWhiteSpace(GhostNetModule.Settings.ServerMessageGreeting)) {
-                    BroadcastMChat(con, frame, GhostNetModule.Settings.ServerMessageGreeting, fillVars: true);
+                    BroadcastMChat(frame, GhostNetModule.Settings.ServerMessageGreeting, fillVars: true);
                     SendMChat(con, frame, GhostNetModule.Settings.ServerMessageMOTD, fillVars: true);
                 }
             }
@@ -294,7 +298,7 @@ namespace Celeste.Mod.Ghost.Net {
                 frame.MEmote.Value = frame.MEmote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteValueLength);
 
             if (GhostNetEmote.IsText(frame.MEmote.Value)) {
-                frame.MChat = CreateMChat(con, frame, frame.MEmote.Value, GhostNetModule.Settings.ServerColorEmote);
+                frame.MChat = CreateMChat(frame, frame.MEmote.Value, color: GhostNetModule.Settings.ServerColorEmote);
             }
 
             frame.PropagateM = true;
@@ -304,13 +308,20 @@ namespace Celeste.Mod.Ghost.Net {
             frame.MChat.Text = frame.MChat.Text.TrimEnd();
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} said: {frame.MChat.Text}");
 
+            if (!frame.MChat.Logged) {
+                lock (ChatLog) {
+                    frame.MChat.ID = (uint) ChatLog.Count;
+                    ChatLog.Add(frame.MChat);
+                }
+            }
+
             // Handle commands if necessary.
             if (frame.MChat.Text.StartsWith(GhostNetModule.Settings.ServerCommandPrefix)) {
                 // Echo the chat chunk separately.
+                frame.MChat.Color = GhostNetModule.Settings.ServerColorCommand;
                 con.SendManagement(new GhostNetFrame {
                     HHead = frame.HHead,
-
-                    MChat = CreateMChat(con, frame, frame.MChat.Text, GhostNetModule.Settings.ServerColorCommand)
+                    MChat = frame.MChat
                 }, true);
 
                 GhostNetCommandEnv env = new GhostNetCommandEnv {
@@ -333,7 +344,7 @@ namespace Celeste.Mod.Ghost.Net {
                     GhostNetFrame cmdFrame = frame;
                     Task.Run(() => {
                         try {
-                            cmd.Handle(env);
+                            cmd.Parse(env);
                         } catch (Exception e) {
                             SendMChat(con, cmdFrame, $"Command {cmdName} failed: {e.Message}", color: GhostNetModule.Settings.ServerColorError, fillVars: false);
                             if (e.GetType() != typeof(Exception)) {
@@ -354,17 +365,12 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MChat.Text.Length > GhostNetModule.Settings.ServerMaxChatTextLength)
                 frame.MChat.Text = frame.MChat.Text.Substring(0, GhostNetModule.Settings.ServerMaxChatTextLength);
 
-            if (!frame.MChat.KeepColor)
+            if (!frame.MChat.CreatedByServer) {
+                frame.MChat.Tag = "";
                 frame.MChat.Color = Color.White;
+            }
 
             frame.MChat.Date = DateTime.UtcNow;
-
-            if (!frame.MChat.Logged) {
-                lock (ChatLog) {
-                    frame.MChat.ID = (uint) ChatLog.Count;
-                    ChatLog.Add(frame.MChat);
-                }
-            }
 
             frame.PropagateM = true;
         }
@@ -389,17 +395,17 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Frame Senders
 
-        public void PropagateM(GhostNetConnection con, GhostNetFrame frame) {
+        public void PropagateM(GhostNetFrame frame) {
             foreach (GhostNetConnection otherCon in Connections)
                 if (otherCon != null)
                     otherCon.SendManagement(frame, false);
         }
 
-        public void PropagateU(GhostNetConnection con, GhostNetFrame frame) {
+        public void PropagateU(GhostNetFrame frame) {
             // U is always handled after M. Even if sending this fails, we shouldn't worry about loosing M chunks.
             for (int i = 0; i < Connections.Count; i++) {
                 GhostNetConnection otherCon = Connections[i];
-                if (otherCon == null || (!AllowLoopbackGhost && otherCon == con))
+                if (otherCon == null || (!AllowLoopbackGhost && i == frame.HHead.PlayerID))
                     continue;
 
                 GhostNetFrame otherPlayer;
@@ -421,9 +427,9 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public ChunkMChat BroadcastMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
-            ChunkMChat msg = CreateMChat(con, frame, text, color ?? GhostNetModule.Settings.ServerColorBroadcast, fillVars);
-            PropagateM(con, new GhostNetFrame {
+        public ChunkMChat BroadcastMChat(GhostNetFrame frame, string text, string tag = null, Color? color = null, bool fillVars = false) {
+            ChunkMChat msg = CreateMChat(frame, text, tag, color ?? GhostNetModule.Settings.ServerColorBroadcast, fillVars);
+            PropagateM(new GhostNetFrame {
                 HHead = new ChunkHHead {
                     PlayerID = uint.MaxValue
                 },
@@ -433,8 +439,8 @@ namespace Celeste.Mod.Ghost.Net {
             return msg;
         }
 
-        public ChunkMChat SendMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
-            ChunkMChat msg = CreateMChat(con, frame, text, color, fillVars);
+        public ChunkMChat SendMChat(GhostNetConnection con, GhostNetFrame frame, string text, string tag = null, Color? color = null, bool fillVars = false) {
+            ChunkMChat msg = CreateMChat(frame, text, tag, color, fillVars);
             con.SendManagement(new GhostNetFrame {
                 HHead = new ChunkHHead {
                     PlayerID = uint.MaxValue
@@ -524,7 +530,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (PlayerMap.TryGetValue(id, out player) && player != null &&
                 !string.IsNullOrWhiteSpace(player.MPlayer.Name) &&
                 !string.IsNullOrWhiteSpace(GhostNetModule.Settings.ServerMessageLeave)) {
-                BroadcastMChat(null, player, GhostNetModule.Settings.ServerMessageLeave, fillVars: true);
+                BroadcastMChat(player, GhostNetModule.Settings.ServerMessageLeave, fillVars: true);
             }
 
             OnDisconnect?.Invoke(id, player);
@@ -543,7 +549,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             };
             PlayerMap[id] = null;
-            PropagateM(con, frame);
+            PropagateM(frame);
         }
 
         #endregion

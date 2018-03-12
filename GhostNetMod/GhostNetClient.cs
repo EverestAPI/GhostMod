@@ -255,7 +255,7 @@ namespace Celeste.Mod.Ghost.Net {
                             continue;
 
                         string text = Escape(
-                            $"[{line.Date.ToLocalTime().ToLongTimeString()}] {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}:{(line.Text.Contains('\n') ? "\n" : " ")}{line.Text}",
+                            $"[{line.Date.ToLocalTime().ToLongTimeString()}]{(string.IsNullOrEmpty(line.Tag) ? "" : $"[{line.Tag}]")} {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}:{(line.Text.Contains('\n') ? "\n" : " ")}{line.Text}",
                             Monocle.Draw.DefaultFont
                         );
                         Vector2 size = Monocle.Draw.DefaultFont.MeasureString(text);
@@ -407,7 +407,7 @@ namespace Celeste.Mod.Ghost.Net {
             text = text.TrimEnd();
             if (string.IsNullOrWhiteSpace(text))
                 return;
-            ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, PlayerInfo.Name, text));
+            ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, "", PlayerInfo.Name, text));
             ChatRepeat.Insert(1, text);
             Connection?.SendManagement(new GhostNetFrame {
                 MChat = new ChunkMChat {
@@ -665,7 +665,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            ChatLine line = new ChatLine(frame.MChat.ID, frame.HHead.PlayerID, playerName, frame.MChat.Text, frame.MChat.Color);
+            ChatLine line = new ChatLine(frame.MChat.ID, frame.HHead.PlayerID, playerName, frame.MChat.Tag, frame.MChat.Text, frame.MChat.Color);
 
             // If there's already a chat line with the same message ID, replace it.
             // Also remove any "unconfirmed" messages.
@@ -724,15 +724,15 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Connection Handlers
 
-        protected virtual void OnReceiveManagement(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
+        protected virtual void HandleM(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
             Handle(con, frame);
         }
 
-        protected virtual void OnReceiveUpdate(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
+        protected virtual void HandleU(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
             Handle(con, frame);
         }
 
-        protected virtual void OnDisconnect(GhostNetConnection con) {
+        protected virtual void HandleDisconnect(GhostNetConnection con) {
             Logger.Log(LogLevel.Info, "ghostnet-c", "Client disconnected");
 
             Connection = null;
@@ -828,9 +828,9 @@ namespace Celeste.Mod.Ghost.Net {
                 // We're hosting - let's just set up pseudo connections.
                 Connection = GhostNetModule.Instance.Server.LocalConnectionToServer;
                 GhostNetModule.Instance.Server.Accept(new GhostNetLocalConnection {
-                    OnReceiveManagement = OnReceiveManagement,
-                    OnReceiveUpdate = OnReceiveUpdate,
-                    OnDisconnect = OnDisconnect
+                    OnReceiveManagement = HandleM,
+                    OnReceiveUpdate = HandleU,
+                    OnDisconnect = HandleDisconnect
                 });
             
             } else {
@@ -839,9 +839,9 @@ namespace Celeste.Mod.Ghost.Net {
                     GhostNetModule.Settings.Host,
                     GhostNetModule.Settings.Port
                 ) {
-                    OnReceiveManagement = OnReceiveManagement,
-                    OnReceiveUpdate = OnReceiveUpdate,
-                    OnDisconnect = OnDisconnect
+                    OnReceiveManagement = HandleM,
+                    OnReceiveUpdate = HandleU,
+                    OnDisconnect = HandleDisconnect
                 };
             }
 
@@ -901,18 +901,20 @@ namespace Celeste.Mod.Ghost.Net {
             public uint MessageID;
             public uint PlayerID;
             public string PlayerName;
+            public string Tag;
             public string Text;
             public Color Color;
             public DateTime Date;
             public bool Unconfirmed => MessageID == uint.MaxValue;
 
-            public ChatLine(uint messageID, uint playerID, string playerName, string text)
-                : this(messageID, playerID, playerName, text, Color.White) {
+            public ChatLine(uint messageID, uint playerID, string playerName, string tag, string text)
+                : this(messageID, playerID, playerName, tag, text, Color.White) {
             }
-            public ChatLine(uint messageID, uint playerID, string playerName, string text, Color color) {
+            public ChatLine(uint messageID, uint playerID, string playerName, string tag, string text, Color color) {
                 MessageID = messageID;
                 PlayerID = playerID;
                 PlayerName = playerName;
+                Tag = tag;
                 Text = text;
                 Color = color;
                 Date = DateTime.UtcNow;

@@ -26,19 +26,21 @@ namespace Celeste.Mod.Ghost.Net {
         /// <summary>
         /// Server-internal field.
         /// </summary>
-        public bool KeepColor;
+        public bool CreatedByServer;
         /// <summary>
         /// Server-internal field.
         /// </summary>
         public bool Logged;
 
         public uint ID;
+        public string Tag;
         public string Text;
         public Color Color;
         public DateTime Date;
 
         public void Read(BinaryReader reader) {
             ID = reader.ReadUInt32();
+            Tag = reader.ReadNullTerminatedString();
             Text = reader.ReadNullTerminatedString();
             Color = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), 1f);
             Date = DateTime.FromBinary(reader.ReadInt64());
@@ -46,6 +48,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void Write(BinaryWriter writer) {
             writer.Write(ID);
+            writer.WriteNullTerminatedString(Tag);
             writer.WriteNullTerminatedString(Text);
             writer.Write(Color.R);
             writer.Write(Color.G);

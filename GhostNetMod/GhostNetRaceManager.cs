@@ -23,6 +23,9 @@ namespace Celeste.Mod.Ghost.Net {
         public List<Race> Races = new List<Race>();
         protected Dictionary<uint, Race> PlayerRaceCache = new Dictionary<uint, Race>();
 
+        public Color ColorDefault = Color.Azure;
+        public Color ColorBroadcast = Color.AliceBlue;
+
         public GhostNetRaceManager(GhostNetServer server) {
             server.OnHandle += Handle;
             server.OnDisconnect += Disconnect;
@@ -34,10 +37,19 @@ namespace Celeste.Mod.Ghost.Net {
 @"Create, join, start and leave races.",
                 OnRun = RunCommandRace
             });
+
+            server.Commands.Add(CommandRaceChat = new GhostNetDCommand {
+                Name = "rc",
+                Args = "<message>",
+                Help =
+@"Chat with your fellow racers!",
+                OnParse = GhostNetDCommand.Parsers.Everything,
+                OnRun = RunCommandRaceChat
+            });
         }
 
         public static void OnCreateServer(GhostNetServer server) {
-            server.ModData["races"] = new GhostNetRaceManager(server);
+            server.ModData["raceman"] = new GhostNetRaceManager(server);
         }
 
         public void Handle(GhostNetConnection con, GhostNetFrame frame) {
@@ -57,7 +69,7 @@ namespace Celeste.Mod.Ghost.Net {
         public readonly GhostNetCommand CommandRace;
         protected virtual void RunCommandRace(GhostNetCommand cmd, GhostNetCommandEnv env, GhostNetCommandArg[] args) {
             if (args.Length == 0) {
-                GhostNetCommandsStandard.Help.Run(env, new GhostNetCommandArg(env).Handle(cmd.Name, 0));
+                GhostNetCommandsStandard.Help.Run(env, new GhostNetCommandArg(env).Parse(cmd.Name, 0));
                 return;
             }
 
@@ -173,7 +185,7 @@ namespace Celeste.Mod.Ghost.Net {
                         count++;
                     }
                     builder.Append(count).Append(" race");
-                    if (count != 0)
+                    if (count != 1)
                         builder.Append('s');
                     env.Send(builder.ToString().Trim());
                     return;
@@ -211,6 +223,18 @@ namespace Celeste.Mod.Ghost.Net {
                 default:
                     throw new Exception($"Unknown subcommand {args[0]}!");
             }
+        }
+
+        public readonly GhostNetCommand CommandRaceChat;
+        protected virtual void RunCommandRaceChat(GhostNetCommand cmd, GhostNetCommandEnv env, GhostNetCommandArg[] args) {
+            if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+                return;
+
+            Race race = GetRace(env.PlayerID);
+            if (race == null)
+                throw new Exception($"You're not in a race!");
+
+            race.Send(env, args[0], tag: "race", color: ColorDefault);
         }
 
         public Race GetRace(uint playerID) {
@@ -269,7 +293,7 @@ namespace Celeste.Mod.Ghost.Net {
                         count++;
                     }
                     builder.Append(count).Append(" player");
-                    if (count != 0)
+                    if (count != 1)
                         builder.Append('s');
                     return builder.ToString().Trim();
                 }
@@ -284,9 +308,23 @@ namespace Celeste.Mod.Ghost.Net {
                         count++;
                     }
                     builder.Append(count).Append(" area");
-                    if (count != 0)
+                    if (count != 1)
                         builder.Append('s');
                     return builder.ToString().Trim();
+                }
+            }
+
+            public void Send(GhostNetCommandEnv env, string text, string tag, Color? color = null, bool fillVars = false) {
+                ChunkMChat msg = env.Server.CreateMChat(env.Frame, text, tag, color, fillVars, env.MChat.ID);
+                GhostNetFrame frame = new GhostNetFrame {
+                    HHead = env.HHead,
+                    MChat = msg
+                };
+                foreach (uint playerID in Players) {
+                    GhostNetConnection con = env.Server.Connections[(int) playerID];
+                    if (con == null)
+                        continue;
+                    con.SendManagement(frame, false);
                 }
             }
 

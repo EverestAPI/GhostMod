@@ -41,8 +41,8 @@ namespace Celeste.Mod.Ghost.Net {
                     "i:collectables/strawberry",
                     "Hi!",
                     "Too slow!",
-                    "p:madeline/normal04 madeline/normal05 madeline/normal06",
-                    "p:ghost/scoff03 ghost/scoff04 ghost/scoff05 ghost/scoff06",
+                    "p:madeline/normal04",
+                    "p:ghost/scoff03",
                     "p:theo/yolo03 theo/yolo02 theo/yolo01 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02",
                     "p:granny/laugh00 granny/laugh01 granny/laugh02 granny/laugh03",
                 };

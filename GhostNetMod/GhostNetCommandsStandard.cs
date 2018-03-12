@@ -115,14 +115,14 @@ namespace Celeste.Mod.Ghost.Net {
             Name = "broadcast",
             Args = "<text>",
             Help = "OP: Broadcast something as the server.",
-            OnHandle = GhostNetDCommand.Handlers.Everything,
+            OnParse = GhostNetDCommand.Parsers.Everything,
             OnRun = (cmd, env, args) => {
                 if (!env.IsOP)
                     throw new Exception("You're not OP!");
                 if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
                     return;
 
-                env.Server.BroadcastMChat(env.Connection, env.Frame, args[0], fillVars: false);
+                env.Server.BroadcastMChat(env.Frame, args[0], fillVars: false);
             }
         };
 
@@ -190,7 +190,7 @@ i:TEXTURE shows TEXTURE from the GUI atlas.
 p:TEXTURE shows TEXTURE from the Portraits atlas.
 p:FRM1 FRM2 FRM3 plays an animation, 5 FPS by default.
 p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
-            OnHandle = GhostNetDCommand.Handlers.Everything,
+            OnParse = GhostNetDCommand.Parsers.Everything,
             OnRun = (cmd, env, args) => {
                 if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
                     return;
