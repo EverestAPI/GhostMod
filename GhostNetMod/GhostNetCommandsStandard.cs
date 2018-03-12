@@ -122,7 +122,7 @@ namespace Celeste.Mod.Ghost.Net {
                 if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
                     return;
 
-                env.Server.BroadcastMChat(env.Connection, env.Frame, args[0]);
+                env.Server.BroadcastMChat(env.Connection, env.Frame, args[0], fillVars: false);
             }
         };
 
@@ -144,17 +144,17 @@ namespace Celeste.Mod.Ghost.Net {
                 ChunkMChat msg = env.Send($"Teleporting to {other.MPlayer.Name}#{other.HHead.PlayerID}...");
 
                 ChunkMSession session = new ChunkMSession();
-                if (other.MPlayer.SID != env.Frame.MPlayer.SID ||
-                    other.MPlayer.Mode != env.Frame.MPlayer.Mode) {
+                if (other.MPlayer.SID != env.MPlayer.SID ||
+                    other.MPlayer.Mode != env.MPlayer.Mode) {
                     // Request the current session information from the other player.
                     session = env.Server.Request<ChunkMSession>(args[0].Connection)?.MSession;
                 }
 
                 env.Connection.SendManagement(new GhostNetFrame {
-                    HHead = env.Frame.HHead,
+                    HHead = env.HHead,
 
                     MPlayer = new ChunkMPlayer {
-                        Name = env.Frame.MPlayer.Name,
+                        Name = env.MPlayer.Name,
                         SID = other.MPlayer.SID,
                         Mode = other.MPlayer.Mode,
                         Level = other.MPlayer.Level
@@ -170,7 +170,7 @@ namespace Celeste.Mod.Ghost.Net {
 
                 msg.Text = $"Teleported to {other.MPlayer.Name}#{other.HHead.PlayerID}";
                 env.Connection.SendManagement(new GhostNetFrame {
-                    HHead = env.Frame.HHead,
+                    HHead = env.HHead,
                     
                     MChat = msg
                 }, true);
@@ -196,7 +196,7 @@ p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
                     return;
 
                 GhostNetFrame frame = new GhostNetFrame {
-                    HHead = env.Frame.HHead,
+                    HHead = env.HHead,
 
                     MEmote = new ChunkMEmote {
                         Value = args[0]

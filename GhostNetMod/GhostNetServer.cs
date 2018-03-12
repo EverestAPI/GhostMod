@@ -48,6 +48,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public static event Action<GhostNetServer> OnCreate;
         public event GhostNetFrameHandler OnHandle;
+        public event Action<uint, GhostNetFrame> OnDisconnect;
         // TODO: More events.
 
         // Allows testing a subset of GhostNetMod's functions in an easy manner.
@@ -164,8 +165,8 @@ namespace Celeste.Mod.Ghost.Net {
                         client,
                         null
                     ) {
-                        OnReceiveManagement = OnReceiveManagement,
-                        OnDisconnect = OnDisconnect
+                        OnReceiveManagement = HandleM,
+                        OnDisconnect = HandleDisconnect
                     });
                 }
             }
@@ -211,7 +212,7 @@ namespace Celeste.Mod.Ghost.Net {
                 HandleMPlayer(con, frame);
 
             GhostNetFrame player;
-            if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player.HHead == null) {
+            if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player == null) {
                 // Ghost not managed - ignore the frame.
                 Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unexpected frame from #{frame.HHead?.PlayerID.ToString() ?? "???"} ({con.ManagementEndPoint}) - statusless ghost, possibly premature");
                 return;
@@ -270,7 +271,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Inform the player about all existing ghosts.
             foreach (KeyValuePair<uint, GhostNetFrame> otherStatus in PlayerMap) {
-                if (!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID)
+                if (otherStatus.Value == null || (!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID))
                     continue;
                 con.SendManagement(new GhostNetFrame {
                     HHead = new ChunkHHead {
@@ -402,7 +403,7 @@ namespace Celeste.Mod.Ghost.Net {
                     continue;
 
                 GhostNetFrame otherPlayer;
-                if (!PlayerMap.TryGetValue((uint) i, out otherPlayer) ||
+                if (!PlayerMap.TryGetValue((uint) i, out otherPlayer) || otherPlayer == null ||
                     frame.MPlayer.SID != otherPlayer.MPlayer.SID ||
                     frame.MPlayer.Mode != otherPlayer.MPlayer.Mode
                 ) {
@@ -448,7 +449,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Connection Handlers
 
-        protected virtual void OnReceiveManagement(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
+        protected virtual void HandleM(GhostNetConnection con, IPEndPoint remote, GhostNetFrame frame) {
             // We can receive frames from LocalConnectionToServer, which isn't "valid" when we want to send back data.
             // Get the management connection to the remote client.
             if (con == null || !ConnectionMap.TryGetValue(remote, out con) || con == null)
@@ -470,7 +471,7 @@ namespace Celeste.Mod.Ghost.Net {
             Handle(con, frame);
         }
 
-        protected virtual void OnReceiveUpdate(GhostNetConnection conReceived, IPEndPoint remote, GhostNetFrame frame) {
+        protected virtual void HandleU(GhostNetConnection conReceived, IPEndPoint remote, GhostNetFrame frame) {
             // Prevent UpdateConnection locking in on a single player.
             if (conReceived == UpdateConnection)
                 UpdateConnection.UpdateEndPoint = null;
@@ -498,7 +499,7 @@ namespace Celeste.Mod.Ghost.Net {
             Handle(con, frame);
         }
 
-        protected virtual void OnDisconnect(GhostNetConnection con) {
+        protected virtual void HandleDisconnect(GhostNetConnection con) {
             if (!ConnectionMap.TryGetValue(con.ManagementEndPoint, out con) || con == null)
                 return; // Probably already disconnected.
 
@@ -520,10 +521,13 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             GhostNetFrame player;
-            if (PlayerMap.TryGetValue(id, out player) && !string.IsNullOrWhiteSpace(player.MPlayer.Name) &&
+            if (PlayerMap.TryGetValue(id, out player) && player != null &&
+                !string.IsNullOrWhiteSpace(player.MPlayer.Name) &&
                 !string.IsNullOrWhiteSpace(GhostNetModule.Settings.ServerMessageLeave)) {
                 BroadcastMChat(null, player, GhostNetModule.Settings.ServerMessageLeave, fillVars: true);
             }
+
+            OnDisconnect?.Invoke(id, player);
 
             // Propagate disconnect to all other players.
             GhostNetFrame frame = new GhostNetFrame {
@@ -538,7 +542,7 @@ namespace Celeste.Mod.Ghost.Net {
                     Level = ""
                 }
             };
-            PlayerMap[id] = frame;
+            PlayerMap[id] = null;
             PropagateM(con, frame);
         }
 
@@ -561,14 +565,14 @@ namespace Celeste.Mod.Ghost.Net {
                 null,
                 UpdateClient
             ) {
-                OnReceiveUpdate = OnReceiveUpdate
+                OnReceiveUpdate = HandleU
             };
 
             // Fake connection for any local clients running in the same instance.
             LocalConnectionToServer = new GhostNetLocalConnection {
-                OnReceiveManagement = OnReceiveManagement,
-                OnReceiveUpdate = OnReceiveUpdate,
-                OnDisconnect = OnDisconnect
+                OnReceiveManagement = HandleM,
+                OnReceiveUpdate = HandleU,
+                OnDisconnect = HandleDisconnect
             };
 
             ListenerThread = new Thread(ListenerLoop);

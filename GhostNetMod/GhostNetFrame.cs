@@ -129,6 +129,14 @@ namespace Celeste.Mod.Ghost.Net {
                 Set(value);
             }
         }
+        public ChunkMPlayerEvent MPlayerEvent {
+            get {
+                return Get<ChunkMPlayerEvent>();
+            }
+            set {
+                Set(value);
+            }
+        }
 
         // Update chunks.
         public ChunkUUpdate UUpdate {

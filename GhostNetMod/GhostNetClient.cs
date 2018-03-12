@@ -19,6 +19,8 @@ using System.Threading.Tasks;
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetClient : DrawableGameComponent {
 
+        // TODO: Send ChunkMPlayerEvent
+
         public GhostNetConnection Connection;
 
         protected float time;
@@ -45,6 +47,28 @@ namespace Celeste.Mod.Ghost.Net {
         public List<ChatLine> ChatLog = new List<ChatLine>();
         public string ChatInput = "";
 
+        public List<string> ChatRepeat = new List<string>() {
+            ""
+        };
+        protected int _ChatRepeatIndex;
+        public int ChatRepeatIndex {
+            get {
+                return _ChatRepeatIndex;
+            }
+            set {
+                if (_ChatRepeatIndex == value)
+                    return;
+
+                value = (value + ChatRepeat.Count) % ChatRepeat.Count;
+
+                if (_ChatRepeatIndex == 0 && value != 0) {
+                    ChatRepeat[0] = ChatInput;
+                }
+                ChatInput = ChatRepeat[value];
+                _ChatRepeatIndex = value;
+            }
+        }
+
         protected bool _ChatVisible;
         protected bool _ChatWasPaused;
         protected Overlay _ChatLevelOverlay;
@@ -63,6 +87,8 @@ namespace Celeste.Mod.Ghost.Net {
                     // If we're in a level, add a dummy overlay to prevent the pause menu from handling input.
                     if (Engine.Scene is Level)
                         ((Level) Engine.Scene).Overlay = _ChatLevelOverlay = new Overlay();
+
+                    _ChatRepeatIndex = 0;
 
                 } else {
                     ChatInput = "";
@@ -108,16 +134,20 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             if (!ChatVisible && GhostNetModule.Instance.ButtonChat.Pressed) {
-                // Was hidden, but player pressed chat button.
                 ChatVisible = true;
 
-            } else if (ChatVisible && MInput.Keyboard.Pressed(Keys.Enter)) {
-                // Was visible and player pressed enter to send.
-                SendMChat(ChatInput);
-                ChatVisible = false;
+            } else if (ChatVisible) {
+                if (MInput.Keyboard.Pressed(Keys.Enter)) {
+                    SendMChat(ChatInput);
+                    ChatVisible = false;
+
+                } else if (MInput.Keyboard.Pressed(Keys.Down) && ChatRepeatIndex > 0) {
+                    ChatRepeatIndex--;
+                } else if (MInput.Keyboard.Pressed(Keys.Up) && ChatRepeatIndex < ChatRepeat.Count - 1) {
+                    ChatRepeatIndex++;
+                }
 
             } else if (ChatVisible && (Input.ESC.Pressed || Input.Pause.Pressed)) {
-                // Was visible and player escaped.
                 ChatVisible = false;
             }
 
@@ -378,6 +408,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (string.IsNullOrWhiteSpace(text))
                 return;
             ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, PlayerInfo.Name, text));
+            ChatRepeat.Insert(1, text);
             Connection?.SendManagement(new GhostNetFrame {
                 MChat = new ChunkMChat {
                     Text = text
@@ -728,7 +759,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             string target = Session.Level;
             if (Connection != null)
-                Logger.Log(LogLevel.Info, "ghost-c", $"Stepping into {Session.Area.GetSID()} {target}");
+                Logger.Log(LogLevel.Info, "ghost-c", $"Stepping into {Session.Area.GetSID()} {(char) ('A' + Session.Area.Mode)} {target}");
 
             Player = level.Tracker.GetEntity<Player>();
 
@@ -741,7 +772,7 @@ namespace Celeste.Mod.Ghost.Net {
             level.Add(GhostRecorder = new GhostRecorder(Player));
 
             PlayerName?.RemoveSelf();
-            level.Add(PlayerName = new GhostName(Player, PlayerInfo.Name));
+            level.Add(PlayerName = new GhostName(Player, PlayerInfo?.Name ?? ""));
 
             EmoteWheel?.RemoveSelf();
             level.Add(EmoteWheel = new GhostNetEmoteWheel(Player));
@@ -771,6 +802,7 @@ namespace Celeste.Mod.Ghost.Net {
                 // Backspace - trim.
                 if (ChatInput.Length > 0)
                     ChatInput = ChatInput.Substring(0, ChatInput.Length - 1);
+                _ChatRepeatIndex = 0;
 
             } else if (c == (char) 127) {
                 // Delete - currenly not handled.
@@ -778,6 +810,7 @@ namespace Celeste.Mod.Ghost.Net {
             } else if (!char.IsControl(c)) {
                 // Any other character - append.
                 ChatInput += c;
+                _ChatRepeatIndex = 0;
             }
         }
 

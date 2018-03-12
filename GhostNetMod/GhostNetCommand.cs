@@ -138,7 +138,7 @@ namespace Celeste.Mod.Ghost.Net {
                     throw new Exception("ID out of range!");
 
                 GhostNetFrame player;
-                if (!Env.Server.PlayerMap.TryGetValue((uint) Int, out player) || string.IsNullOrEmpty(player.MPlayer?.Name))
+                if (!Env.Server.PlayerMap.TryGetValue((uint) Int, out player) || player == null)
                     throw new Exception("ID already disconnected!");
 
                 return player;
@@ -241,9 +241,15 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetConnection Connection;
         public GhostNetFrame Frame;
 
-        public string Text => Frame.MChat?.Text;
+        public uint PlayerID => Frame.HHead.PlayerID;
+        public bool IsOP => PlayerID == 0;
 
-        public bool IsOP => Frame.HHead.PlayerID == 0;
+        public ChunkHHead HHead => Frame.HHead;
+
+        public ChunkMPlayer MPlayer => Frame.MPlayer;
+        public ChunkMChat MChat => Frame.MChat;
+
+        public string Text => MChat?.Text;
 
         public ChunkMChat Send(string text, Color? color = null, bool fillVars = false)
             => Server.SendMChat(Connection, Frame, text, color, fillVars);

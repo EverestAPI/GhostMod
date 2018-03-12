@@ -13,13 +13,11 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     [Chunk(ChunkID)]
     /// <summary>
-    /// Chunk sent by the server if it's requesting another "requestable" chunk from the client.
-    /// A client defines what it wants to respond to on its own. The server should be able to deal
-    /// with the lack of a response natively.
+    /// Chunk sent by the client to signify a given event. Standard event IDs are stored in the nested IDs class.
     /// </summary>
-    public class ChunkMRequest : IChunk {
+    public class ChunkMPlayerEvent : IChunk {
 
-        public const string ChunkID = "nMR";
+        public const string ChunkID = "nM!";
 
         public IChunk Next { get; set; }
 
@@ -33,6 +31,11 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void Write(BinaryWriter writer) {
             writer.WriteNullTerminatedString(ID);
+        }
+
+        public static class IDs {
+            // TODO: More event types.
+            public const string Complete = "fin";
         }
 
     }

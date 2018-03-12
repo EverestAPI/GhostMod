@@ -182,7 +182,7 @@ namespace Celeste.Mod.Ghost.Net {
                 int fps;
                 int offset = 1;
                 if (!int.TryParse(split[0], out fps)) {
-                    fps = 10; // Default FPS.
+                    fps = 7; // Default FPS.
                     offset = 0;
                 }
 
