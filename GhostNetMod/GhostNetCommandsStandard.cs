@@ -141,7 +141,7 @@ namespace Celeste.Mod.Ghost.Net {
                 if (other.UUpdate == null)
                     throw new Exception("Player position not known!");
 
-                GhostNetFrame msg = env.Send($"Teleporting to {other.MPlayer.Name}#{other.HHead.PlayerID}...");
+                ChunkMChat msg = env.Send($"Teleporting to {other.MPlayer.Name}#{other.HHead.PlayerID}...");
 
                 ChunkMSession session = new ChunkMSession();
                 if (other.MPlayer.SID != env.Frame.MPlayer.SID ||
@@ -151,9 +151,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
 
                 env.Connection.SendManagement(new GhostNetFrame {
-                    HHead = new ChunkHHead {
-                        PlayerID = env.Frame.HHead.PlayerID
-                    },
+                    HHead = env.Frame.HHead,
 
                     MPlayer = new ChunkMPlayer {
                         Name = env.Frame.MPlayer.Name,
@@ -168,10 +166,14 @@ namespace Celeste.Mod.Ghost.Net {
                     // This also sends other info such as the player rotation, scale, color, ...
                     // ... but the client should know what to do.
                     UUpdate = other.UUpdate
-                });
+                }, true);
 
-                msg.MChat.Text = $"Teleported to {other.MPlayer.Name}#{other.HHead.PlayerID}";
-                env.Connection.SendManagement(msg);
+                msg.Text = $"Teleported to {other.MPlayer.Name}#{other.HHead.PlayerID}";
+                env.Connection.SendManagement(new GhostNetFrame {
+                    HHead = env.Frame.HHead,
+                    
+                    MChat = msg
+                }, true);
 
             }
         };

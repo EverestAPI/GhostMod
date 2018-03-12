@@ -311,7 +311,7 @@ namespace Celeste.Mod.Ghost.Net {
                     Mode = Session?.Area.Mode ?? AreaMode.Normal,
                     Level = Session?.Level ?? ""
                 }
-            });
+            }, true);
         }
 
         public void SendMSession() {
@@ -322,7 +322,7 @@ namespace Celeste.Mod.Ghost.Net {
                     MSession = new ChunkMSession {
                         InSession = false
                     }
-                });
+                }, true);
                 return;
             }
             Connection.SendManagement(new GhostNetFrame {
@@ -353,7 +353,7 @@ namespace Celeste.Mod.Ghost.Net {
                     Time = Session.Time,
                     CoreMode = Session.CoreMode
                 }
-            });
+            }, true);
         }
 
         public void SendMEmote(int index) {
@@ -370,7 +370,7 @@ namespace Celeste.Mod.Ghost.Net {
                 MEmote = new ChunkMEmote {
                     Value = value.Trim()
                 }
-            });
+            }, true);
         }
 
         public void SendMChat(string text) {
@@ -382,7 +382,7 @@ namespace Celeste.Mod.Ghost.Net {
                 MChat = new ChunkMChat {
                     Text = text
                 }
-            });
+            }, true);
         }
 
         public void SendUUpdate() {
@@ -399,9 +399,9 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             };
             if (GhostNetModule.Settings.SendUFramesInMStream) {
-                Connection.SendManagement(frame);
+                Connection.SendManagement(frame, true);
             } else {
-                Connection.SendUpdate(frame);
+                Connection.SendUpdate(frame, true);
             }
 
             UpdateIndex++;

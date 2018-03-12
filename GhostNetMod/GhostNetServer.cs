@@ -38,11 +38,13 @@ namespace Celeste.Mod.Ghost.Net {
         public Dictionary<uint, GhostNetFrame> PlayerMap = new Dictionary<uint, GhostNetFrame>();
         public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
 
-        public List<GhostNetFrame> ChatLog = new List<GhostNetFrame>();
+        public List<ChunkMChat> ChatLog = new List<ChunkMChat>();
 
         public Thread ListenerThread;
 
         public List<GhostNetCommand> Commands = new List<GhostNetCommand>();
+
+        public Dictionary<string, object> ModData = new Dictionary<string, object>();
 
         public static event Action<GhostNetServer> OnCreate;
         public event GhostNetFrameHandler OnHandle;
@@ -89,24 +91,18 @@ namespace Celeste.Mod.Ghost.Net {
                 .Replace("((id))", frame.HHead.PlayerID.ToString())
                 .Replace("((server))", GhostNetModule.Settings.ServerNameAuto);
 
-        public GhostNetFrame CreateMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
+        public ChunkMChat CreateMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
             lock (ChatLog) {
-                GhostNetFrame msg = new GhostNetFrame {
-                    HHead = new ChunkHHead {
-                        PlayerID = uint.MaxValue
-                    },
-
-                    MChat = new ChunkMChat {
-                        ID = (uint) ChatLog.Count,
-                        Text = fillVars ? FillVariables(text, frame) : text,
-                        Color = color ?? GhostNetModule.Settings.ServerColorDefault,
-                        Date = DateTime.UtcNow,
-                        KeepColor = true,
-                        Logged = true
-                    }
+                ChunkMChat chunk = new ChunkMChat {
+                    ID = (uint) ChatLog.Count,
+                    Text = fillVars ? FillVariables(text, frame) : text,
+                    Color = color ?? GhostNetModule.Settings.ServerColorDefault,
+                    Date = DateTime.UtcNow,
+                    KeepColor = true,
+                    Logged = true
                 };
-                ChatLog.Add(msg);
-                return msg;
+                ChatLog.Add(chunk);
+                return chunk;
             }
         }
 
@@ -139,7 +135,7 @@ namespace Celeste.Mod.Ghost.Net {
                 MRequest = new ChunkMRequest {
                     ID = GhostNetFrame.GetChunkID(type)
                 }
-            });
+            }, true);
 
             // Wait for the response.
             Stopwatch timeoutWatch = new Stopwatch();
@@ -189,7 +185,7 @@ namespace Celeste.Mod.Ghost.Net {
                 MServerInfo = new ChunkMServerInfo {
                     Name = GhostNetModule.Settings.ServerNameAuto
                 }
-            });
+            }, true);
         }
 
         #endregion
@@ -282,7 +278,7 @@ namespace Celeste.Mod.Ghost.Net {
                     },
 
                     MPlayer = otherStatus.Value.MPlayer
-                });
+                }, true);
             }
 
             GhostIndices[frame.HHead.PlayerID] = 0;
@@ -297,7 +293,7 @@ namespace Celeste.Mod.Ghost.Net {
                 frame.MEmote.Value = frame.MEmote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteValueLength);
 
             if (GhostNetEmote.IsText(frame.MEmote.Value)) {
-                frame.MChat = CreateMChat(con, frame, frame.MEmote.Value, GhostNetModule.Settings.ServerColorEmote).MChat;
+                frame.MChat = CreateMChat(con, frame, frame.MEmote.Value, GhostNetModule.Settings.ServerColorEmote);
             }
 
             frame.PropagateM = true;
@@ -313,8 +309,8 @@ namespace Celeste.Mod.Ghost.Net {
                 con.SendManagement(new GhostNetFrame {
                     HHead = frame.HHead,
 
-                    MChat = CreateMChat(con, frame, frame.MChat.Text, GhostNetModule.Settings.ServerColorCommand).MChat
-                });
+                    MChat = CreateMChat(con, frame, frame.MChat.Text, GhostNetModule.Settings.ServerColorCommand)
+                }, true);
 
                 GhostNetCommandEnv env = new GhostNetCommandEnv {
                     Server = this,
@@ -365,7 +361,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (!frame.MChat.Logged) {
                 lock (ChatLog) {
                     frame.MChat.ID = (uint) ChatLog.Count;
-                    ChatLog.Add(frame);
+                    ChatLog.Add(frame.MChat);
                 }
             }
 
@@ -395,7 +391,7 @@ namespace Celeste.Mod.Ghost.Net {
         public void PropagateM(GhostNetConnection con, GhostNetFrame frame) {
             foreach (GhostNetConnection otherCon in Connections)
                 if (otherCon != null)
-                    otherCon.SendManagement(frame);
+                    otherCon.SendManagement(frame, false);
         }
 
         public void PropagateU(GhostNetConnection con, GhostNetFrame frame) {
@@ -414,25 +410,37 @@ namespace Celeste.Mod.Ghost.Net {
                 }
 
                 if (!(otherCon is GhostNetRemoteConnection)) {
-                    otherCon.SendUpdate(frame);
+                    otherCon.SendUpdate(frame, false);
                 } else if (otherCon.UpdateEndPoint != null) {
-                    UpdateConnection.SendUpdate(otherCon.UpdateEndPoint, frame);
+                    UpdateConnection.SendUpdate(frame, otherCon.UpdateEndPoint, false);
                 } else {
                     // Fallback for UDP-less clients.
-                    otherCon.SendManagement(frame);
+                    otherCon.SendManagement(frame, false);
                 }
             }
         }
 
-        public GhostNetFrame BroadcastMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
-            GhostNetFrame msg = CreateMChat(con, frame, text, color ?? GhostNetModule.Settings.ServerColorBroadcast, fillVars);
-            PropagateM(con, msg);
+        public ChunkMChat BroadcastMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
+            ChunkMChat msg = CreateMChat(con, frame, text, color ?? GhostNetModule.Settings.ServerColorBroadcast, fillVars);
+            PropagateM(con, new GhostNetFrame {
+                HHead = new ChunkHHead {
+                    PlayerID = uint.MaxValue
+                },
+
+                MChat = msg
+            });
             return msg;
         }
 
-        public GhostNetFrame SendMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
-            GhostNetFrame msg = CreateMChat(con, frame, text, color, fillVars);
-            con.SendManagement(msg);
+        public ChunkMChat SendMChat(GhostNetConnection con, GhostNetFrame frame, string text, Color? color = null, bool fillVars = false) {
+            ChunkMChat msg = CreateMChat(con, frame, text, color, fillVars);
+            con.SendManagement(new GhostNetFrame {
+                HHead = new ChunkHHead {
+                    PlayerID = uint.MaxValue
+                },
+
+                MChat = msg
+            }, true);
             return msg;
         }
 

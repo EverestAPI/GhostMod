@@ -23,15 +23,19 @@ namespace Celeste.Mod.Ghost.Net {
             UpdateEndPoint = new IPEndPoint(IPAddress.Loopback, 0);
         }
 
-        public override void SendManagement(GhostNetFrame frame) {
+        public override void SendManagement(GhostNetFrame frame, bool release) {
             ReceiveManagement(ManagementEndPoint, frame);
+            if (release)
+                frame.Release();
         }
 
-        public override void SendUpdate(GhostNetFrame frame) {
+        public override void SendUpdate(GhostNetFrame frame, bool release) {
             ReceiveUpdate(UpdateEndPoint, frame);
+            if (release)
+                frame.Release();
         }
 
-        public override void SendUpdate(IPEndPoint remote, GhostNetFrame frame) {
+        public override void SendUpdate(GhostNetFrame frame, IPEndPoint remote, bool release) {
             // Local connections don't support sending updates to another client.
             throw new NotSupportedException();
         }

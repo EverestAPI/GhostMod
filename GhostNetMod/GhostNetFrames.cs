@@ -32,7 +32,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public static void Release(GhostNetFrame frame) {
+        public static void Release(this GhostNetFrame frame) {
             // Don't lock pushing, as it can't cause Get() to fail.
             Pool.Push(frame);
         }

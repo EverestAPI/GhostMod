@@ -72,6 +72,7 @@
     <Compile Include="Chunks\ChunkMPlayer.cs" />
     <Compile Include="Connection\GhostNetRemoteConnection.cs" />
     <Compile Include="Connection\GhostNetLocalConnection.cs" />
+    <Compile Include="GhostNetRaceManager.cs" />
     <Compile Include="GhostNetCommandsStandard.cs" />
     <Compile Include="GhostNetCommand.cs" />
     <Compile Include="GhostNetFrames.cs" />

@@ -40,11 +40,11 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public abstract void SendManagement(GhostNetFrame frame);
+        public abstract void SendManagement(GhostNetFrame frame, bool release);
 
-        public abstract void SendUpdate(GhostNetFrame frame);
+        public abstract void SendUpdate(GhostNetFrame frame, bool release);
 
-        public abstract void SendUpdate(IPEndPoint remote, GhostNetFrame frame);
+        public abstract void SendUpdate(GhostNetFrame frame, IPEndPoint remote, bool release);
 
         protected virtual void ReceiveManagement(IPEndPoint remote, GhostNetFrame frame) {
             ManagementEndPoint = remote;

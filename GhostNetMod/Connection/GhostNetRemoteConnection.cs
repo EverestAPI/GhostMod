@@ -31,8 +31,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public bool DisposeOnFailure = true;
 
-        protected Queue<GhostNetFrame> ManagementQueue = new Queue<GhostNetFrame>();
-        protected Queue<Tuple<IPEndPoint, GhostNetFrame>> UpdateQueue = new Queue<Tuple<IPEndPoint, GhostNetFrame>>();
+        protected Queue<Tuple<GhostNetFrame, bool>> ManagementQueue = new Queue<Tuple<GhostNetFrame, bool>>();
+        protected Queue<Tuple<GhostNetFrame, bool, IPEndPoint>> UpdateQueue = new Queue<Tuple<GhostNetFrame, bool, IPEndPoint>>();
 
         protected static TcpClient GetTCP(string host, int port) {
             return new TcpClient(host, port);
@@ -81,21 +81,21 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public override void SendManagement(GhostNetFrame frame) {
+        public override void SendManagement(GhostNetFrame frame, bool release) {
             lock (ManagementQueue) {
-                ManagementQueue.Enqueue(frame);
+                ManagementQueue.Enqueue(Tuple.Create(frame, release));
             }
         }
 
-        public override void SendUpdate(GhostNetFrame frame) {
+        public override void SendUpdate(GhostNetFrame frame, bool release) {
             lock (UpdateQueue) {
-                UpdateQueue.Enqueue(Tuple.Create(default(IPEndPoint), frame));
+                UpdateQueue.Enqueue(Tuple.Create(frame, release, default(IPEndPoint)));
             }
         }
 
-        public override void SendUpdate(IPEndPoint remote, GhostNetFrame frame) {
+        public override void SendUpdate(GhostNetFrame frame, IPEndPoint remote, bool release) {
             lock (UpdateQueue) {
-                UpdateQueue.Enqueue(Tuple.Create(remote, frame));
+                UpdateQueue.Enqueue(Tuple.Create(frame, release, remote));
             }
         }
 
@@ -138,10 +138,12 @@ namespace Celeste.Mod.Ghost.Net {
 
                 lock (ManagementQueue) {
                     while (ManagementQueue.Count > 0) {
-                        GhostNetFrame entry = ManagementQueue.Dequeue();
+                        Tuple<GhostNetFrame, bool> entry = ManagementQueue.Dequeue();
                         using (MemoryStream bufferStream = new MemoryStream())
                         using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
-                            entry.Write(bufferWriter);
+                            entry.Item1.Write(bufferWriter);
+                            if (entry.Item2)
+                                entry.Item1.Release();
 
                             bufferWriter.Flush();
                             byte[] buffer = bufferStream.ToArray();
@@ -227,16 +229,18 @@ namespace Celeste.Mod.Ghost.Net {
 
                 lock (UpdateQueue) {
                     while (UpdateQueue.Count > 0) {
-                        Tuple<IPEndPoint, GhostNetFrame> entry = UpdateQueue.Dequeue();
+                        Tuple<GhostNetFrame, bool, IPEndPoint> entry = UpdateQueue.Dequeue();
                         using (MemoryStream bufferStream = new MemoryStream())
                         using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
-                            entry.Item2.Write(bufferWriter);
+                            entry.Item1.Write(bufferWriter);
+                            if (entry.Item2)
+                                entry.Item1.Release();
 
                             bufferWriter.Flush();
                             byte[] buffer = bufferStream.ToArray();
                             try {
                                 // Let's just hope that we always send a full frame...
-                                UpdateClient.Send(buffer, buffer.Length, entry.Item1 ?? UpdateEndPoint ?? ManagementEndPoint);
+                                UpdateClient.Send(buffer, buffer.Length, entry.Item3 ?? UpdateEndPoint ?? ManagementEndPoint);
                                 // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Sent update frame");
                             } catch (Exception e) {
                                 bufferStream.Seek(0, SeekOrigin.Begin);
