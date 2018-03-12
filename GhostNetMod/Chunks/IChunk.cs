@@ -13,7 +13,6 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     public interface IChunk {
 
-        IChunk Next { get; set; }
         bool IsValid { get; }
 
         void Read(BinaryReader reader);

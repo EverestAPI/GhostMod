@@ -23,10 +23,12 @@ namespace Celeste.Mod.Ghost.Net {
         public List<Race> Races = new List<Race>();
         protected Dictionary<uint, Race> PlayerRaceCache = new Dictionary<uint, Race>();
 
-        public Color ColorDefault = Color.Azure;
-        public Color ColorBroadcast = Color.AliceBlue;
+        public static Color ColorDefault = Color.AliceBlue;
+        public static Color ColorBroadcast = Color.BlueViolet;
 
         public GhostNetRaceManager(GhostNetServer server) {
+            Server = server;
+
             server.OnHandle += Handle;
             server.OnDisconnect += Disconnect;
 
@@ -120,7 +122,7 @@ namespace Celeste.Mod.Ghost.Net {
                     if (race.Players[0] != env.PlayerID)
                         throw new Exception("You don't own the race!");
 
-                    env.Send("Starting races still TODO.");
+                    race.Start();
                     return;
 
                 case "join":
@@ -144,7 +146,7 @@ namespace Celeste.Mod.Ghost.Net {
                         throw new Exception("You're too late, the race has already started without you!");
 
                     race.Players.Add(env.PlayerID);
-                    env.Send($"Joined race #{race.ID}");
+                    race.Send(null, $"{env.MPlayer.Name}#{env.HHead.PlayerID} has joined the race!");
                     return;
 
                 case "leave":
@@ -159,7 +161,7 @@ namespace Celeste.Mod.Ghost.Net {
                     if (race.Players.Count == 0)
                         Races[race.ID] = null;
 
-                    env.Send($"Left race #{race.ID}");
+                    race.Send(null, $"{env.MPlayer.Name}#{env.HHead.PlayerID} has left the race!");
                     return;
 
                 case "list":
@@ -234,7 +236,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (race == null)
                 throw new Exception($"You're not in a race!");
 
-            race.Send(env, args[0], tag: "race", color: ColorDefault);
+            race.Send(env.Frame, args[0], id: env.MChat.ID);
         }
 
         public Race GetRace(uint playerID) {
@@ -259,7 +261,8 @@ namespace Celeste.Mod.Ghost.Net {
             if (race != null)
                 return race;
             lock (Races) {
-                race = new Race() {
+                race = new Race {
+                    Manager = this,
                     ID = Races.Count,
                     Players = new List<uint>() {
                         playerID
@@ -314,17 +317,23 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            public void Send(GhostNetCommandEnv env, string text, string tag, Color? color = null, bool fillVars = false) {
-                ChunkMChat msg = env.Server.CreateMChat(env.Frame, text, tag, color, fillVars, env.MChat.ID);
-                GhostNetFrame frame = new GhostNetFrame {
-                    HHead = env.HHead,
+            public void Start() {
+                Send(null, "Starting races still TODO.");
+            }
+
+            public void Send(GhostNetFrame frame, string text, string tag = "race", Color? color = null, bool fillVars = false, uint? id = null) {
+                ChunkMChat msg = Manager.Server.CreateMChat(frame, text, tag, color ?? (frame != null ? ColorDefault : ColorBroadcast), fillVars, id);
+                GhostNetFrame frameMsg = new GhostNetFrame {
+                    HHead = frame?.HHead ?? new ChunkHHead {
+                        PlayerID = uint.MaxValue
+                    },
                     MChat = msg
                 };
                 foreach (uint playerID in Players) {
-                    GhostNetConnection con = env.Server.Connections[(int) playerID];
+                    GhostNetConnection con = Manager.Server.Connections[(int) playerID];
                     if (con == null)
                         continue;
-                    con.SendManagement(frame, false);
+                    con.SendManagement(frameMsg, false);
                 }
             }
 

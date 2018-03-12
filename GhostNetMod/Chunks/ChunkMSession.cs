@@ -21,8 +21,6 @@ namespace Celeste.Mod.Ghost.Net {
 
         public const string ChunkID = "nMS";
 
-        public IChunk Next { get; set; }
-
         public bool IsValid => true;
 
         public bool InSession;

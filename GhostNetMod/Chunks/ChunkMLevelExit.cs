@@ -13,26 +13,23 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     [Chunk(ChunkID)]
     /// <summary>
-    /// Update chunk sent on (best case) each frame.
-    /// If the player receives this with their own player ID, the server is moving the player.
+    /// Chunk sent by the client to notify the player why they left the level.
+    /// Combined with MPlayer where SID is null or empty.
     /// </summary>
-    public class ChunkUUpdate : IChunk {
+    public class ChunkMLevelExit : IChunk {
 
-        public const string ChunkID = "nU";
+        public const string ChunkID = "nMQ";
 
         public bool IsValid => true;
 
-        public uint UpdateIndex;
-        public GhostChunkData Data;
+        public LevelExit.Mode Mode;
 
         public void Read(BinaryReader reader) {
-            UpdateIndex = reader.ReadUInt32();
-            Data.Read(reader);
+            Mode = (LevelExit.Mode) reader.ReadByte();
         }
 
         public void Write(BinaryWriter writer) {
-            writer.Write(UpdateIndex);
-            Data.Write(writer);
+            writer.Write((byte) Mode);
         }
 
     }

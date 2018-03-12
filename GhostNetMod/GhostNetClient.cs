@@ -19,8 +19,6 @@ using System.Threading.Tasks;
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetClient : DrawableGameComponent {
 
-        // TODO: Send ChunkMPlayerEvent
-
         public GhostNetConnection Connection;
 
         protected float time;
@@ -330,7 +328,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Frame Senders
 
-        public void SendMPlayer() {
+        public virtual void SendMPlayer(LevelExit.Mode? exitMode = null) {
             if (Connection == null)
                 return;
             PlayerInfoAwaitedEcho++;
@@ -340,11 +338,15 @@ namespace Celeste.Mod.Ghost.Net {
                     SID = Session?.Area.GetSID() ?? "",
                     Mode = Session?.Area.Mode ?? AreaMode.Normal,
                     Level = Session?.Level ?? ""
+                },
+
+                MLevelExit = exitMode == null ? null : new ChunkMLevelExit {
+                    Mode = exitMode.Value
                 }
             }, true);
         }
 
-        public void SendMSession() {
+        public virtual void SendMSession() {
             if (Connection == null)
                 return;
             if (Session == null) {
@@ -386,14 +388,14 @@ namespace Celeste.Mod.Ghost.Net {
             }, true);
         }
 
-        public void SendMEmote(int index) {
+        public virtual void SendMEmote(int index) {
             string[] emotes = GhostNetModule.Settings.EmoteFavs;
             if (index < 0 || emotes.Length <= index)
                 return;
             SendMEmote(emotes[index]);
         }
 
-        public void SendMEmote(string value) {
+        public virtual void SendMEmote(string value) {
             if (string.IsNullOrWhiteSpace(value))
                 return;
             Connection?.SendManagement(new GhostNetFrame {
@@ -403,7 +405,7 @@ namespace Celeste.Mod.Ghost.Net {
             }, true);
         }
 
-        public void SendMChat(string text) {
+        public virtual void SendMChat(string text) {
             text = text.TrimEnd();
             if (string.IsNullOrWhiteSpace(text))
                 return;
@@ -416,7 +418,7 @@ namespace Celeste.Mod.Ghost.Net {
             }, true);
         }
 
-        public void SendUUpdate() {
+        public virtual void SendUUpdate() {
             if (Connection == null || GhostRecorder == null)
                 return;
 
@@ -788,7 +790,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             Cleanup();
 
-            SendMPlayer();
+            SendMPlayer(exitMode: mode);
         }
 
         public void OnTextInput(char c) {

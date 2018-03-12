@@ -19,8 +19,6 @@ namespace Celeste.Mod.Ghost.Net {
 
         public const string ChunkID = "nME";
 
-        public IChunk Next { get; set; }
-
         public bool IsValid => !string.IsNullOrWhiteSpace(Value);
 
         public string Value;

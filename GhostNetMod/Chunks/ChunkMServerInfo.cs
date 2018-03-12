@@ -19,8 +19,6 @@ namespace Celeste.Mod.Ghost.Net {
 
         public const string ChunkID = "nM?";
 
-        public IChunk Next { get; set; }
-
         public bool IsValid => true;
 
         // PlayerID contained in HHead.

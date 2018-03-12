@@ -129,9 +129,9 @@ namespace Celeste.Mod.Ghost.Net {
                 Set(value);
             }
         }
-        public ChunkMPlayerEvent MPlayerEvent {
+        public ChunkMLevelExit MLevelExit {
             get {
-                return Get<ChunkMPlayerEvent>();
+                return Get<ChunkMLevelExit>();
             }
             set {
                 Set(value);

@@ -19,8 +19,6 @@ namespace Celeste.Mod.Ghost.Net {
 
         public const string ChunkID = "nH";
 
-        public IChunk Next { get; set; }
-
         public bool IsValid => true;
 
         public uint PlayerID;
