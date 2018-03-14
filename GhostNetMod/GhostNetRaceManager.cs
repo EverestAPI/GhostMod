@@ -444,10 +444,10 @@ You can chat with your fellow racers using the rc command.",
                 Send(null,
 @"The race will start soon!
 You will be sent to the menu. Please wait there.
-The server will teleport you immediately when the race starts."
+The server will teleport you when the race starts."
                 );
 
-                Thread.Sleep(10000);
+                Thread.Sleep(5000);
 
                 lock (Players) {
                     foreach (uint playerID in Players) {
@@ -575,24 +575,26 @@ The server will teleport you immediately when the race starts."
 
                 } else if (!PlayersFinished.Contains(frame.HHead.PlayerID)) {
                     // Player still racing.
+                    int index;
+                    if (!Indices.TryGetValue(frame.HHead.PlayerID, out index))
+                        return; // Index-less player? How did we even land here?
+                    Tuple<string, AreaMode> area = Areas[index];
+                    if (!string.IsNullOrEmpty(frame.MPlayer.SID) &&
+                        frame.MPlayer.SID != area.Item1 ||
+                        frame.MPlayer.Mode != area.Item2) {
+                        // Player isn't in the level they should be in.
+                        RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} went somewhere else.");
+                        return;
+                    }
+
                     if (frame.MPlayer.LevelExit == null && !frame.MPlayer.LevelCompleted) {
                         // Player has entered another level.
-                        int index;
-                        if (!Indices.TryGetValue(frame.HHead.PlayerID, out index))
-                            return; // Index-less player? How did we even land here?
-                        Tuple<string, AreaMode> area = Areas[index];
-                        if (frame.MPlayer.SID != area.Item1 ||
-                            frame.MPlayer.Mode != area.Item2) {
-                            // Player isn't in the level they should be in.
-                            RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} went somewhere else.");
-                            return;
-                        }
 
                     } else if (frame.MPlayer.LevelExit == LevelExit.Mode.GiveUp || frame.MPlayer.LevelExit == LevelExit.Mode.SaveAndQuit) {
                         // Player has quit the level without completion.
                         RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} dropped out.");
 
-                    } else if (frame.MPlayer.LevelCompleted || frame.MPlayer.LevelExit == LevelExit.Mode.Completed || frame.MPlayer.LevelExit == LevelExit.Mode.CompletedInterlude) {
+                    } else if (frame.MPlayer.LevelCompleted) {
                         // Player completed this level, move to next one.
                         Progress(frame.HHead.PlayerID, frame);
                     }

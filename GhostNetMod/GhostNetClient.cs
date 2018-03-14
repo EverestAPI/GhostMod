@@ -231,7 +231,7 @@ namespace Celeste.Mod.Ghost.Net {
                         text += "_";
                     Monocle.Draw.SpriteBatch.DrawString(
                         Monocle.Draw.DefaultFont,
-                        text,
+                        Escape(text, Monocle.Draw.DefaultFont),
                         new Vector2(20f, viewHeight - 42f),
                         Color.White
                     );
@@ -540,6 +540,10 @@ namespace Celeste.Mod.Ghost.Net {
 
                     AreaData area = AreaDataExt.Get(frame.MPlayer.SID);
                     if (area != null) {
+                        if (Session != null) {
+                            Session.RespawnPoint = null;
+                        }
+
                         if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
                             frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal)) {
                             // Different SID or mode - create new session.
