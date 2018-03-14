@@ -14,7 +14,7 @@ namespace Celeste.Mod.Ghost.Net {
     public interface IChunk {
 
         bool IsValid { get; }
-        bool IsWriteable { get; }
+        bool IsSendable { get; }
 
         void Read(BinaryReader reader);
 

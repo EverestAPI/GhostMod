@@ -124,7 +124,7 @@ namespace Celeste.Mod.Ghost.Net {
                     return; // Already received a response.
                 if (filterCon != con)
                     return; // Not the player we sent the request to.
-                if (filterFrame.Get(type) == null)
+                if (!filterFrame.Has(type))
                     return; // Doesn't contain our response.
 
                 response = filterFrame;

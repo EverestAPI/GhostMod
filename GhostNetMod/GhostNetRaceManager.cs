@@ -101,6 +101,7 @@ You can chat with your fellow racers using the rc command.",
                         lock (race.Areas) {
                             race.Areas.Add(Tuple.Create(env.MPlayer.SID, env.MPlayer.Mode));
                         }
+
                     } else if (args.Length < 3) {
                         throw new Exception("Not enough arguments!");
                     } else if (args.Length > 3) {
@@ -108,13 +109,24 @@ You can chat with your fellow racers using the rc command.",
                     } else {
                         int mode = -1;
                         if (args[2].Type == GhostNetCommandArg.EType.Int)
-                            mode = args[2].Int;
+                            mode = args[2].Int - 1;
                         else if (args[2].String.Length == 1)
                             mode = args[2].String.ToLowerInvariant()[0] - 'a';
                         if (mode < 0 || 2 < mode)
                             throw new Exception("Mode must be one of the following: a 1 b 2 c 3");
+
+                        string area = args[1].String;
+                        if (args[1].Type == GhostNetCommandArg.EType.Int) {
+                            ChunkRListAreas areas = env.Server.Request<ChunkRListAreas>(env.Connection)?.Get<ChunkRListAreas>();
+                            if (areas == null)
+                                throw new Exception("Your client didn't respond to the area list request!");
+                            if (args[1].Int < 1 || areas.Entries.Length < args[1].Int)
+                                throw new Exception("Not a valid ID!");
+                            area = areas.Entries[args[1].Int - 1];
+                        }
+
                         lock (race.Areas) {
-                            race.Areas.Add(Tuple.Create(args[1].String, (AreaMode) mode));
+                            race.Areas.Add(Tuple.Create(area, (AreaMode) mode));
                         }
                     }
 

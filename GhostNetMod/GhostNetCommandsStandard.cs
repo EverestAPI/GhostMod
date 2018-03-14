@@ -141,11 +141,11 @@ namespace Celeste.Mod.Ghost.Net {
 
                 ChunkMChat msg = env.Send($"Teleporting to {other.Name}#{args[0].Int}...");
 
-                ChunkMSession session = new ChunkMSession();
+                ChunkRSession session = new ChunkRSession();
                 if (other.SID != env.MPlayer.SID ||
                     other.Mode != env.MPlayer.Mode) {
                     // Request the current session information from the other player.
-                    session = env.Server.Request<ChunkMSession>(args[0].Connection)?.MSession;
+                    session = env.Server.Request<ChunkRSession>(args[0].Connection)?.Get<ChunkRSession>();
                 }
 
                 env.Connection.SendManagement(new GhostNetFrame {
@@ -156,11 +156,9 @@ namespace Celeste.Mod.Ghost.Net {
                         SID = other.SID,
                         Mode = other.Mode,
                         Level = other.Level
-                    },
-
-                    // This is only sent if the two players are in incompatible sessions.
-                    MSession = session
-                }, true);
+                    }
+                }.Set(session) // This is only sent if the two players are in incompatible sessions.
+                , true);
 
                 msg.Text = $"Teleported to {other.Name}#{args[0].Int}";
                 env.Connection.SendManagement(new GhostNetFrame {

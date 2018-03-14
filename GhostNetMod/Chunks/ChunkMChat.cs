@@ -20,7 +20,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string ChunkID = "nMC";
 
         public bool IsValid => !string.IsNullOrWhiteSpace(Text);
-        public bool IsWriteable => true;
+        public bool IsSendable => true;
 
         /// <summary>
         /// Server-internal field.

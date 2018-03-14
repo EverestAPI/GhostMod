@@ -105,14 +105,6 @@ namespace Celeste.Mod.Ghost.Net {
                 Set(value);
             }
         }
-        public ChunkMSession MSession {
-            get {
-                return Get<ChunkMSession>();
-            }
-            set {
-                Set(value);
-            }
-        }
         public ChunkMEmote MEmote {
             get {
                 return Get<ChunkMEmote>();
@@ -175,7 +167,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void Write(BinaryWriter writer) {
             foreach (IChunk chunk in ChunkMap.Values)
-                if (chunk != null && chunk.IsValid && chunk.IsWriteable)
+                if (chunk != null && chunk.IsValid && chunk.IsSendable)
                     GhostFrame.WriteChunk(writer, chunk.Write, GetChunkID(chunk.GetType()));
 
             if (Extra != null)
@@ -184,11 +176,12 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(GhostFrame.End);
         }
 
-        public void Set<T>(T chunk) where T : IChunk
+        public GhostNetFrame Set<T>(T chunk) where T : IChunk
             => Set(typeof(T), chunk);
-        public void Set(Type t, IChunk chunk) {
+        public GhostNetFrame Set(Type t, IChunk chunk) {
             // Assume that chunk is t for performance reasons.
             ChunkMap[t] = chunk;
+            return this;
         }
 
         public T Get<T>() where T : IChunk
@@ -199,6 +192,11 @@ namespace Celeste.Mod.Ghost.Net {
                 return chunk;
             return null;
         }
+
+        public bool Has<T>() where T : IChunk
+            => Has(typeof(T));
+        public bool Has(Type t)
+            => Get(t) != null;
 
         public void Remove<T>() where T : IChunk
             => Remove(typeof(T));

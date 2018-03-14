@@ -348,48 +348,6 @@ namespace Celeste.Mod.Ghost.Net {
             }, true);
         }
 
-        public virtual void SendMSession() {
-            if (Connection == null)
-                return;
-            if (Session == null) {
-                Connection.SendManagement(new GhostNetFrame {
-                    MSession = new ChunkMSession {
-                        InSession = false
-                    }
-                }, true);
-                return;
-            }
-            Connection.SendManagement(new GhostNetFrame {
-                MSession = new ChunkMSession {
-                    InSession = true,
-
-                    RespawnPoint = Session.RespawnPoint,
-                    Inventory = Session.Inventory,
-                    Flags = Session.Flags,
-                    LevelFlags = Session.LevelFlags,
-                    Strawberries = Session.Strawberries,
-                    DoNotLoad = Session.DoNotLoad,
-                    Keys = Session.Keys,
-                    Counters = Session.Counters,
-                    FurthestSeenLevel = Session.FurthestSeenLevel,
-                    StartCheckpoint = Session.StartCheckpoint,
-                    ColorGrade = Session.ColorGrade,
-                    SummitGems = Session.SummitGems,
-                    FirstLevel = Session.FirstLevel,
-                    Cassette = Session.Cassette,
-                    HeartGem = Session.HeartGem,
-                    Dreaming = Session.Dreaming,
-                    GrabbedGolden = Session.GrabbedGolden,
-                    HitCheckpoint = Session.HitCheckpoint,
-                    LightingAlphaAdd = Session.LightingAlphaAdd,
-                    BloomBaseAdd = Session.BloomBaseAdd,
-                    DarkRoomAlpha = Session.DarkRoomAlpha,
-                    Time = Session.Time,
-                    CoreMode = Session.CoreMode
-                }
-            }, true);
-        }
-
         public virtual void SendMEmote(int index) {
             string[] emotes = GhostNetModule.Settings.EmoteFavs;
             if (index < 0 || emotes.Length <= index)
@@ -440,6 +398,71 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             UpdateIndex++;
+        }
+
+        public virtual void SendRSession() {
+            if (Connection == null)
+                return;
+            if (Session == null) {
+                Connection.SendManagement(new GhostNetFrame()
+                    .Set(new ChunkRSession {
+                        InSession = false
+                    })
+                , true);
+                return;
+            }
+            Connection.SendManagement(new GhostNetFrame()
+                .Set(new ChunkRSession {
+                    InSession = true,
+
+                    RespawnPoint = Session.RespawnPoint,
+                    Inventory = Session.Inventory,
+                    Flags = Session.Flags,
+                    LevelFlags = Session.LevelFlags,
+                    Strawberries = Session.Strawberries,
+                    DoNotLoad = Session.DoNotLoad,
+                    Keys = Session.Keys,
+                    Counters = Session.Counters,
+                    FurthestSeenLevel = Session.FurthestSeenLevel,
+                    StartCheckpoint = Session.StartCheckpoint,
+                    ColorGrade = Session.ColorGrade,
+                    SummitGems = Session.SummitGems,
+                    FirstLevel = Session.FirstLevel,
+                    Cassette = Session.Cassette,
+                    HeartGem = Session.HeartGem,
+                    Dreaming = Session.Dreaming,
+                    GrabbedGolden = Session.GrabbedGolden,
+                    HitCheckpoint = Session.HitCheckpoint,
+                    LightingAlphaAdd = Session.LightingAlphaAdd,
+                    BloomBaseAdd = Session.BloomBaseAdd,
+                    DarkRoomAlpha = Session.DarkRoomAlpha,
+                    Time = Session.Time,
+                    CoreMode = Session.CoreMode
+                })
+            , true);
+        }
+
+        public virtual void SendRListAreas() {
+            if (Connection == null)
+                return;
+            Connection.SendManagement(new GhostNetFrame()
+                .Set(new ChunkRListAreas {
+                    Entries = AreaData.Areas.Select(area => area.GetSID()).ToArray()
+                })
+            , true);
+        }
+
+        public virtual void SendRListMods() {
+            if (Connection == null)
+                return;
+            Connection.SendManagement(new GhostNetFrame()
+                .Set(new ChunkRListMods {
+                    Entries = Everest.Modules.Select(module => new ChunkRListMods.Entry {
+                        Name = module.Metadata.Name,
+                        Version = module.Metadata.Version
+                    }).ToArray()
+                })
+            , true);
         }
 
         #endregion
@@ -521,9 +544,9 @@ namespace Celeste.Mod.Ghost.Net {
                             frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal)) {
                             // Different SID or mode - create new session.
                             Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode), null, SaveData.Instance.Areas[area.ID]);
-                            if (Session != null && frame.MSession != null && frame.MSession.InSession) {
+                            if (Session != null && frame.Has<ChunkRSession>()) {
                                 // We received additional session data from the server.
-                                HandleMSession(con, frame);
+                                HandleRSession(con, frame);
                             }
                             SaveData.Instance.CurrentSession = Session;
                         }
@@ -593,46 +616,24 @@ namespace Celeste.Mod.Ghost.Net {
                 case ChunkMPlayer.ChunkID:
                     SendMPlayer();
                     break;
-                case ChunkMSession.ChunkID:
-                    SendMSession();
-                    break;
 
                 case ChunkUUpdate.ChunkID:
                     SendUUpdate();
                     break;
 
+                case ChunkRSession.ChunkID:
+                    SendRSession();
+                    break;
+                case ChunkRListAreas.ChunkID:
+                    SendRListAreas();
+                    break;
+                case ChunkRListMods.ChunkID:
+                    SendRListMods();
+                    break;
+
                 default:
                     break;
             }
-        }
-
-        public virtual void HandleMSession(GhostNetConnection con, GhostNetFrame frame) {
-            if (Session == null)
-                return;
-
-            Session.RespawnPoint = frame.MSession.RespawnPoint;
-            Session.Inventory = frame.MSession.Inventory;
-            Session.Flags = frame.MSession.Flags;
-            Session.LevelFlags = frame.MSession.LevelFlags;
-            Session.Strawberries = frame.MSession.Strawberries;
-            Session.DoNotLoad = frame.MSession.DoNotLoad;
-            Session.Keys = frame.MSession.Keys;
-            Session.Counters = frame.MSession.Counters;
-            Session.FurthestSeenLevel = frame.MSession.FurthestSeenLevel;
-            Session.StartCheckpoint = frame.MSession.StartCheckpoint;
-            Session.ColorGrade = frame.MSession.ColorGrade;
-            Session.SummitGems = frame.MSession.SummitGems;
-            Session.FirstLevel = frame.MSession.FirstLevel;
-            Session.Cassette = frame.MSession.Cassette;
-            Session.HeartGem = frame.MSession.HeartGem;
-            Session.Dreaming = frame.MSession.Dreaming;
-            Session.GrabbedGolden = frame.MSession.GrabbedGolden;
-            Session.HitCheckpoint = frame.MSession.HitCheckpoint;
-            Session.LightingAlphaAdd = frame.MSession.LightingAlphaAdd;
-            Session.BloomBaseAdd = frame.MSession.BloomBaseAdd;
-            Session.DarkRoomAlpha = frame.MSession.DarkRoomAlpha;
-            Session.Time = frame.MSession.Time;
-            Session.CoreMode = frame.MSession.CoreMode;
         }
 
         public virtual void HandleMEmote(GhostNetConnection con, GhostNetFrame frame) {
@@ -726,6 +727,39 @@ namespace Celeste.Mod.Ghost.Net {
             ghost.ForcedFrame = new GhostFrame {
                 Data = frame.UUpdate.Data
             };
+        }
+
+        public virtual void HandleRSession(GhostNetConnection con, GhostNetFrame frame) {
+            if (Session == null)
+                return;
+
+            ChunkRSession received = frame.Get<ChunkRSession>();
+            if (!received.InSession)
+                return;
+
+            Session.RespawnPoint = received.RespawnPoint;
+            Session.Inventory = received.Inventory;
+            Session.Flags = received.Flags;
+            Session.LevelFlags = received.LevelFlags;
+            Session.Strawberries = received.Strawberries;
+            Session.DoNotLoad = received.DoNotLoad;
+            Session.Keys = received.Keys;
+            Session.Counters = received.Counters;
+            Session.FurthestSeenLevel = received.FurthestSeenLevel;
+            Session.StartCheckpoint = received.StartCheckpoint;
+            Session.ColorGrade = received.ColorGrade;
+            Session.SummitGems = received.SummitGems;
+            Session.FirstLevel = received.FirstLevel;
+            Session.Cassette = received.Cassette;
+            Session.HeartGem = received.HeartGem;
+            Session.Dreaming = received.Dreaming;
+            Session.GrabbedGolden = received.GrabbedGolden;
+            Session.HitCheckpoint = received.HitCheckpoint;
+            Session.LightingAlphaAdd = received.LightingAlphaAdd;
+            Session.BloomBaseAdd = received.BloomBaseAdd;
+            Session.DarkRoomAlpha = received.DarkRoomAlpha;
+            Session.Time = received.Time;
+            Session.CoreMode = received.CoreMode;
         }
 
         #endregion

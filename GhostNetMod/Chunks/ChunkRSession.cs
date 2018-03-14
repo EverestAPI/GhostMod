@@ -13,16 +13,16 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     [Chunk(ChunkID)]
     /// <summary>
-    /// Session "status" chunk sent on connection and on room change.
+    /// Session "status" chunk that can be requested via ChunkMRequest.
     /// Used when teleporting.
     /// The player can receive this with an MPlayer chunk to change the session.
     /// </summary>
-    public class ChunkMSession : IChunk {
+    public class ChunkRSession : IChunk {
 
-        public const string ChunkID = "nMS";
+        public const string ChunkID = "nRS";
 
         public bool IsValid => true;
-        public bool IsWriteable => true;
+        public bool IsSendable => true;
 
         public bool InSession;
 
