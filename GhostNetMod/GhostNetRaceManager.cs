@@ -99,7 +99,7 @@ You can chat with your fellow racers using the rc command.",
                         if (string.IsNullOrEmpty(env.MPlayer.SID))
                             throw new Exception("You can't add the menu to the race!");
                         lock (race.Areas) {
-                            race.Areas.Add(new AreaKey(0, env.MPlayer.Mode).SetSID(env.MPlayer.SID));
+                            race.Areas.Add(Tuple.Create(env.MPlayer.SID, env.MPlayer.Mode));
                         }
                     } else if (args.Length < 3) {
                         throw new Exception("Not enough arguments!");
@@ -114,7 +114,7 @@ You can chat with your fellow racers using the rc command.",
                         if (mode < 0 || 2 < mode)
                             throw new Exception("Mode must be one of the following: a 1 b 2 c 3");
                         lock (race.Areas) {
-                            race.Areas.Add(new AreaKey(0, (AreaMode) mode).SetSID(args[1]));
+                            race.Areas.Add(Tuple.Create(args[1].String, (AreaMode) mode));
                         }
                     }
 
@@ -321,7 +321,7 @@ You can chat with your fellow racers using the rc command.",
 
             public List<uint> Players = new List<uint>();
             public List<uint> PlayersFinished = new List<uint>();
-            public List<AreaKey> Areas = new List<AreaKey>();
+            public List<Tuple<string, AreaMode>> Areas = new List<Tuple<string, AreaMode>>();
             public Dictionary<uint, int> Indices = new Dictionary<uint, int>();
             public Dictionary<uint, TimeSpan> Times = new Dictionary<uint, TimeSpan>();
 
@@ -394,8 +394,8 @@ You can chat with your fellow racers using the rc command.",
                     StringBuilder builder = new StringBuilder();
                     int count = 0;
                     lock (Areas) {
-                        foreach (AreaKey area in Areas) {
-                            builder.Append(count + 1).Append(": ").Append(area.GetSID()).Append(' ').Append((char) ('A' + area.Mode)).AppendLine();
+                        foreach (Tuple<string, AreaMode> area in Areas) {
+                            builder.Append(count + 1).Append(": ").Append(area.Item1).Append(' ').Append((char) ('A' + area.Item2)).AppendLine();
                             count++;
                         }
                     }
@@ -414,7 +414,6 @@ You can chat with your fellow racers using the rc command.",
                 lock (Players) {
                     Players.Remove(playerID);
                     if (Players.Count == 0) {
-                        Send(null, "Race disbanded.");
                         Manager.Races[ID] = null;
                         return;
                     }
@@ -506,8 +505,8 @@ The server will teleport you immediately when the race starts."
 
                 ChunkMPlayer player = new ChunkMPlayer {
                     Name = playerCached.MPlayer.Name,
-                    SID = index == -1 ? "" : Areas[index].GetSID(),
-                    Mode = index == -1 ? AreaMode.Normal : Areas[index].Mode,
+                    SID = index == -1 ? "" : Areas[index].Item1,
+                    Mode = index == -1 ? AreaMode.Normal : Areas[index].Item2,
                     Level = ""
                 };
 
@@ -523,9 +522,6 @@ The server will teleport you immediately when the race starts."
                 } else {
                     frame.MPlayer = player;
                     frame.PropagateM = true;
-                    // (14.03.2018 00:59:06) [Everest] [Verbose] [ghostnet-race] Moving player 0 to index 1
-                    // Reaches this but client still receives:
-                    // (14.03.2018 00:59:06) [Everest] [Info] [ghostnet-c] #0 ADE in  A
                 }
             }
 
@@ -566,14 +562,14 @@ The server will teleport you immediately when the race starts."
 
                 } else if (!PlayersFinished.Contains(frame.HHead.PlayerID)) {
                     // Player still racing.
-                    if (frame.MPlayer.LevelExit == null) {
+                    if (frame.MPlayer.LevelExit == null && !frame.MPlayer.LevelCompleted) {
                         // Player has entered another level.
                         int index;
                         if (!Indices.TryGetValue(frame.HHead.PlayerID, out index))
                             return; // Index-less player? How did we even land here?
-                        AreaKey area = Areas[index];
-                        if (frame.MPlayer.SID != area.GetSID() ||
-                            frame.MPlayer.Mode != area.Mode) {
+                        Tuple<string, AreaMode> area = Areas[index];
+                        if (frame.MPlayer.SID != area.Item1 ||
+                            frame.MPlayer.Mode != area.Item2) {
                             // Player isn't in the level they should be in.
                             RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} went somewhere else.");
                             return;
@@ -583,7 +579,7 @@ The server will teleport you immediately when the race starts."
                         // Player has quit the level without completion.
                         RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} dropped out.");
 
-                    } else if (frame.MPlayer.LevelExit == LevelExit.Mode.Completed || frame.MPlayer.LevelExit == LevelExit.Mode.CompletedInterlude) {
+                    } else if (frame.MPlayer.LevelCompleted || frame.MPlayer.LevelExit == LevelExit.Mode.Completed || frame.MPlayer.LevelExit == LevelExit.Mode.CompletedInterlude) {
                         // Player completed this level, move to next one.
                         Progress(frame.HHead.PlayerID, frame);
                     }

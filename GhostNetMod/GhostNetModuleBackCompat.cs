@@ -39,5 +39,42 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        public static event Action<Level> OnLevelComplete;
+        private static EventInfo _OnLevelCompleteEvent;
+        private static Delegate _OnLevelCompleteProxy;
+
+        public static class Hooks {
+
+            public static MethodInfo m_Level_RegisterAreaComplete;
+            public delegate void d_RegisterAreaComplete(Level self);
+            public static d_RegisterAreaComplete orig_RegisterAreaComplete;
+            public static void RegisterAreaComplete(Level self) {
+                bool completed = self.Completed;
+                orig_RegisterAreaComplete(self);
+                if (!completed) {
+                    OnLevelComplete?.Invoke(self);
+                }
+            }
+
+        }
+
+        public static void Load() {
+            Type hooks = typeof(Hooks);
+
+            _OnLevelCompleteEvent = typeof(Everest.Events.Level).GetEvent("OnComplete");
+            if (_OnLevelCompleteEvent != null) {
+                _OnLevelCompleteProxy = new Action<Level>(level => OnLevelComplete?.Invoke(level)).CastDelegate(_OnLevelCompleteEvent.EventHandlerType);
+                _OnLevelCompleteEvent.AddEventHandler(null, _OnLevelCompleteProxy);
+            } else {
+                Hooks.m_Level_RegisterAreaComplete = typeof(Level).GetMethod("RegisterAreaComplete", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                Hooks.orig_RegisterAreaComplete = Hooks.m_Level_RegisterAreaComplete.Detour<Hooks.d_RegisterAreaComplete>(hooks.GetMethod("RegisterAreaComplete"));
+            }
+        }
+
+        public static void Unload() {
+            _OnLevelCompleteEvent?.RemoveEventHandler(null, _OnLevelCompleteProxy);
+            Hooks.m_Level_RegisterAreaComplete?.Undetour();
+        }
+
     }
 }

@@ -333,7 +333,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Frame Senders
 
-        public virtual void SendMPlayer(LevelExit.Mode? levelExit = null) {
+        public virtual void SendMPlayer(LevelExit.Mode? levelExit = null, bool levelCompleted = false) {
             if (Connection == null)
                 return;
             Connection.SendManagement(new GhostNetFrame {
@@ -342,6 +342,7 @@ namespace Celeste.Mod.Ghost.Net {
                     SID = Session?.Area.GetSID() ?? "",
                     Mode = Session?.Area.Mode ?? AreaMode.Normal,
                     Level = Session?.Level ?? "",
+                    LevelCompleted = levelCompleted,
                     LevelExit = levelExit
                 }
             }, true);
@@ -534,7 +535,7 @@ namespace Celeste.Mod.Ghost.Net {
                         Engine.Scene = new LevelLoader(Session, frame.UUpdate?.Data.Position);
 
                     } else {
-                        OnExit(null, null, LevelExit.Mode.SaveAndQuit, null, null);
+                        OnExitLevel(null, null, LevelExit.Mode.SaveAndQuit, null, null);
 
                         string message = Dialog.Get("postcard_levelgone");
                         if (string.IsNullOrEmpty(frame.MPlayer.SID)) {
@@ -749,10 +750,11 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
-            Everest.Events.Level.OnExit -= OnExit;
+            Everest.Events.Level.OnExit -= OnExitLevel;
+            GhostNetModuleBackCompat.OnLevelComplete -= OnCompleteLevel;
             GhostNetModuleBackCompat.OnTextInput -= OnTextInput;
 
-            OnExit(null, null, LevelExit.Mode.SaveAndQuit, null, null);
+            OnExitLevel(null, null, LevelExit.Mode.SaveAndQuit, null, null);
 
             Celeste.Instance.Components.Remove(this);
         }
@@ -787,15 +789,22 @@ namespace Celeste.Mod.Ghost.Net {
             SendMPlayer();
         }
 
-        public void OnExit(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow) {
+        public void OnExitLevel(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow) {
             Session = null;
 
             if (Connection != null)
-                Logger.Log(LogLevel.Info, "ghost-c", $"Leaving level");
+                Logger.Log(LogLevel.Info, "ghost-c", "Leaving level");
 
             Cleanup();
 
             SendMPlayer(levelExit: mode);
+        }
+
+        public void OnCompleteLevel(Level level) {
+            if (Connection != null)
+                Logger.Log(LogLevel.Info, "ghost-c", "Completed level");
+
+            SendMPlayer(levelCompleted: true);
         }
 
         public void OnTextInput(char c) {
@@ -853,7 +862,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             Everest.Events.Level.OnLoadLevel += OnLoadLevel;
-            Everest.Events.Level.OnExit += OnExit;
+            Everest.Events.Level.OnExit += OnExitLevel;
+            GhostNetModuleBackCompat.OnLevelComplete += OnCompleteLevel;
             GhostNetModuleBackCompat.OnTextInput += OnTextInput;
 
             if (Engine.Scene is Level)

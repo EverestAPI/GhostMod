@@ -36,6 +36,7 @@ namespace Celeste.Mod.Ghost.Net {
         public AreaMode Mode;
         public string Level;
 
+        public bool LevelCompleted = false;
         public LevelExit.Mode? LevelExit;
 
         public void Read(BinaryReader reader) {
@@ -49,6 +50,8 @@ namespace Celeste.Mod.Ghost.Net {
             Mode = (AreaMode) reader.ReadByte();
             Level = reader.ReadNullTerminatedString();
 
+            LevelCompleted = reader.ReadBoolean();
+
             if (reader.ReadBoolean())
                 LevelExit = (LevelExit.Mode) reader.ReadByte();
         }
@@ -61,6 +64,8 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(SID);
             writer.Write((byte) Mode);
             writer.WriteNullTerminatedString(Level);
+
+            writer.Write(LevelCompleted);
 
             if (LevelExit == null) {
                 writer.Write(false);

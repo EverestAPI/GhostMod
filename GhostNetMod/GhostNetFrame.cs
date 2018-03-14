@@ -21,8 +21,8 @@ namespace Celeste.Mod.Ghost.Net {
     /// </summary>
     public sealed class GhostNetFrame {
 
-        private static IDictionary<string, GhostNetChunkParser> ChunkParsers = new FastDictionary<string, GhostNetChunkParser>();
-        private static IDictionary<Type, string> ChunkIDs = new FastDictionary<Type, string>();
+        private static IDictionary<string, GhostNetChunkParser> ChunkParsers = new Dictionary<string, GhostNetChunkParser>();
+        private static IDictionary<Type, string> ChunkIDs = new Dictionary<Type, string>();
 
         // TODO: Wrapper for objects that don't natively implement IChunk.
 
@@ -67,7 +67,7 @@ namespace Celeste.Mod.Ghost.Net {
         /// </summary>
         public bool PropagateU;
 
-        public IDictionary<Type, IChunk> ChunkMap = new FastDictionary<Type, IChunk>();
+        public IDictionary<Type, IChunk> ChunkMap = new Dictionary<Type, IChunk>();
 
         #region Standard Chunks
 

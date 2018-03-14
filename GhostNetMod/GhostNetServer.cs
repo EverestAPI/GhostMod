@@ -242,9 +242,6 @@ namespace Celeste.Mod.Ghost.Net {
 
             OnHandle?.Invoke(con, frame);
 
-            if (frame.MPlayer != null && frame.MPlayer.IsCached)
-                frame.MPlayer = null;
-
             if (frame.PropagateM)
                 PropagateM(frame);
             else if (frame.PropagateU)

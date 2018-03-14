@@ -53,6 +53,8 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Input.OnInitialize += OnInputInitialize;
             Everest.Events.Input.OnDeregister += OnInputDeregister;
 
+            GhostNetModuleBackCompat.Load();
+
             // Example of a MP server mod.
             GhostNetServer.OnCreate += GhostNetRaceManager.OnCreateServer;
         }
@@ -62,6 +64,8 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Input.OnDeregister -= OnInputDeregister;
             Stop();
             OnInputDeregister();
+
+            GhostNetModuleBackCompat.Unload();
         }
 
         public override void CreateModMenuSection(TextMenu menu, bool inGame, EventInstance snapshot) {
