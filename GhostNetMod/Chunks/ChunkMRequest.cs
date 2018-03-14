@@ -34,5 +34,10 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(ID);
         }
 
+        public object Clone()
+            => new ChunkMRequest {
+                ID = ID
+            };
+
     }
 }

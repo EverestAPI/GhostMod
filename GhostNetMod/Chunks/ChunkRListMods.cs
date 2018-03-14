@@ -53,5 +53,10 @@ namespace Celeste.Mod.Ghost.Net {
             public Version Version;
         }
 
+        public object Clone()
+            => new ChunkRListMods {
+                Entries = Entries
+            };
+
     }
 }

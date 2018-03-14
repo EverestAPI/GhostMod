@@ -36,5 +36,11 @@ namespace Celeste.Mod.Ghost.Net {
             Data.Write(writer);
         }
 
+        public object Clone()
+            => new ChunkUUpdate {
+                UpdateIndex = UpdateIndex,
+                Data = Data
+            };
+
     }
 }

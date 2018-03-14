@@ -76,5 +76,19 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        public object Clone()
+            => new ChunkMPlayer {
+                IsEcho = IsEcho,
+
+                Name = Name,
+
+                SID = SID,
+                Mode = Mode,
+                Level = Level,
+
+                LevelCompleted = LevelCompleted,
+                LevelExit = LevelExit
+            };
+
     }
 }

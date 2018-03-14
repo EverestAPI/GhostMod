@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
 namespace Celeste.Mod.Ghost.Net {
-    public interface IChunk {
+    public interface IChunk : ICloneable {
 
         bool IsValid { get; }
         bool IsSendable { get; }

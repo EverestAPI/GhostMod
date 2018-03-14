@@ -32,5 +32,10 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(Value);
         }
 
+        public object Clone()
+            => new ChunkMEmote {
+                Value = Value
+            };
+
     }
 }

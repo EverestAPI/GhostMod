@@ -578,7 +578,7 @@ The server will teleport you when the race starts."
                     int index;
                     if (!Indices.TryGetValue(frame.HHead.PlayerID, out index))
                         return; // Index-less player? How did we even land here?
-                    Tuple<string, AreaMode> area = Areas[index];
+                    Tuple<string, AreaMode> area = index < 0 ? Tuple.Create("", AreaMode.Normal) : Areas[index];
                     if (!string.IsNullOrEmpty(frame.MPlayer.SID) &&
                         frame.MPlayer.SID != area.Item1 ||
                         frame.MPlayer.Mode != area.Item2) {

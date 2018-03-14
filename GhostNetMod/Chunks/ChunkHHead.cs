@@ -32,5 +32,10 @@ namespace Celeste.Mod.Ghost.Net {
             writer.Write(PlayerID);
         }
 
+        public object Clone()
+            => new ChunkHHead {
+                PlayerID = PlayerID
+            };
+
     }
 }

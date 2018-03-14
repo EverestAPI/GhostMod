@@ -209,6 +209,35 @@ namespace Celeste.Mod.Ghost.Net {
             writer.Write((byte) CoreMode);
         }
 
+        public object Clone()
+            => new ChunkRSession {
+                InSession = InSession,
+
+                RespawnPoint = RespawnPoint,
+                Inventory = Inventory,
+                Flags = Flags,
+                LevelFlags = LevelFlags,
+                Strawberries = Strawberries,
+                DoNotLoad = DoNotLoad,
+                Keys = Keys,
+                Counters = Counters,
+                FurthestSeenLevel = FurthestSeenLevel,
+                StartCheckpoint = StartCheckpoint,
+                ColorGrade = ColorGrade,
+                SummitGems = SummitGems,
+                FirstLevel = FirstLevel,
+                Cassette = Cassette,
+                HeartGem = HeartGem,
+                Dreaming = Dreaming,
+                GrabbedGolden = GrabbedGolden,
+                HitCheckpoint = HitCheckpoint,
+                LightingAlphaAdd = LightingAlphaAdd,
+                BloomBaseAdd = BloomBaseAdd,
+                DarkRoomAlpha = DarkRoomAlpha,
+                Time = Time,
+                CoreMode = CoreMode
+            };
+
         public byte PackBool(byte value, int index, bool set) {
             int mask = 1 << index;
             return set ? (byte) (value | mask) : (byte) (value & ~mask);

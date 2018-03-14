@@ -286,7 +286,7 @@ namespace Celeste.Mod.Ghost.Net {
                             PlayerID = otherStatus.Key
                         },
 
-                        MPlayer = otherStatus.Value
+                        MPlayer = otherStatus.Value.Clone() as ChunkMPlayer
                     }, true);
                 }
             }

@@ -34,5 +34,10 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(Name);
         }
 
+        public object Clone()
+            => new ChunkMServerInfo {
+                Name = Name
+            };
+
     }
 }

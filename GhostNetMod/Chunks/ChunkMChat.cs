@@ -55,5 +55,17 @@ namespace Celeste.Mod.Ghost.Net {
             writer.Write(Date.ToBinary());
         }
 
+        public object Clone()
+            => new ChunkMChat {
+                CreatedByServer = CreatedByServer,
+                Logged = Logged,
+
+                ID = ID,
+                Tag = Tag,
+                Text = Text,
+                Color = Color,
+                Date = Date
+            };
+
     }
 }
