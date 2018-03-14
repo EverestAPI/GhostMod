@@ -22,6 +22,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string ChunkID = "nM";
 
         public bool IsValid => true;
+        public bool IsWriteable => !IsCached;
 
         /// <summary>
         /// Whether the chunk is what the server / client last remembers about the player, or if it's a newly received chunk.

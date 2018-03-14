@@ -21,6 +21,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string ChunkID = "nU";
 
         public bool IsValid => true;
+        public bool IsWriteable => true;
 
         public uint UpdateIndex;
         public GhostChunkData Data;

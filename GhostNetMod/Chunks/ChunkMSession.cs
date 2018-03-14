@@ -22,6 +22,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string ChunkID = "nMS";
 
         public bool IsValid => true;
+        public bool IsWriteable => true;
 
         public bool InSession;
 

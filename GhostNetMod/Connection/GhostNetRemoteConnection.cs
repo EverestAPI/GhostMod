@@ -103,7 +103,7 @@ namespace Celeste.Mod.Ghost.Net {
             while (ManagementClient?.Connected ?? false) {
                 Thread.Sleep(0);
 
-                GhostNetFrame frame = GhostNetFrames.Get();
+                GhostNetFrame frame = new GhostNetFrame();
                 try {
                     // Let's just hope that the reader always reads a full frame...
                     frame.Read(ManagementReader);
@@ -142,8 +142,6 @@ namespace Celeste.Mod.Ghost.Net {
                         using (MemoryStream bufferStream = new MemoryStream())
                         using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
                             entry.Item1.Write(bufferWriter);
-                            if (entry.Item2)
-                                entry.Item1.Release();
 
                             bufferWriter.Flush();
                             byte[] buffer = bufferStream.ToArray();
@@ -203,7 +201,7 @@ namespace Celeste.Mod.Ghost.Net {
                 try {
                     using (MemoryStream bufferStream = new MemoryStream(data))
                     using (BinaryReader bufferReader = new BinaryReader(bufferStream)) {
-                        GhostNetFrame frame = GhostNetFrames.Get();
+                        GhostNetFrame frame = new GhostNetFrame();
                         frame.Read(bufferReader);
                         // Logger.Log(LogLevel.Verbose, "ghostnet-con", "Received update frame");
                         ReceiveUpdate(remote, frame);
@@ -233,8 +231,6 @@ namespace Celeste.Mod.Ghost.Net {
                         using (MemoryStream bufferStream = new MemoryStream())
                         using (BinaryWriter bufferWriter = new BinaryWriter(bufferStream)) {
                             entry.Item1.Write(bufferWriter);
-                            if (entry.Item2)
-                                entry.Item1.Release();
 
                             bufferWriter.Flush();
                             byte[] buffer = bufferStream.ToArray();

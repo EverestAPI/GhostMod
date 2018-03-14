@@ -130,14 +130,14 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public GhostNetFrame Player {
+        public ChunkMPlayer Player {
             get {
                 if (Type != EType.Int)
                     throw new Exception("Argument not an ID!");
                 if (Int < 0 || Env.Server.Connections.Count <= Int)
                     throw new Exception("ID out of range!");
 
-                GhostNetFrame player;
+                ChunkMPlayer player;
                 if (!Env.Server.PlayerMap.TryGetValue((uint) Int, out player) || player == null)
                     throw new Exception("ID already disconnected!");
 

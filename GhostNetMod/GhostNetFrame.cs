@@ -175,7 +175,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void Write(BinaryWriter writer) {
             foreach (IChunk chunk in ChunkMap.Values)
-                if (chunk.IsValid)
+                if (chunk != null && chunk.IsValid && chunk.IsWriteable)
                     GhostFrame.WriteChunk(writer, chunk.Write, GetChunkID(chunk.GetType()));
 
             if (Extra != null)

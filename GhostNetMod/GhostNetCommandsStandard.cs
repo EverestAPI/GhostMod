@@ -135,17 +135,15 @@ namespace Celeste.Mod.Ghost.Net {
                 if (args.Length != 1)
                     throw new Exception("Exactly 1 argument required!");
 
-                GhostNetFrame other = args[0].Player;
-                if (string.IsNullOrEmpty(other.MPlayer.SID))
+                ChunkMPlayer other = args[0].Player;
+                if (string.IsNullOrEmpty(other.SID))
                     throw new Exception("Player in menu!");
-                if (other.UUpdate == null)
-                    throw new Exception("Player position not known!");
 
-                ChunkMChat msg = env.Send($"Teleporting to {other.MPlayer.Name}#{other.HHead.PlayerID}...");
+                ChunkMChat msg = env.Send($"Teleporting to {other.Name}#{args[0].Int}...");
 
                 ChunkMSession session = new ChunkMSession();
-                if (other.MPlayer.SID != env.MPlayer.SID ||
-                    other.MPlayer.Mode != env.MPlayer.Mode) {
+                if (other.SID != env.MPlayer.SID ||
+                    other.Mode != env.MPlayer.Mode) {
                     // Request the current session information from the other player.
                     session = env.Server.Request<ChunkMSession>(args[0].Connection)?.MSession;
                 }
@@ -155,20 +153,16 @@ namespace Celeste.Mod.Ghost.Net {
 
                     MPlayer = new ChunkMPlayer {
                         Name = env.MPlayer.Name,
-                        SID = other.MPlayer.SID,
-                        Mode = other.MPlayer.Mode,
-                        Level = other.MPlayer.Level
+                        SID = other.SID,
+                        Mode = other.Mode,
+                        Level = other.Level
                     },
 
                     // This is only sent if the two players are in incompatible sessions.
-                    MSession = session,
-
-                    // This also sends other info such as the player rotation, scale, color, ...
-                    // ... but the client should know what to do.
-                    UUpdate = other.UUpdate
+                    MSession = session
                 }, true);
 
-                msg.Text = $"Teleported to {other.MPlayer.Name}#{other.HHead.PlayerID}";
+                msg.Text = $"Teleported to {other.Name}#{args[0].Int}";
                 env.Connection.SendManagement(new GhostNetFrame {
                     HHead = env.HHead,
                     

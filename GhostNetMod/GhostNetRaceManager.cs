@@ -64,7 +64,7 @@ You can chat with your fellow racers using the rc command.",
             }
         }
 
-        public void Disconnect(uint playerID, GhostNetFrame player) {
+        public void Disconnect(uint playerID, ChunkMPlayer player) {
             Race race = GetRace(playerID);
             if (race != null) {
                 race.RemovePlayer(playerID, $"Player #{playerID} disconnected.");
@@ -88,7 +88,7 @@ You can chat with your fellow racers using the rc command.",
                         throw new Exception("You don't own the race!");
                     if (race == null) {
                         race = GetOrCreateRace(env.PlayerID);
-                        env.Send($"New race created: #{race.ID}");
+                        env.Send($"New race created: #{race.ID + 1}");
                     }
 
                     if (race.HasStarted)
@@ -138,12 +138,13 @@ You can chat with your fellow racers using the rc command.",
 
                     lock (race.Areas) {
                         if (args[1].Type != GhostNetCommandArg.EType.Int ||
-                            args[1].Int < 0 || race.Areas.Count <= args[1].Int)
+                            args[1].Int < 1 || race.Areas.Count < args[1].Int)
                             throw new Exception("Not a valid ID!");
 
                         race.Areas.RemoveAt(args[1].Int - 1);
                     }
 
+                    env.Send(race.AreaList);
                     return;
 
                 case "start":
@@ -170,7 +171,7 @@ You can chat with your fellow racers using the rc command.",
                         throw new Exception("Too many arguments!");
 
                     if (args[1].Type != GhostNetCommandArg.EType.Int ||
-                        args[1].Int < 0 || Races.Count <= args[1].Int)
+                        args[1].Int < 1 || Races.Count < args[1].Int)
                         throw new Exception("Not a valid ID!");
                     race = Races[args[1].Int - 1];
                     if (race == null)
@@ -208,13 +209,13 @@ You can chat with your fellow racers using the rc command.",
                             Race raceListed = Races[i];
                             if (raceListed == null)
                                 continue;
-                            GhostNetFrame owner;
+                            ChunkMPlayer owner;
                             string ownerName = null;
                             if (env.Server.PlayerMap.TryGetValue(raceListed.Players[0], out owner) && owner != null)
-                                ownerName = owner.MPlayer.Name;
+                                ownerName = owner.Name;
                             builder
                                 .Append(race == raceListed ? '>' : raceListed.HasStarted ? 'X' : '#')
-                                .Append(raceListed.ID)
+                                .Append(raceListed.ID + 1)
                                 .Append(" by ")
                                 .Append(string.IsNullOrEmpty(ownerName) ? "???" : ownerName)
                                 .AppendLine();
@@ -236,10 +237,10 @@ You can chat with your fellow racers using the rc command.",
                     } else if (args.Length > 2) {
                         throw new Exception("Too many arguments!");
                     } else if (args[1].Type != GhostNetCommandArg.EType.Int ||
-                               args[1].Int < 0 || Races.Count <= args[1].Int) {
+                               args[1].Int <= 0 || Races.Count < args[1].Int) {
                         throw new Exception("Not a valid ID!");
                     } else {
-                        race = Races[args[1].Int];
+                        race = Races[args[1].Int - 1];
                         if (race == null)
                             throw new Exception("Race already ended!");
                     }
@@ -343,10 +344,10 @@ You can chat with your fellow racers using the rc command.",
                                 builder.AppendLine("Finished:");
                                 for (int i = 0; i < PlayersFinished.Count; i++) {
                                     uint playerID = PlayersFinished[i];
-                                    GhostNetFrame player;
+                                    ChunkMPlayer player;
                                     if (!Manager.Server.PlayerMap.TryGetValue(playerID, out player) || player == null)
                                         player = null;
-                                    builder.Append("#").Append(i).Append(": ").Append(player?.MPlayer.Name ?? "???").Append('#').Append(playerID);
+                                    builder.Append("#").Append(i).Append(": ").Append(player?.Name ?? "???").Append('#').Append(playerID);
 
                                     TimeSpan time;
                                     if (Times.TryGetValue(playerID, out time))
@@ -363,10 +364,10 @@ You can chat with your fellow racers using the rc command.",
                                 foreach (uint playerID in Players) {
                                     if (PlayersFinished.Contains(playerID))
                                         continue;
-                                    GhostNetFrame player;
+                                    ChunkMPlayer player;
                                     if (!Manager.Server.PlayerMap.TryGetValue(playerID, out player) || player == null)
                                         continue;
-                                    builder.Append(count + 1).Append(": ").Append(player.MPlayer.Name).Append('#').Append(playerID);
+                                    builder.Append(count + 1).Append(": ").Append(player.Name).Append('#').Append(playerID);
 
                                     int index;
                                     if (Indices.TryGetValue(playerID, out index))
@@ -478,7 +479,7 @@ The server will teleport you immediately when the race starts."
 
             public void Finish(uint playerID) {
                 TimeSpan time = Time.Elapsed;
-                GhostNetFrame player;
+                ChunkMPlayer player;
                 if (!Manager.Server.PlayerMap.TryGetValue(playerID, out player) || player == null)
                     return;
                 lock (PlayersFinished) {
@@ -486,7 +487,7 @@ The server will teleport you immediately when the race starts."
                 }
                 Indices[playerID] = Areas.Count;
                 Times[playerID] = time;
-                Send(null, $"#{PlayersFinished.Count}: {player.MPlayer.Name}#{player.HHead.PlayerID} - {TimeToString(time)}");
+                Send(null, $"#{PlayersFinished.Count}: {player.Name}#{playerID} - {TimeToString(time)}");
                 if (PlayersFinished.Count == Players.Count)
                     Time.Stop();
             }
@@ -494,17 +495,17 @@ The server will teleport you immediately when the race starts."
             public void Move(uint playerID, int index, GhostNetFrame frame = null) {
                 Logger.Log(LogLevel.Verbose, "ghostnet-race", $"Moving player {playerID} to index {index}");
                 GhostNetConnection con = Manager.Server.Connections[(int) playerID];
-                GhostNetFrame playerCached;
+                ChunkMPlayer playerCached;
                 if (con == null || !Manager.Server.PlayerMap.TryGetValue(playerID, out playerCached) || playerCached == null)
                     return;
                 Indices[playerID] = index;
-                if (index == -1 && WaitingForStart.Contains(playerID) && string.IsNullOrEmpty(playerCached.MPlayer.SID)) {
+                if (index == -1 && WaitingForStart.Contains(playerID) && string.IsNullOrEmpty(playerCached.SID)) {
                     WaitingForStart.Remove(playerID);
                     return;
                 }
 
                 ChunkMPlayer player = new ChunkMPlayer {
-                    Name = playerCached.MPlayer.Name,
+                    Name = playerCached.Name,
                     SID = index == -1 ? "" : Areas[index].Item1,
                     Mode = index == -1 ? AreaMode.Normal : Areas[index].Item2,
                     Level = ""

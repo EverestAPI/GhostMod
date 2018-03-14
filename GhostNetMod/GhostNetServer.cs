@@ -35,7 +35,7 @@ namespace Celeste.Mod.Ghost.Net {
         public List<GhostNetConnection> Connections = new List<GhostNetConnection>();
         public Dictionary<IPEndPoint, GhostNetConnection> ConnectionMap = new Dictionary<IPEndPoint, GhostNetConnection>();
         public Dictionary<IPAddress, GhostNetConnection> UpdateConnectionQueue = new Dictionary<IPAddress, GhostNetConnection>();
-        public Dictionary<uint, GhostNetFrame> PlayerMap = new Dictionary<uint, GhostNetFrame>();
+        public Dictionary<uint, ChunkMPlayer> PlayerMap = new Dictionary<uint, ChunkMPlayer>();
         public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
 
         public List<ChunkMChat> ChatLog = new List<ChunkMChat>();
@@ -48,7 +48,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public static event Action<GhostNetServer> OnCreate;
         public event GhostNetFrameHandler OnHandle;
-        public event Action<uint, GhostNetFrame> OnDisconnect;
+        public event Action<uint, ChunkMPlayer> OnDisconnect;
         // TODO: More events.
 
         // Allows testing a subset of GhostNetMod's functions in an easy manner.
@@ -129,7 +129,7 @@ namespace Celeste.Mod.Ghost.Net {
 
                 response = filterFrame;
             };
-            OnHandle += Handle;
+            OnHandle += filter;
 
             // Send a request.
             con.SendManagement(new GhostNetFrame {
@@ -149,7 +149,7 @@ namespace Celeste.Mod.Ghost.Net {
                 Thread.Sleep(0);
 
             // If we still get a response after the timeout elapsed but before the handler has been removed, deal with it.
-            OnHandle -= Handle;
+            OnHandle -= filter;
 
             return response;
         }
@@ -215,15 +215,17 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MPlayer != null)
                 HandleMPlayer(con, frame);
 
-            GhostNetFrame player;
+            ChunkMPlayer player;
             if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player == null) {
                 // Ghost not managed - ignore the frame.
                 Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unexpected frame from #{frame.HHead?.PlayerID.ToString() ?? "???"} ({con.ManagementEndPoint}) - statusless ghost, possibly premature");
                 return;
             }
             // Temporarily attach the MPlayer chunk to make player identification easier.
-            player.MPlayer.IsCached = frame.MPlayer == null;
-            frame.MPlayer = player.MPlayer;
+            if (frame.MPlayer == null) {
+                frame.MPlayer = player;
+                frame.MPlayer.IsCached = true;
+            }
 
             if (frame.MRequest != null) {
                 // TODO: Handle requests by client in server.
@@ -271,21 +273,23 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            // Inform the player about all existing ghosts.
-            foreach (KeyValuePair<uint, GhostNetFrame> otherStatus in PlayerMap) {
-                if (otherStatus.Value == null || (!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID))
-                    continue;
-                con.SendManagement(new GhostNetFrame {
-                    HHead = new ChunkHHead {
-                        PlayerID = otherStatus.Key
-                    },
-
-                    MPlayer = otherStatus.Value.MPlayer
-                }, true);
-            }
-
             GhostIndices[frame.HHead.PlayerID] = 0;
-            PlayerMap[frame.HHead.PlayerID] = frame;
+
+            // Inform the player about all existing ghosts.
+            lock (PlayerMap) {
+                PlayerMap[frame.HHead.PlayerID] = frame.MPlayer;
+                foreach (KeyValuePair<uint, ChunkMPlayer> otherStatus in PlayerMap) {
+                    if (otherStatus.Value == null || (!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID))
+                        continue;
+                    con.SendManagement(new GhostNetFrame {
+                        HHead = new ChunkHHead {
+                            PlayerID = otherStatus.Key
+                        },
+
+                        MPlayer = otherStatus.Value
+                    }, true);
+                }
+            }
         }
 
         public virtual void HandleMEmote(GhostNetConnection con, GhostNetFrame frame) {
@@ -381,7 +385,6 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
             GhostIndices[frame.HHead.PlayerID] = frame.UUpdate.UpdateIndex;
-            PlayerMap[frame.HHead.PlayerID] = frame;
 
             // Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Received UUpdate from #{frame.HHead.PlayerID} ({con.UpdateEndPoint})");
 
@@ -406,10 +409,10 @@ namespace Celeste.Mod.Ghost.Net {
                 if (otherCon == null || (!AllowLoopbackGhost && i == frame.HHead.PlayerID))
                     continue;
 
-                GhostNetFrame otherPlayer;
+                ChunkMPlayer otherPlayer;
                 if (!PlayerMap.TryGetValue((uint) i, out otherPlayer) || otherPlayer == null ||
-                    frame.MPlayer.SID != otherPlayer.MPlayer.SID ||
-                    frame.MPlayer.Mode != otherPlayer.MPlayer.Mode
+                    frame.MPlayer.SID != otherPlayer.SID ||
+                    frame.MPlayer.Mode != otherPlayer.Mode
                 ) {
                     continue;
                 }
@@ -524,11 +527,17 @@ namespace Celeste.Mod.Ghost.Net {
                 UpdateConnectionQueue[con.ManagementEndPoint.Address] = null;
             }
 
-            GhostNetFrame player;
+            ChunkMPlayer player;
             if (PlayerMap.TryGetValue(id, out player) && player != null &&
-                !string.IsNullOrWhiteSpace(player.MPlayer.Name) &&
+                !string.IsNullOrWhiteSpace(player.Name) &&
                 !string.IsNullOrWhiteSpace(GhostNetModule.Settings.ServerMessageLeave)) {
-                BroadcastMChat(player, GhostNetModule.Settings.ServerMessageLeave, fillVars: true);
+                BroadcastMChat(new GhostNetFrame {
+                    HHead = new ChunkHHead {
+                        PlayerID = id
+                    },
+
+                    MPlayer = player
+                }, GhostNetModule.Settings.ServerMessageLeave, fillVars: true);
             }
 
             OnDisconnect?.Invoke(id, player);
@@ -546,7 +555,9 @@ namespace Celeste.Mod.Ghost.Net {
                     Level = ""
                 }
             };
-            PlayerMap[id] = null;
+            lock (PlayerMap) {
+                PlayerMap[id] = null;
+            }
             PropagateM(frame);
         }
 

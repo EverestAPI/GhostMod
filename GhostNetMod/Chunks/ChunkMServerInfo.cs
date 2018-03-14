@@ -20,6 +20,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string ChunkID = "nM?";
 
         public bool IsValid => true;
+        public bool IsWriteable => true;
 
         // PlayerID contained in HHead.
 

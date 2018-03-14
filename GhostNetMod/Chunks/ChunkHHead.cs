@@ -20,6 +20,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string ChunkID = "nH";
 
         public bool IsValid => true;
+        public bool IsWriteable => true;
 
         public uint PlayerID;
 

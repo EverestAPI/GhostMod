@@ -22,6 +22,7 @@ namespace Celeste.Mod.Ghost.Net {
         public const string ChunkID = "nMR";
 
         public bool IsValid => !string.IsNullOrWhiteSpace(ID);
+        public bool IsWriteable => true;
 
         public string ID;
 
