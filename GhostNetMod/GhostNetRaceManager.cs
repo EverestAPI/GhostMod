@@ -34,9 +34,12 @@ namespace Celeste.Mod.Ghost.Net {
 
             server.Commands.Add(CommandRace = new GhostNetDCommand {
                 Name = "race",
-                Args = "add [<sid> <side>] | start | join <id> | leave | list | areas [raceid] | players [raceid]",
+                Args = "+ [<sid> <side>] | - <index> | start | join <id> | leave | list | areas [raceid] | players [raceid]",
                 Help =
-@"Create, join, start and leave races.",
+@"Create, join, start and leave races.
+Use + and - to add and remove areas from a race.
+If using + outside a race, you're creating a new one.
+You can chat with your fellow racers using the rc command.",
                 OnRun = RunCommandRace
             });
 
@@ -55,16 +58,16 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public void Handle(GhostNetConnection con, GhostNetFrame frame) {
-            foreach (Race race in Races)
-                race?.Handle(con, frame);
+            lock (Races) {
+                for (int i = 0; i < Races.Count; i++)
+                    Races[i]?.Handle(con, frame);
+            }
         }
 
         public void Disconnect(uint playerID, GhostNetFrame player) {
             Race race = GetRace(playerID);
             if (race != null) {
-                race.Players.Remove(playerID);
-                if (race.Players.Count == 0)
-                    Races[race.ID] = null;
+                race.RemovePlayer(playerID, $"Player #{playerID} disconnected.");
             }
         }
 
@@ -79,6 +82,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             switch (args[0]) {
                 case "add":
+                case "+":
                     race = GetRace(env.PlayerID);
                     if (race != null && race.Players[0] != env.PlayerID)
                         throw new Exception("You don't own the race!");
@@ -87,12 +91,16 @@ namespace Celeste.Mod.Ghost.Net {
                         env.Send($"New race created: #{race.ID}");
                     }
 
+                    if (race.HasStarted)
+                        throw new Exception("The race has already started!");
+
                     if (args.Length == 1) {
                         // Add the area the player currently is in.
                         if (string.IsNullOrEmpty(env.MPlayer.SID))
                             throw new Exception("You can't add the menu to the race!");
-                        race.Areas.Add(new AreaKey(0, env.MPlayer.Mode).SetSID(env.MPlayer.SID));
-
+                        lock (race.Areas) {
+                            race.Areas.Add(new AreaKey(0, env.MPlayer.Mode).SetSID(env.MPlayer.SID));
+                        }
                     } else if (args.Length < 3) {
                         throw new Exception("Not enough arguments!");
                     } else if (args.Length > 3) {
@@ -105,12 +113,38 @@ namespace Celeste.Mod.Ghost.Net {
                             mode = args[2].String.ToLowerInvariant()[0] - 'a';
                         if (mode < 0 || 2 < mode)
                             throw new Exception("Mode must be one of the following: a 1 b 2 c 3");
-                        race.Areas.Add(new AreaKey(0, (AreaMode) mode).SetSID(args[1]));
+                        lock (race.Areas) {
+                            race.Areas.Add(new AreaKey(0, (AreaMode) mode).SetSID(args[1]));
+                        }
                     }
 
                     env.Send(race.AreaList);
                     return;
 
+                case "remove":
+                case "-":
+                    race = GetRace(env.PlayerID);
+                    if (race == null)
+                        throw new Exception($"You're not in a race!");
+                    if (race.Players[0] != env.PlayerID)
+                        throw new Exception("You don't own the race!");
+                    if (race.HasStarted)
+                        throw new Exception("The race has already started!");
+
+                    if (args.Length < 2)
+                        throw new Exception("Not enough arguments!");
+                    if (args.Length > 2)
+                        throw new Exception("Too many arguments!");
+
+                    lock (race.Areas) {
+                        if (args[1].Type != GhostNetCommandArg.EType.Int ||
+                            args[1].Int < 0 || race.Areas.Count <= args[1].Int)
+                            throw new Exception("Not a valid ID!");
+
+                        race.Areas.RemoveAt(args[1].Int - 1);
+                    }
+
+                    return;
 
                 case "start":
                     if (args.Length > 1)
@@ -138,15 +172,17 @@ namespace Celeste.Mod.Ghost.Net {
                     if (args[1].Type != GhostNetCommandArg.EType.Int ||
                         args[1].Int < 0 || Races.Count <= args[1].Int)
                         throw new Exception("Not a valid ID!");
-                    race = Races[args[1].Int];
+                    race = Races[args[1].Int - 1];
                     if (race == null)
-                        throw new Exception("Race already ended!");
+                        throw new Exception("The race has already ended!");
 
                     if (race.HasStarted)
                         throw new Exception("You're too late, the race has already started without you!");
 
-                    race.Players.Add(env.PlayerID);
-                    race.Send(null, $"{env.MPlayer.Name}#{env.HHead.PlayerID} has joined the race!");
+                    lock (race.Players) {
+                        race.Players.Add(env.PlayerID);
+                    }
+                    race.Send(null, $"{env.MPlayer.Name}#{env.HHead.PlayerID} joined.");
                     return;
 
                 case "leave":
@@ -157,11 +193,7 @@ namespace Celeste.Mod.Ghost.Net {
                     if (race == null)
                         throw new Exception($"You're not in a race!");
 
-                    race.Players.Remove(env.PlayerID);
-                    if (race.Players.Count == 0)
-                        Races[race.ID] = null;
-
-                    race.Send(null, $"{env.MPlayer.Name}#{env.HHead.PlayerID} has left the race!");
+                    race.RemovePlayer(env.PlayerID, $"{env.MPlayer.Name}#{env.HHead.PlayerID} left.");
                     return;
 
                 case "list":
@@ -171,20 +203,23 @@ namespace Celeste.Mod.Ghost.Net {
                     race = GetRace(env.PlayerID);
                     StringBuilder builder = new StringBuilder();
                     int count = 0;
-                    foreach (Race raceListed in Races) {
-                        if (raceListed == null)
-                            continue;
-                        GhostNetFrame owner;
-                        string ownerName = null;
-                        if (env.Server.PlayerMap.TryGetValue(raceListed.Players[0], out owner) && owner != null)
-                            ownerName = owner.MPlayer.Name;
-                        builder
-                            .Append(race == raceListed ? '>' : raceListed.HasStarted ? 'X' : '#')
-                            .Append(raceListed.ID)
-                            .Append(" by ")
-                            .Append(string.IsNullOrEmpty(ownerName) ? "???" : ownerName)
-                            .AppendLine();
-                        count++;
+                    lock (Races) {
+                        for (int i = 0; i < Races.Count; i++) {
+                            Race raceListed = Races[i];
+                            if (raceListed == null)
+                                continue;
+                            GhostNetFrame owner;
+                            string ownerName = null;
+                            if (env.Server.PlayerMap.TryGetValue(raceListed.Players[0], out owner) && owner != null)
+                                ownerName = owner.MPlayer.Name;
+                            builder
+                                .Append(race == raceListed ? '>' : raceListed.HasStarted ? 'X' : '#')
+                                .Append(raceListed.ID)
+                                .Append(" by ")
+                                .Append(string.IsNullOrEmpty(ownerName) ? "???" : ownerName)
+                                .AppendLine();
+                            count++;
+                        }
                     }
                     builder.Append(count).Append(" race");
                     if (count != 1)
@@ -246,9 +281,14 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             lock (Races) {
-                foreach (Race other in Races) {
-                    if (other != null && other.Players.Contains(playerID)) {
-                        return PlayerRaceCache[playerID] = other;
+                for (int i = 0; i < Races.Count; i++) {
+                    Race other = Races[i];
+                    if (other == null)
+                        continue;
+                    lock (other.Players) {
+                        if (other.Players.Contains(playerID)) {
+                            return PlayerRaceCache[playerID] = other;
+                        }
                     }
                 }
             }
@@ -280,7 +320,14 @@ namespace Celeste.Mod.Ghost.Net {
             public int ID;
 
             public List<uint> Players = new List<uint>();
+            public List<uint> PlayersFinished = new List<uint>();
             public List<AreaKey> Areas = new List<AreaKey>();
+            public Dictionary<uint, int> Indices = new Dictionary<uint, int>();
+            public Dictionary<uint, TimeSpan> Times = new Dictionary<uint, TimeSpan>();
+
+            public Stopwatch Time = new Stopwatch();
+
+            private HashSet<uint> WaitingForStart = new HashSet<uint>();
 
             public bool HasStarted;
 
@@ -288,16 +335,56 @@ namespace Celeste.Mod.Ghost.Net {
                 get {
                     StringBuilder builder = new StringBuilder();
                     int count = 0;
-                    foreach (uint playerID in Players) {
-                        GhostNetFrame player;
-                        if (!Manager.Server.PlayerMap.TryGetValue(playerID, out player) || player == null)
-                            continue;
-                        builder.Append(count + 1).Append(": ").Append(player.MPlayer.Name).Append('#').Append(playerID).AppendLine();
-                        count++;
+                    int countFinished = 0;
+                    lock (Players) {
+                        lock (PlayersFinished) {
+
+                            if (PlayersFinished.Count > 0) {
+                                builder.AppendLine("Finished:");
+                                for (int i = 0; i < PlayersFinished.Count; i++) {
+                                    uint playerID = PlayersFinished[i];
+                                    GhostNetFrame player;
+                                    if (!Manager.Server.PlayerMap.TryGetValue(playerID, out player) || player == null)
+                                        player = null;
+                                    builder.Append("#").Append(i).Append(": ").Append(player?.MPlayer.Name ?? "???").Append('#').Append(playerID);
+
+                                    TimeSpan time;
+                                    if (Times.TryGetValue(playerID, out time))
+                                        builder.Append(" - ").Append(TimeToString(time));
+
+                                    builder.AppendLine();
+                                    if (player != null)
+                                        countFinished++;
+                                }
+                            }
+
+                            if (Players.Count - PlayersFinished.Count > 0) {
+                                builder.AppendLine("Racing:");
+                                foreach (uint playerID in Players) {
+                                    if (PlayersFinished.Contains(playerID))
+                                        continue;
+                                    GhostNetFrame player;
+                                    if (!Manager.Server.PlayerMap.TryGetValue(playerID, out player) || player == null)
+                                        continue;
+                                    builder.Append(count + 1).Append(": ").Append(player.MPlayer.Name).Append('#').Append(playerID);
+
+                                    int index;
+                                    if (Indices.TryGetValue(playerID, out index))
+                                        builder.Append(" - ").Append(index).Append("/").Append(Areas.Count);
+                                    
+                                    builder.AppendLine();
+                                    count++;
+                                }
+                            }
+
+                        }
                     }
-                    builder.Append(count).Append(" player");
+                    builder.Append(count + countFinished).Append(" racer");
                     if (count != 1)
                         builder.Append('s');
+                    if (countFinished != 0) {
+                        builder.Append(", ").Append(countFinished).Append(" finished, ").Append(count).Append(" remaining");
+                    }
                     return builder.ToString().Trim();
                 }
             }
@@ -306,9 +393,11 @@ namespace Celeste.Mod.Ghost.Net {
                 get {
                     StringBuilder builder = new StringBuilder();
                     int count = 0;
-                    foreach (AreaKey area in Areas) {
-                        builder.Append(count + 1).Append(": ").Append(area.GetSID()).Append(' ').Append((char) ('A' + area.Mode)).AppendLine();
-                        count++;
+                    lock (Areas) {
+                        foreach (AreaKey area in Areas) {
+                            builder.Append(count + 1).Append(": ").Append(area.GetSID()).Append(' ').Append((char) ('A' + area.Mode)).AppendLine();
+                            count++;
+                        }
                     }
                     builder.Append(count).Append(" area");
                     if (count != 1)
@@ -317,11 +406,130 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            public void Start() {
-                Send(null, "Starting races still TODO.");
+            public static string TimeToString(TimeSpan time)
+                => $"{((int) Math.Floor(time.TotalMinutes)).ToString("00")}:{time.Seconds.ToString("00")}:{time.Milliseconds.ToString("000")}";
+
+            public void RemovePlayer(uint playerID, string message) {
+                Send(null, message);
+                lock (Players) {
+                    Players.Remove(playerID);
+                    if (Players.Count == 0) {
+                        Send(null, "Race disbanded.");
+                        Manager.Races[ID] = null;
+                        return;
+                    }
+                }
             }
 
-            public void Send(GhostNetFrame frame, string text, string tag = "race", Color? color = null, bool fillVars = false, uint? id = null) {
+            public void Start() {
+                if (Areas.Count == 0)
+                    throw new Exception("Can't start a race with no areas!");
+                if (HasStarted)
+                    throw new Exception("The race has already started!");
+
+                HasStarted = true;
+
+                Send(null,
+@"The race will start soon!
+You will be sent to the menu. Please wait there.
+The server will teleport you immediately when the race starts."
+                );
+
+                Thread.Sleep(10000);
+
+                lock (Players) {
+                    foreach (uint playerID in Players) {
+                        WaitingForStart.Add(playerID);
+                        Move(playerID, -1);
+                    }
+                }
+
+                while (WaitingForStart.Count > 0)
+                    Thread.Sleep(0);
+
+                Send(null, "Starting the race in 3...");
+                Thread.Sleep(1000);
+                Send(null, "2...");
+                Thread.Sleep(1000);
+                Send(null, "1...");
+                Thread.Sleep(1000);
+
+                Time.Start();
+
+                lock (Players) {
+                    // Note: Even though we're locked, Players can change if the local client (running in same thread!) doesn't have the map.
+                    foreach (uint playerID in new List<uint>(Players)) {
+                        Progress(playerID);
+                    }
+                }
+                Send(null, "GO!");
+            }
+
+            public void Progress(uint playerID, GhostNetFrame frame = null) {
+                int index;
+                if (!Indices.TryGetValue(playerID, out index))
+                    return;
+                index++;
+                if (index >= Areas.Count) {
+                    Finish(playerID);
+                } else {
+                    Move(playerID, index, frame);
+                }
+            }
+
+            public void Finish(uint playerID) {
+                TimeSpan time = Time.Elapsed;
+                GhostNetFrame player;
+                if (!Manager.Server.PlayerMap.TryGetValue(playerID, out player) || player == null)
+                    return;
+                lock (PlayersFinished) {
+                    PlayersFinished.Add(playerID);
+                }
+                Indices[playerID] = Areas.Count;
+                Times[playerID] = time;
+                Send(null, $"#{PlayersFinished.Count}: {player.MPlayer.Name}#{player.HHead.PlayerID} - {TimeToString(time)}");
+                if (PlayersFinished.Count == Players.Count)
+                    Time.Stop();
+            }
+
+            public void Move(uint playerID, int index, GhostNetFrame frame = null) {
+                Logger.Log(LogLevel.Verbose, "ghostnet-race", $"Moving player {playerID} to index {index}");
+                GhostNetConnection con = Manager.Server.Connections[(int) playerID];
+                GhostNetFrame playerCached;
+                if (con == null || !Manager.Server.PlayerMap.TryGetValue(playerID, out playerCached) || playerCached == null)
+                    return;
+                Indices[playerID] = index;
+                if (index == -1 && WaitingForStart.Contains(playerID) && string.IsNullOrEmpty(playerCached.MPlayer.SID)) {
+                    WaitingForStart.Remove(playerID);
+                    return;
+                }
+
+                ChunkMPlayer player = new ChunkMPlayer {
+                    Name = playerCached.MPlayer.Name,
+                    SID = index == -1 ? "" : Areas[index].GetSID(),
+                    Mode = index == -1 ? AreaMode.Normal : Areas[index].Mode,
+                    Level = ""
+                };
+
+                if (frame == null) {
+                    con.SendManagement(new GhostNetFrame {
+                        HHead = new ChunkHHead {
+                            PlayerID = playerID
+                        },
+
+                        MPlayer = player
+                    }, true);
+
+                } else {
+                    frame.MPlayer = player;
+                    frame.PropagateM = true;
+                    // (14.03.2018 00:59:06) [Everest] [Verbose] [ghostnet-race] Moving player 0 to index 1
+                    // Reaches this but client still receives:
+                    // (14.03.2018 00:59:06) [Everest] [Info] [ghostnet-c] #0 ADE in  A
+                }
+            }
+
+            public ChunkMChat Send(GhostNetFrame frame, string text, string tag = "race", Color? color = null, bool fillVars = false, uint? id = null) {
                 ChunkMChat msg = Manager.Server.CreateMChat(frame, text, tag, color ?? (frame != null ? ColorDefault : ColorBroadcast), fillVars, id);
                 GhostNetFrame frameMsg = new GhostNetFrame {
                     HHead = frame?.HHead ?? new ChunkHHead {
@@ -329,16 +537,58 @@ namespace Celeste.Mod.Ghost.Net {
                     },
                     MChat = msg
                 };
-                foreach (uint playerID in Players) {
-                    GhostNetConnection con = Manager.Server.Connections[(int) playerID];
-                    if (con == null)
-                        continue;
-                    con.SendManagement(frameMsg, false);
+                lock (Players) {
+                    foreach (uint playerID in Players) {
+                        GhostNetConnection con = Manager.Server.Connections[(int) playerID];
+                        if (con == null)
+                            continue;
+                        con.SendManagement(frameMsg, false);
+                    }
                 }
+                return msg;
             }
 
             public void Handle(GhostNetConnection con, GhostNetFrame frame) {
-                // TODO
+                if (!HasStarted || Areas.Count == 0 || !Players.Contains(frame.HHead.PlayerID))
+                    return;
+
+                if (frame.MPlayer == null || frame.MPlayer.IsCached)
+                    return;
+
+                if (WaitingForStart.Contains(frame.HHead.PlayerID)) {
+                    WaitingForStart.Remove(frame.HHead.PlayerID);
+                    if (string.IsNullOrEmpty(frame.MPlayer.SID)) {
+                        // Player has been moved to menu to wait for the race to start.
+                        Logger.Log(LogLevel.Verbose, "ghostnet-race", $"Player {frame.HHead.PlayerID} waiting for start");
+                    } else {
+                        RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} not sent to menu properly!");
+                    }
+
+                } else if (!PlayersFinished.Contains(frame.HHead.PlayerID)) {
+                    // Player still racing.
+                    if (frame.MPlayer.LevelExit == null) {
+                        // Player has entered another level.
+                        int index;
+                        if (!Indices.TryGetValue(frame.HHead.PlayerID, out index))
+                            return; // Index-less player? How did we even land here?
+                        AreaKey area = Areas[index];
+                        if (frame.MPlayer.SID != area.GetSID() ||
+                            frame.MPlayer.Mode != area.Mode) {
+                            // Player isn't in the level they should be in.
+                            RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} went somewhere else.");
+                            return;
+                        }
+
+                    } else if (frame.MPlayer.LevelExit == LevelExit.Mode.GiveUp || frame.MPlayer.LevelExit == LevelExit.Mode.SaveAndQuit) {
+                        // Player has quit the level without completion.
+                        RemovePlayer(frame.HHead.PlayerID, $"{frame.MPlayer.Name}#{frame.HHead.PlayerID} dropped out.");
+
+                    } else if (frame.MPlayer.LevelExit == LevelExit.Mode.Completed || frame.MPlayer.LevelExit == LevelExit.Mode.CompletedInterlude) {
+                        // Player completed this level, move to next one.
+                        Progress(frame.HHead.PlayerID, frame);
+                    }
+                }
+
             }
 
         }

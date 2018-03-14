@@ -33,7 +33,6 @@ namespace Celeste.Mod.Ghost.Net {
 
         public uint PlayerID;
         public ChunkMPlayer PlayerInfo;
-        public int PlayerInfoAwaitedEcho = 0;
         public ChunkMServerInfo ServerInfo;
 
         public Dictionary<uint, ChunkMPlayer> PlayerMap = new Dictionary<uint, ChunkMPlayer>();
@@ -131,6 +130,12 @@ namespace Celeste.Mod.Ghost.Net {
                 EmoteWheel.Selected = -1;
             }
 
+            if (!(Player?.Scene?.Paused ?? true)) {
+                string input = ChatInput;
+                ChatVisible = false;
+                ChatInput = input;
+            }
+
             if (!ChatVisible && GhostNetModule.Instance.ButtonChat.Pressed) {
                 ChatVisible = true;
 
@@ -143,10 +148,10 @@ namespace Celeste.Mod.Ghost.Net {
                     ChatRepeatIndex--;
                 } else if (MInput.Keyboard.Pressed(Keys.Up) && ChatRepeatIndex < ChatRepeat.Count - 1) {
                     ChatRepeatIndex++;
-                }
 
-            } else if (ChatVisible && (Input.ESC.Pressed || Input.Pause.Pressed)) {
-                ChatVisible = false;
+                } else if (Input.ESC.Pressed || Input.Pause.Pressed) {
+                    ChatVisible = false;
+                }
             }
 
             if (!ChatVisible) {
@@ -328,20 +333,16 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Frame Senders
 
-        public virtual void SendMPlayer(LevelExit.Mode? exitMode = null) {
+        public virtual void SendMPlayer(LevelExit.Mode? levelExit = null) {
             if (Connection == null)
                 return;
-            PlayerInfoAwaitedEcho++;
             Connection.SendManagement(new GhostNetFrame {
                 MPlayer = new ChunkMPlayer {
                     Name = GhostModule.Settings.Name,
                     SID = Session?.Area.GetSID() ?? "",
                     Mode = Session?.Area.Mode ?? AreaMode.Normal,
-                    Level = Session?.Level ?? ""
-                },
-
-                MLevelExit = exitMode == null ? null : new ChunkMLevelExit {
-                    Mode = exitMode.Value
+                    Level = Session?.Level ?? "",
+                    LevelExit = levelExit
                 }
             }, true);
         }
@@ -458,12 +459,16 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.MPlayer != null)
                 HandleMPlayer(con, frame);
 
-            ChunkMPlayer player;
-            if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player == null) {
-                // Ghost not managed, possibly the server.
+            if (frame.MPlayer == null) {
+                ChunkMPlayer player;
+                if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player == null) {
+                    // Ghost not managed, possibly the server.
+                }
+                // Temporarily attach the MPlayer chunk to make player identification easier.
+                frame.MPlayer = player;
+                if (frame.MPlayer != null)
+                    frame.MPlayer.IsCached = true;
             }
-            // Temporarily attach the MPlayer chunk to make player identification easier.
-            frame.MPlayer = player;
 
             if (frame.MRequest != null)
                 HandleMRequest(con, frame);
@@ -493,13 +498,13 @@ namespace Celeste.Mod.Ghost.Net {
                 if (PlayerName != null)
                     PlayerName.Name = frame.MPlayer.Name;
 
-                if (PlayerInfoAwaitedEcho > 0) {
+                if (frame.MPlayer.IsEcho) {
                     // If we're receiving a MPlayer after having sent one, ignore it.
                     // This fixes the client being thrown back if the player moves too quickly between rooms.
-                    PlayerInfoAwaitedEcho--;
                     return;
                 }
 
+                Logger.Log(LogLevel.Info, "ghostnet-c", $"Server told us to move to {frame.MPlayer.SID} {(char) ('A' + frame.MPlayer.Mode)} {frame.MPlayer.Level}");
                 if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
                     frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
                     frame.MPlayer.Level != (Session?.Level ?? "")) {
@@ -534,7 +539,7 @@ namespace Celeste.Mod.Ghost.Net {
                         string message = Dialog.Get("postcard_levelgone");
                         if (string.IsNullOrEmpty(frame.MPlayer.SID)) {
                             message = Dialog.Has("postcard_ghostnetmodule_backtomenu") ? Dialog.Get("postcard_ghostnetmodule_backtomenu") :
-@"{big}Oops!{/big}{n}The server has sent you back to the main menu.";
+@"The server has sent you back to the main menu.";
                         }
 
                         message = message.Replace("((player))", SaveData.Instance.Name);
@@ -790,7 +795,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             Cleanup();
 
-            SendMPlayer(exitMode: mode);
+            SendMPlayer(levelExit: mode);
         }
 
         public void OnTextInput(char c) {

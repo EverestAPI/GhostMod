@@ -222,7 +222,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
             // Temporarily attach the MPlayer chunk to make player identification easier.
-            bool mPlayerTemporary = frame.MPlayer == null;
+            player.MPlayer.IsCached = frame.MPlayer == null;
             frame.MPlayer = player.MPlayer;
 
             if (frame.MRequest != null) {
@@ -242,7 +242,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             OnHandle?.Invoke(con, frame);
 
-            if (mPlayerTemporary)
+            if (frame.MPlayer != null && frame.MPlayer.IsCached)
                 frame.MPlayer = null;
 
             if (frame.PropagateM)
@@ -263,6 +263,7 @@ namespace Celeste.Mod.Ghost.Net {
             Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {(char) ('A' + frame.MPlayer.Mode)} {frame.MPlayer.Level}");
 
             // Propagate status to all other players.
+            frame.MPlayer.IsEcho = true;
             frame.PropagateM = true;
 
             if (!PlayerMap.ContainsKey(frame.HHead.PlayerID)) {

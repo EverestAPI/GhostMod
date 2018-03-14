@@ -61,7 +61,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Chunks\ChunkMLevelExit.cs" />
     <Compile Include="Chunks\IChunk.cs" />
     <Compile Include="Chunks\ChunkHHead.cs" />
     <Compile Include="Chunks\ChunkMChat.cs" />

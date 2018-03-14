@@ -129,14 +129,6 @@ namespace Celeste.Mod.Ghost.Net {
                 Set(value);
             }
         }
-        public ChunkMLevelExit MLevelExit {
-            get {
-                return Get<ChunkMLevelExit>();
-            }
-            set {
-                Set(value);
-            }
-        }
 
         // Update chunks.
         public ChunkUUpdate UUpdate {

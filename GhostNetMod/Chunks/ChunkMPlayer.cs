@@ -23,26 +23,51 @@ namespace Celeste.Mod.Ghost.Net {
 
         public bool IsValid => true;
 
+        /// <summary>
+        /// Whether the chunk is what the server / client last remembers about the player, or if it's a newly received chunk.
+        /// </summary>
+        public bool IsCached;
+
+        public bool IsEcho;
+
         public string Name;
 
         public string SID;
         public AreaMode Mode;
         public string Level;
 
+        public LevelExit.Mode? LevelExit;
+
         public void Read(BinaryReader reader) {
+            IsCached = false;
+
+            IsEcho = reader.ReadBoolean();
+
             Name = reader.ReadNullTerminatedString();
 
             SID = reader.ReadNullTerminatedString();
             Mode = (AreaMode) reader.ReadByte();
             Level = reader.ReadNullTerminatedString();
+
+            if (reader.ReadBoolean())
+                LevelExit = (LevelExit.Mode) reader.ReadByte();
         }
 
         public void Write(BinaryWriter writer) {
+            writer.Write(IsEcho);
+
             writer.WriteNullTerminatedString(Name);
 
             writer.WriteNullTerminatedString(SID);
             writer.Write((byte) Mode);
             writer.WriteNullTerminatedString(Level);
+
+            if (LevelExit == null) {
+                writer.Write(false);
+            } else {
+                writer.Write(true);
+                writer.Write((byte) LevelExit);
+            }
         }
 
     }
