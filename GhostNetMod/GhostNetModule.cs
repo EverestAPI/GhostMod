@@ -37,14 +37,14 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (Settings.EmoteFavs == null || Settings.EmoteFavs.Length == 0) {
                 Settings.EmoteFavs = new string[] {
-                    "i:collectables/heartgem/0/spin00",
+                    "i:collectables/heartgem/0/spin",
                     "i:collectables/strawberry",
                     "Hi!",
                     "Too slow!",
                     "p:madeline/normal04",
                     "p:ghost/scoff03",
-                    "p:theo/yolo03 theo/yolo02 theo/yolo01 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02 theo/yolo02",
-                    "p:granny/laugh00 granny/laugh01 granny/laugh02 granny/laugh03",
+                    "p:theo/yolo03 theo/yolo02 theo/yolo01 theo/yolo02 END",
+                    "p:granny/laugh",
                 };
             }
         }

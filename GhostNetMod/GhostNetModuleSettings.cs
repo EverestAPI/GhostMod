@@ -59,6 +59,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Client Settings
 
+        public bool Collision { get; set; } = true;
+
         [SettingIgnore]
         // [SettingRange(0, 3)]
         public int SendFrameSkip { get; set; } = 0;

@@ -132,6 +132,15 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        public ChunkUCollision UCollision {
+            get {
+                return Get<ChunkUCollision>();
+            }
+            set {
+                Set(value);
+            }
+        }
+
         #endregion
 
         // Unparsed chunks, modifyable by mods.

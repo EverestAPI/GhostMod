@@ -331,6 +331,70 @@ namespace Celeste.Mod.Ghost.Net {
             return escaped.ToString();
         }
 
+        public virtual Ghost AddGhost(GhostNetFrame frame) {
+            Ghost ghost = new Ghost(Player);
+
+            ghost.Collidable = true;
+
+            ghost.Collider = new Hitbox(8f, 11f, -4f, -11f);
+            ghost.Add(new PlayerCollider(OnPlayerTouchGhost(ghost)));
+
+            Engine.Scene.Add(ghost);
+            GhostMap[frame.HHead.PlayerID] = ghost;
+            Ghosts.Add(ghost);
+            return ghost;
+        }
+
+        public virtual Action<Player> OnPlayerTouchGhost(Ghost ghost)
+            => player => {
+                if (!GhostNetModule.Settings.Collision)
+                    return;
+
+                bool head = false;
+
+                if (player.StateMachine.State == Player.StNormal &&
+                    player.Speed.Y > 0f && player.Bottom <= ghost.Top + 3f) {
+                    int dashes = player.Dashes;
+                    float stamina = player.Stamina;
+
+                    Audio.Play("event:/game/general/thing_booped", ghost.Position).setVolume(0.5f);
+
+                    OnJumpedOnHead(player, true, false);
+
+                    player.Bounce(ghost.Top + 2f);
+
+                    player.Dashes = dashes;
+                    player.Stamina = stamina;
+                    head = true;
+                }
+
+                // In a perfect world, the server would see and handle the collision, and we would receive the following.
+                // Right now, though, GhostNetMod doesn't have a dedicated server handling each player's state.
+                foreach (KeyValuePair<uint, Ghost> other in GhostMap) {
+                    if (ghost != other.Value)
+                        continue;
+                    SendUCollision(other.Key, head);
+                    break;
+                }
+            };
+
+        public void OnJumpedOnHead(Actor who, bool isPlayer, bool withPlayer) {
+            Audio.Play("event:/game/general/thing_booped", who.Position).setVolume(0.7f);
+
+            Level level = Engine.Scene as Level;
+
+            level.Particles.Emit(Player.P_SummitLandA, 12, who.BottomCenter, Vector2.UnitX * 3f, -1.57079637f);
+            level.Particles.Emit(Player.P_SummitLandB, 8, who.BottomCenter - Vector2.UnitX * 2f, Vector2.UnitX * 2f, 3.403392f);
+            level.Particles.Emit(Player.P_SummitLandB, 8, who.BottomCenter + Vector2.UnitX * 2f, Vector2.UnitX * 2f, -0.2617994f);
+            level.ParticlesBG.Emit(Player.P_SummitLandC, 30, who.BottomCenter, Vector2.UnitX * 5f);
+            
+            if (isPlayer || withPlayer) {
+                level.DirectionalShake(Vector2.UnitY, 0.1f);
+
+                Input.Rumble(RumbleStrength.Light, RumbleLength.Medium);
+            }
+        }
+
         #region Frame Senders
 
         public virtual void SendMPlayer(LevelExit.Mode? levelExit = null, bool levelCompleted = false) {
@@ -391,6 +455,7 @@ namespace Celeste.Mod.Ghost.Net {
                     Data = GhostRecorder.LastFrameData.Data
                 }
             };
+            // TODO: Move GhostNetModule.Settings.SendUFramesInMStream check into connection.
             if (GhostNetModule.Settings.SendUFramesInMStream) {
                 Connection.SendManagement(frame, true);
             } else {
@@ -398,6 +463,24 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             UpdateIndex++;
+        }
+
+        public virtual void SendUCollision(uint with, bool head) {
+            if (Connection == null)
+                return;
+
+            GhostNetFrame frame = new GhostNetFrame {
+                UCollision = new ChunkUCollision {
+                    With = with,
+                    Head = head
+                }
+            };
+            // TODO: Move GhostNetModule.Settings.SendUFramesInMStream check into connection.
+            if (GhostNetModule.Settings.SendUFramesInMStream) {
+                Connection.SendManagement(frame, true);
+            } else {
+                Connection.SendUpdate(frame, true);
+            }
         }
 
         public virtual void SendRSession() {
@@ -489,9 +572,10 @@ namespace Celeste.Mod.Ghost.Net {
                     // Ghost not managed, possibly the server.
                 }
                 // Temporarily attach the MPlayer chunk to make player identification easier.
-                frame.MPlayer = player;
-                if (frame.MPlayer != null)
+                if (frame.MPlayer == null && player != null) {
+                    frame.MPlayer = player;
                     frame.MPlayer.IsCached = true;
+                }
             }
 
             if (frame.MRequest != null)
@@ -505,6 +589,9 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (frame.UUpdate != null)
                 HandleUUpdate(con, frame);
+
+            if (frame.UCollision != null)
+                HandleUCollision(con, frame);
 
             OnHandle?.Invoke(con, frame);
         }
@@ -604,9 +691,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null) {
                 // No ghost for the player existing.
                 // Create a new ghost for the player.
-                Player.Scene.Add(ghost = new Ghost(Player));
-                GhostMap[frame.HHead.PlayerID] = ghost;
-                Ghosts.Add(ghost);
+                ghost = AddGhost(frame);
             }
 
             GhostIndices[frame.HHead.PlayerID] = 0;
@@ -659,7 +744,7 @@ namespace Celeste.Mod.Ghost.Net {
             GhostNetEmote emote = new GhostNetEmote(ghost ?? (Entity) Player, frame.MEmote.Value) {
                 Pop = true
             };
-            Player.Scene.Add(emote);
+            Engine.Scene.Add(emote);
         }
 
         public virtual void HandleMChat(GhostNetConnection con, GhostNetFrame frame) {
@@ -708,7 +793,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public virtual void HandleUUpdate(GhostNetConnection con, GhostNetFrame frame) {
-            if (Player?.Scene == null)
+            if (Player == null)
                 return;
 
             if (frame.HHead.PlayerID == PlayerID) {
@@ -732,6 +817,29 @@ namespace Celeste.Mod.Ghost.Net {
             ghost.ForcedFrame = new GhostFrame {
                 Data = frame.UUpdate.Data
             };
+        }
+
+        public virtual void HandleUCollision(GhostNetConnection con, GhostNetFrame frame) {
+            if (Player == null)
+                return;
+
+            if (frame.HHead.PlayerID == PlayerID) {
+                // We collided with ourselves..?!
+                return;
+            }
+
+            bool withPlayer = frame.UCollision.With == PlayerID;
+
+            Ghost ghost;
+            if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null)
+                return;
+
+            if (frame.UCollision.Head) {
+                OnJumpedOnHead(ghost, false, withPlayer);
+                if (withPlayer) {
+                    Player.Speed.Y = Math.Max(Player.Speed.Y, 8f);
+                }
+            }
         }
 
         public virtual void HandleRSession(GhostNetConnection con, GhostNetFrame frame) {
@@ -805,9 +913,8 @@ namespace Celeste.Mod.Ghost.Net {
         public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
             Session = level.Session;
 
-            string target = Session.Level;
             if (Connection != null)
-                Logger.Log(LogLevel.Info, "ghost-c", $"Stepping into {Session.Area.GetSID()} {(char) ('A' + Session.Area.Mode)} {target}");
+                Logger.Log(LogLevel.Info, "ghost-c", $"Stepping into {Session.Area.GetSID()} {(char) ('A' + Session.Area.Mode)} {Session.Level}");
 
             Player = level.Tracker.GetEntity<Player>();
 

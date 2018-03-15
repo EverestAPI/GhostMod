@@ -180,7 +180,7 @@ Normal text appears over your player.
 This syntax also works for your ""favorites"" (settings file).
 i:TEXTURE shows TEXTURE from the GUI atlas.
 p:TEXTURE shows TEXTURE from the Portraits atlas.
-p:FRM1 FRM2 FRM3 plays an animation, 5 FPS by default.
+p:FRM1 FRM2 FRM3 plays an animation, 7 FPS by default.
 p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
             OnParse = GhostNetDCommand.Parsers.Everything,
             OnRun = (cmd, env, args) => {

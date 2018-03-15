@@ -52,7 +52,7 @@ namespace Celeste.Mod.Ghost.Net {
         // TODO: More events.
 
         // Allows testing a subset of GhostNetMod's functions in an easy manner.
-        public bool AllowLoopbackGhost = false;
+        public bool AllowLoopbackUpdates = false;
 
         public GhostNetServer(Game game)
             : base(game) {
@@ -242,6 +242,9 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.UUpdate != null)
                 HandleUUpdate(con, frame);
 
+            if (frame.UCollision != null)
+                HandleUCollision(con, frame);
+
             OnHandle?.Invoke(con, frame);
 
             if (frame.PropagateM)
@@ -279,7 +282,7 @@ namespace Celeste.Mod.Ghost.Net {
             lock (PlayerMap) {
                 PlayerMap[frame.HHead.PlayerID] = frame.MPlayer;
                 foreach (KeyValuePair<uint, ChunkMPlayer> otherStatus in PlayerMap) {
-                    if (otherStatus.Value == null || (!AllowLoopbackGhost && otherStatus.Key == frame.HHead.PlayerID))
+                    if (otherStatus.Value == null || (!AllowLoopbackUpdates && otherStatus.Key == frame.HHead.PlayerID))
                         continue;
                     con.SendManagement(new GhostNetFrame {
                         HHead = new ChunkHHead {
@@ -392,21 +395,40 @@ namespace Celeste.Mod.Ghost.Net {
             frame.PropagateU = true;
         }
 
+        public virtual void HandleUCollision(GhostNetConnection con, GhostNetFrame frame) {
+            // Allow outdated collision frames to be handled.
+
+            ChunkMPlayer otherPlayer;
+            if (!PlayerMap.TryGetValue(frame.UCollision.With, out otherPlayer) || otherPlayer == null ||
+                frame.MPlayer.SID != otherPlayer.SID ||
+                frame.MPlayer.Mode != otherPlayer.Mode
+            ) {
+                // Player not in the same room.
+                return;
+            }
+
+            // Propagate update to all active players in the same room.
+            frame.PropagateU = true;
+        }
+
         #endregion
 
         #region Frame Senders
 
         public void PropagateM(GhostNetFrame frame) {
-            foreach (GhostNetConnection otherCon in Connections)
-                if (otherCon != null)
-                    otherCon.SendManagement(frame, false);
+            for (int i = 0; i < Connections.Count; i++) {
+                GhostNetConnection otherCon = Connections[i];
+                if (otherCon == null)
+                    continue;
+                otherCon.SendManagement(frame, false);
+            }
         }
 
         public void PropagateU(GhostNetFrame frame) {
             // U is always handled after M. Even if sending this fails, we shouldn't worry about loosing M chunks.
             for (int i = 0; i < Connections.Count; i++) {
                 GhostNetConnection otherCon = Connections[i];
-                if (otherCon == null || (!AllowLoopbackGhost && i == frame.HHead.PlayerID))
+                if (otherCon == null || (!AllowLoopbackUpdates && i == frame.HHead.PlayerID))
                     continue;
 
                 ChunkMPlayer otherPlayer;
@@ -606,10 +628,12 @@ namespace Celeste.Mod.Ghost.Net {
             ManagementListener.Stop();
 
             // Close all management connections.
-            foreach (GhostNetConnection connection in Connections) {
+            for (int i = 0; i < Connections.Count; i++) {
+                GhostNetConnection connection = Connections[i];
                 if (connection == null)
                     continue;
                 connection.Dispose();
+                Connections[i] = null;
             }
 
             UpdateConnection.Dispose();

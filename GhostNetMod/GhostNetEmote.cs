@@ -177,23 +177,35 @@ namespace Celeste.Mod.Ghost.Net {
             if ((atlas = GetIconAtlas(ref emote)) == null)
                 return null;
 
-            string[] split = emote.Split(' ');
-            if (split.Length > 1) {
-                int fps;
-                int offset = 1;
-                if (!int.TryParse(split[0], out fps)) {
-                    fps = 7; // Default FPS.
-                    offset = 0;
-                }
-
-                float timeTotal = (split.Length - offset) / (float) fps;
-                int index = (int) Math.Floor((time % timeTotal) * fps) + offset;
-                emote = split[index].Trim();
+            List<string> iconPaths = new List<string>(emote.Split(' '));
+            int fps;
+            if (iconPaths.Count > 1 && int.TryParse(iconPaths[0], out fps)) {
+                iconPaths.RemoveAt(0);
+            } else {
+                fps = 7; // Default FPS.
             }
 
-            if (!atlas.Has(emote))
+            List<MTexture> icons = iconPaths.SelectMany(iconPath => {
+                iconPath = iconPath.Trim();
+                List<MTexture> subs = atlas.GetAtlasSubtextures(iconPath);
+                if (subs.Count != 0)
+                    return subs;
+                if (atlas.Has(iconPath))
+                    return new List<MTexture>() { atlas[iconPath] };
+                if (iconPath.ToLowerInvariant() == "end")
+                    return new List<MTexture>() { null };
+                return new List<MTexture>();
+            }).ToList();
+
+            if (icons.Count == 0)
                 return null;
-            return atlas[emote];
+
+            int index = (int) Math.Floor(time * fps);
+
+            if (index >= icons.Count - 1 && icons[icons.Count - 1] == null)
+                return icons[icons.Count - 2];
+
+            return icons[index % icons.Count];
         }
 
     }

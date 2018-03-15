@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="Chunks\ChunkRListAreas.cs" />
     <Compile Include="Chunks\ChunkRListMods.cs" />
+    <Compile Include="Chunks\ChunkUCollision.cs" />
     <Compile Include="Chunks\IChunk.cs" />
     <Compile Include="Chunks\ChunkHHead.cs" />
     <Compile Include="Chunks\ChunkMChat.cs" />
