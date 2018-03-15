@@ -559,6 +559,7 @@ namespace Celeste.Mod.Ghost.Net {
                             Session.Level = frame.MPlayer.Level;
                             Session.FirstLevel = false;
                         }
+                        LevelEnterExt.ErrorMessage = null;
                         Engine.Scene = new LevelLoader(Session, frame.UUpdate?.Data.Position);
 
                     } else {
