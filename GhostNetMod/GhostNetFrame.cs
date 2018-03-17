@@ -19,7 +19,7 @@ namespace Celeste.Mod.Ghost.Net {
     /// <summary>
     /// A GhostNetFrame is a collection of many individual Chunks, which can have an individual or combined meaning.
     /// </summary>
-    public sealed class GhostNetFrame {
+    public sealed class GhostNetFrame : ICloneable {
 
         private static IDictionary<string, GhostNetChunkParser> ChunkParsers = new Dictionary<string, GhostNetChunkParser>();
         private static IDictionary<Type, string> ChunkIDs = new Dictionary<Type, string>();
@@ -131,10 +131,17 @@ namespace Celeste.Mod.Ghost.Net {
                 Set(value);
             }
         }
-
-        public ChunkUCollision UCollision {
+        public ChunkUActionCollision UActionCollision {
             get {
-                return Get<ChunkUCollision>();
+                return Get<ChunkUActionCollision>();
+            }
+            set {
+                Set(value);
+            }
+        }
+        public ChunkUParticles UParticles {
+            get {
+                return Get<ChunkUParticles>();
             }
             set {
                 Set(value);
@@ -157,7 +164,9 @@ namespace Celeste.Mod.Ghost.Net {
                     if (ChunkParsers.TryGetValue(id, out parser)) {
                         IChunk chunk = parser(reader);
                         if (chunk != null && chunk.IsValid) {
-                            ChunkMap[chunk.GetType()] = chunk;
+                            lock (ChunkMap) {
+                                ChunkMap[chunk.GetType()] = chunk;
+                            }
                         }
 
                     } else {
@@ -175,9 +184,11 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public void Write(BinaryWriter writer) {
-            foreach (IChunk chunk in ChunkMap.Values)
-                if (chunk != null && chunk.IsValid && chunk.IsSendable)
-                    GhostFrame.WriteChunk(writer, chunk.Write, GetChunkID(chunk.GetType()));
+            lock (ChunkMap) {
+                foreach (IChunk chunk in ChunkMap.Values)
+                    if (chunk != null && chunk.IsValid && chunk.IsSendable)
+                        GhostFrame.WriteChunk(writer, chunk.Write, GetChunkID(chunk.GetType()));
+            }
 
             if (Extra != null)
                 writer.Write(Extra);
@@ -189,8 +200,18 @@ namespace Celeste.Mod.Ghost.Net {
             => Set(typeof(T), chunk);
         public GhostNetFrame Set(Type t, IChunk chunk) {
             // Assume that chunk is t for performance reasons.
-            ChunkMap[t] = chunk;
+            lock (ChunkMap) {
+                ChunkMap[t] = chunk;
+            }
             return this;
+        }
+
+        public void Remove<T>() where T : IChunk
+            => Remove(typeof(T));
+        public void Remove(Type t) {
+            lock (ChunkMap) {
+                ChunkMap[t] = null;
+            }
         }
 
         public T Get<T>() where T : IChunk
@@ -207,10 +228,14 @@ namespace Celeste.Mod.Ghost.Net {
         public bool Has(Type t)
             => Get(t) != null;
 
-        public void Remove<T>() where T : IChunk
-            => Remove(typeof(T));
-        public void Remove(Type t) {
-            ChunkMap[t] = null;
+        public object Clone() {
+            GhostNetFrame clone = new GhostNetFrame();
+            lock (ChunkMap) {
+                foreach (KeyValuePair<Type, IChunk> entry in ChunkMap)
+                    if (entry.Value != null && entry.Value.IsValid && entry.Value.IsSendable)
+                        clone.ChunkMap[entry.Key] = (IChunk) entry.Value.Clone();
+            }
+            return clone;
         }
 
     }

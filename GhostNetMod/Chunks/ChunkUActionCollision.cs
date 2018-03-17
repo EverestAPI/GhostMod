@@ -16,9 +16,9 @@ namespace Celeste.Mod.Ghost.Net {
     /// Update chunk sent on (best case) each "collision" frame.
     /// A player always receives this with a HHead.PlayerID of the "colliding" player.
     /// </summary>
-    public class ChunkUCollision : IChunk {
+    public class ChunkUActionCollision : IChunk {
 
-        public const string ChunkID = "nUpC";
+        public const string ChunkID = "nUaC";
 
         public bool IsValid => true;
         public bool IsSendable => true;
@@ -37,7 +37,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public object Clone()
-            => new ChunkUCollision {
+            => new ChunkUActionCollision {
                 With = With,
                 Head = Head
             };

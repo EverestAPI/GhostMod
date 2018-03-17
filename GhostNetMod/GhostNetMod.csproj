@@ -63,7 +63,8 @@
   <ItemGroup>
     <Compile Include="Chunks\ChunkRListAreas.cs" />
     <Compile Include="Chunks\ChunkRListMods.cs" />
-    <Compile Include="Chunks\ChunkUCollision.cs" />
+    <Compile Include="Chunks\ChunkUParticles.cs" />
+    <Compile Include="Chunks\ChunkUActionCollision.cs" />
     <Compile Include="Chunks\IChunk.cs" />
     <Compile Include="Chunks\ChunkHHead.cs" />
     <Compile Include="Chunks\ChunkMChat.cs" />
@@ -75,6 +76,8 @@
     <Compile Include="Chunks\ChunkMPlayer.cs" />
     <Compile Include="Connection\GhostNetRemoteConnection.cs" />
     <Compile Include="Connection\GhostNetLocalConnection.cs" />
+    <Compile Include="GhostNetExtensions.cs" />
+    <Compile Include="GhostNetParticleHelper.cs" />
     <Compile Include="GhostNetRaceManager.cs" />
     <Compile Include="GhostNetCommandsStandard.cs" />
     <Compile Include="GhostNetCommand.cs" />

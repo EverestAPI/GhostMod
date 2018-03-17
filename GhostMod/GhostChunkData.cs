@@ -13,8 +13,12 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost {
     public struct GhostChunkData {
 
-        public const string Chunk = "data";
+        public const string ChunkV1 = "data";
+        public const string ChunkV2 = "data2";
+        public const string Chunk = ChunkV2;
         public bool IsValid;
+
+        // V1
 
         public bool InControl;
 
@@ -35,7 +39,13 @@ namespace Celeste.Mod.Ghost {
         public Color HairColor;
         public bool HairSimulateMotion;
 
-        public void Read(BinaryReader reader) {
+        // V2
+
+        public Color? DashColor;
+        public Vector2 DashDir;
+        public bool DashWasB;
+
+        public void Read(BinaryReader reader, int version) {
             IsValid = true;
 
             InControl = reader.ReadBoolean();
@@ -56,6 +66,15 @@ namespace Celeste.Mod.Ghost {
 
             HairColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
             HairSimulateMotion = reader.ReadBoolean();
+
+            if (version < 2)
+                return;
+
+            if (reader.ReadBoolean()) {
+                DashColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+            }
+            DashDir = new Vector2(reader.ReadSingle(), reader.ReadSingle());
+            DashWasB = reader.ReadBoolean();
         }
 
         public void Write(BinaryWriter writer) {
@@ -98,6 +117,21 @@ namespace Celeste.Mod.Ghost {
             writer.Write(HairColor.A);
 
             writer.Write(HairSimulateMotion);
+
+            if (DashColor == null) {
+                writer.Write(false);
+            } else {
+                writer.Write(true);
+                writer.Write(DashColor.Value.R);
+                writer.Write(DashColor.Value.G);
+                writer.Write(DashColor.Value.B);
+                writer.Write(DashColor.Value.A);
+            }
+
+            writer.Write(DashDir.X);
+            writer.Write(DashDir.Y);
+
+            writer.Write(DashWasB);
         }
 
     }

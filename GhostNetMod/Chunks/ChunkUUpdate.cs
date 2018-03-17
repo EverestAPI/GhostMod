@@ -28,7 +28,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void Read(BinaryReader reader) {
             UpdateIndex = reader.ReadUInt32();
-            Data.Read(reader);
+            Data.Read(reader, int.MaxValue);
         }
 
         public void Write(BinaryWriter writer) {

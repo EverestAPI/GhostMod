@@ -40,6 +40,7 @@ namespace Celeste.Mod.Ghost.Net {
         public List<Ghost> Ghosts = new List<Ghost>();
         public Dictionary<uint, Ghost> GhostMap = new Dictionary<uint, Ghost>();
         public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
+        public Dictionary<int, float> GhostDashTimes = new Dictionary<int, float>();
 
         public List<ChatLine> ChatLog = new List<ChatLine>();
         public string ChatInput = "";
@@ -114,6 +115,8 @@ namespace Celeste.Mod.Ghost.Net {
         public override void Update(GameTime gameTime) {
             SendUUpdate();
 
+            Level level = Engine.Scene as Level;
+
             time += Engine.DeltaTime;
 
             bool inputDisabled = MInput.Disabled;
@@ -130,7 +133,7 @@ namespace Celeste.Mod.Ghost.Net {
                 EmoteWheel.Selected = -1;
             }
 
-            if (!(Player?.Scene?.Paused ?? true)) {
+            if (!(Engine.Scene?.Paused ?? true)) {
                 string input = ChatInput;
                 ChatVisible = false;
                 ChatInput = input;
@@ -194,13 +197,53 @@ namespace Celeste.Mod.Ghost.Net {
             MInput.Disabled = inputDisabled;
 
             // Update ghosts even if the game is paused.
+
+            if (level != null && level.FrozenOrPaused) {
+                level.Particles.Update();
+                level.ParticlesFG.Update();
+                level.ParticlesBG.Update();
+                TrailManager trailManager = Engine.Scene.Tracker.GetEntity<TrailManager>();
+                if (trailManager != null) {
+                    TrailManager.Snapshot[] snapshots = trailManager.GetSnapshots();
+                    for (int i = 0; i < snapshots.Length; i++) {
+                        TrailManager.Snapshot snapshot = snapshots[i];
+                        if (snapshot == null)
+                            continue;
+                        snapshot.Update();
+                    }
+                }
+            }
+
             for (int i = 0; i < Ghosts.Count; i++) {
                 Ghost ghost = Ghosts[i];
                 if (ghost == null)
                     continue;
+
                 ghost.Update();
-                if ((ghost.Scene as Level)?.FrozenOrPaused ?? true)
+
+                if (level?.FrozenOrPaused ?? true)
                     ghost.Hair?.AfterUpdate();
+
+                if (ghost.Frame.Data.DashColor != null) {
+                    float dashTime;
+                    if (!GhostDashTimes.TryGetValue(i, out dashTime)) {
+                        CreateTrail(ghost);
+                        GhostDashTimes[i] = 0.08f;
+                    } else {
+                        dashTime -= Engine.DeltaTime;
+                        if (dashTime <= 0f) {
+                            CreateTrail(ghost);
+                            dashTime += 0.08f;
+                        }
+                        GhostDashTimes[i] = dashTime;
+                    }
+
+                    if (ghost.Frame.Data.Speed != Vector2.Zero && level.OnInterval(0.02f)) {
+                        level.ParticlesFG.Emit(ghost.Frame.Data.DashWasB ? Player.P_DashB : Player.P_DashA, ghost.Center + Calc.Random.Range(Vector2.One * -2f, Vector2.One * 2f), ghost.Frame.Data.DashDir.Angle());
+                    }
+                } else if (GhostDashTimes.ContainsKey(i)) {
+                    GhostDashTimes.Remove(i);
+                }
             }
 
             base.Update(gameTime);
@@ -297,25 +340,27 @@ namespace Celeste.Mod.Ghost.Net {
 
         protected virtual void RebuildPlayerList() {
             StringBuilder builder = new StringBuilder();
-            foreach (KeyValuePair<uint, ChunkMPlayer> player in PlayerMap) {
-                if (string.IsNullOrWhiteSpace(player.Value.Name))
-                    continue;
-                builder
-                    .Append(Escape(player.Value.Name, Monocle.Draw.DefaultFont))
-                    .Append("#")
-                    .Append(player.Key)
-                ;
-                if (!string.IsNullOrWhiteSpace(player.Value.SID)) {
+            lock (PlayerMap) {
+                foreach (KeyValuePair<uint, ChunkMPlayer> player in PlayerMap) {
+                    if (string.IsNullOrWhiteSpace(player.Value.Name))
+                        continue;
                     builder
-                        .Append(" @ ")
-                        .Append(Escape(AreaDataExt.Get(player.Value.SID)?.Name?.DialogCleanOrNull(Dialog.Languages["english"]) ?? player.Value.SID, Monocle.Draw.DefaultFont))
-                        .Append(" ")
-                        .Append((char) ('A' + (int) player.Value.Mode))
-                        .Append(" ")
-                        .Append(Escape(player.Value.Level, Monocle.Draw.DefaultFont))
+                        .Append(Escape(player.Value.Name, Monocle.Draw.DefaultFont))
+                        .Append("#")
+                        .Append(player.Key)
                     ;
+                    if (!string.IsNullOrWhiteSpace(player.Value.SID)) {
+                        builder
+                            .Append(" @ ")
+                            .Append(Escape(AreaDataExt.Get(player.Value.SID)?.Name?.DialogCleanOrNull(Dialog.Languages["english"]) ?? player.Value.SID, Monocle.Draw.DefaultFont))
+                            .Append(" ")
+                            .Append((char) ('A' + (int) player.Value.Mode))
+                            .Append(" ")
+                            .Append(Escape(player.Value.Level, Monocle.Draw.DefaultFont))
+                        ;
+                    }
+                    builder.AppendLine();
                 }
-                builder.AppendLine();
             }
             PlayerListText = builder.ToString().Trim();
         }
@@ -373,7 +418,7 @@ namespace Celeste.Mod.Ghost.Net {
                 foreach (KeyValuePair<uint, Ghost> other in GhostMap) {
                     if (ghost != other.Value)
                         continue;
-                    SendUCollision(other.Key, head);
+                    SendUActionCollision(other.Key, head);
                     break;
                 }
             };
@@ -383,16 +428,17 @@ namespace Celeste.Mod.Ghost.Net {
 
             Level level = Engine.Scene as Level;
 
-            level.Particles.Emit(Player.P_SummitLandA, 12, who.BottomCenter, Vector2.UnitX * 3f, -1.57079637f);
-            level.Particles.Emit(Player.P_SummitLandB, 8, who.BottomCenter - Vector2.UnitX * 2f, Vector2.UnitX * 2f, 3.403392f);
-            level.Particles.Emit(Player.P_SummitLandB, 8, who.BottomCenter + Vector2.UnitX * 2f, Vector2.UnitX * 2f, -0.2617994f);
-            level.ParticlesBG.Emit(Player.P_SummitLandC, 30, who.BottomCenter, Vector2.UnitX * 5f);
-            
+            Dust.Burst(who.BottomCenter, -1.57079637f, 8);
+
             if (isPlayer || withPlayer) {
-                level.DirectionalShake(Vector2.UnitY, 0.1f);
+                level.DirectionalShake(Vector2.UnitY, 0.05f);
 
                 Input.Rumble(RumbleStrength.Light, RumbleLength.Medium);
             }
+        }
+
+        public virtual void CreateTrail(Ghost ghost) {
+            TrailManager.Add(ghost, ghost.Frame.Data.DashColor.Value, 1f);
         }
 
         #region Frame Senders
@@ -465,12 +511,12 @@ namespace Celeste.Mod.Ghost.Net {
             UpdateIndex++;
         }
 
-        public virtual void SendUCollision(uint with, bool head) {
+        public virtual void SendUActionCollision(uint with, bool head) {
             if (Connection == null)
                 return;
 
             GhostNetFrame frame = new GhostNetFrame {
-                UCollision = new ChunkUCollision {
+                UActionCollision = new ChunkUActionCollision {
                     With = with,
                     Head = head
                 }
@@ -590,8 +636,11 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.UUpdate != null)
                 HandleUUpdate(con, frame);
 
-            if (frame.UCollision != null)
-                HandleUCollision(con, frame);
+            if (frame.UActionCollision != null)
+                HandleUActionCollision(con, frame);
+
+            if (frame.UParticles != null)
+                HandleUParticles(con, frame);
 
             OnHandle?.Invoke(con, frame);
         }
@@ -600,7 +649,9 @@ namespace Celeste.Mod.Ghost.Net {
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nM0 from #{frame.PlayerID} ({con.EndPoint})");
             Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} {frame.MPlayer.Name} in {frame.MPlayer.SID} {(char) ('A' + frame.MPlayer.Mode)} {frame.MPlayer.Level}");
 
-            PlayerMap[frame.HHead.PlayerID] = frame.MPlayer;
+            lock (PlayerMap) {
+                PlayerMap[frame.HHead.PlayerID] = frame.MPlayer;
+            }
             RebuildPlayerList();
 
             if (frame.HHead.PlayerID == PlayerID) {
@@ -819,7 +870,7 @@ namespace Celeste.Mod.Ghost.Net {
             };
         }
 
-        public virtual void HandleUCollision(GhostNetConnection con, GhostNetFrame frame) {
+        public virtual void HandleUActionCollision(GhostNetConnection con, GhostNetFrame frame) {
             if (Player == null)
                 return;
 
@@ -828,18 +879,63 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            bool withPlayer = frame.UCollision.With == PlayerID;
+            bool withPlayer = frame.UActionCollision.With == PlayerID;
 
             Ghost ghost;
             if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null)
                 return;
 
-            if (frame.UCollision.Head) {
+            if (frame.UActionCollision.Head) {
                 OnJumpedOnHead(ghost, false, withPlayer);
                 if (withPlayer) {
-                    Player.Speed.Y = Math.Max(Player.Speed.Y, 8f);
+                    Player.Speed.Y = Math.Max(Player.Speed.Y, 16f);
                 }
             }
+        }
+
+        public virtual void HandleUParticles(GhostNetConnection con, GhostNetFrame frame) {
+            if (Player == null)
+                return;
+
+            if (frame.HHead.PlayerID == PlayerID) {
+                // We've received our own particles... which we already spawned.
+                return;
+            }
+
+            Level level = Engine.Scene as Level;
+            if (level == null)
+                return;
+
+            if (frame.UParticles.SID != (Session?.Area.GetSID() ?? "") ||
+                frame.UParticles.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
+                frame.UParticles.Level != (Session?.Level ?? "")) {
+                // Not the same level - skip.
+                return;
+            }
+
+            ParticleSystem system;
+            switch (frame.UParticles.System) {
+                case ChunkUParticles.Systems.Particles:
+                    system = level.Particles;
+                    break;
+                case ChunkUParticles.Systems.ParticlesBG:
+                    system = level.ParticlesBG;
+                    break;
+                case ChunkUParticles.Systems.ParticlesFG:
+                    system = level.ParticlesFG;
+                    break;
+                default:
+                    return;
+            }
+
+            system.Emit(
+                frame.UParticles.Type,
+                frame.UParticles.Amount,
+                frame.UParticles.Position,
+                frame.UParticles.PositionRange,
+                frame.UParticles.Color,
+                frame.UParticles.Direction
+            );
         }
 
         public virtual void HandleRSession(GhostNetConnection con, GhostNetFrame frame) {

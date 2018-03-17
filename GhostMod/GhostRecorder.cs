@@ -60,7 +60,11 @@ namespace Celeste.Mod.Ghost {
                     CurrentAnimationFrame = Player.Sprite.CurrentAnimationFrame,
 
                     HairColor = Player.Hair.Color,
-                    HairSimulateMotion = Player.Hair.SimulateMotion
+                    HairSimulateMotion = Player.Hair.SimulateMotion,
+
+                    DashColor = Player.StateMachine.State == Player.StDash ? Player.GetCurrentTrailColor() : (Color?) null,
+                    DashDir = Player.DashDir,
+                    DashWasB = Player.GetWasDashB()
                 }
             };
 

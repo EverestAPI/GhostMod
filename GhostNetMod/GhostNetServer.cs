@@ -242,8 +242,13 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.UUpdate != null)
                 HandleUUpdate(con, frame);
 
-            if (frame.UCollision != null)
-                HandleUCollision(con, frame);
+            if (frame.UActionCollision != null)
+                HandleUActionCollision(con, frame);
+
+            if (frame.UParticles != null) {
+                // Particles can only be sent by the player.
+                frame.UParticles = null;
+            }
 
             OnHandle?.Invoke(con, frame);
 
@@ -395,11 +400,11 @@ namespace Celeste.Mod.Ghost.Net {
             frame.PropagateU = true;
         }
 
-        public virtual void HandleUCollision(GhostNetConnection con, GhostNetFrame frame) {
+        public virtual void HandleUActionCollision(GhostNetConnection con, GhostNetFrame frame) {
             // Allow outdated collision frames to be handled.
 
             ChunkMPlayer otherPlayer;
-            if (!PlayerMap.TryGetValue(frame.UCollision.With, out otherPlayer) || otherPlayer == null ||
+            if (!PlayerMap.TryGetValue(frame.UActionCollision.With, out otherPlayer) || otherPlayer == null ||
                 frame.MPlayer.SID != otherPlayer.SID ||
                 frame.MPlayer.Mode != otherPlayer.Mode
             ) {

@@ -24,8 +24,11 @@ namespace Celeste.Mod.Ghost {
             while ((chunk = reader.ReadNullTerminatedString()) != End) {
                 uint length = reader.ReadUInt32();
                 switch (chunk) {
-                    case GhostChunkData.Chunk:
-                        Data.Read(reader);
+                    case GhostChunkData.ChunkV1:
+                        Data.Read(reader, 1);
+                        break;
+                    case GhostChunkData.ChunkV2:
+                        Data.Read(reader, 2);
                         break;
                     case GhostChunkInput.Chunk:
                         Input.Read(reader);

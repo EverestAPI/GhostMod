@@ -24,11 +24,11 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public override void SendManagement(GhostNetFrame frame, bool release) {
-            ReceiveManagement(ManagementEndPoint, frame);
+            ReceiveManagement(ManagementEndPoint, (GhostNetFrame) frame.Clone());
         }
 
         public override void SendUpdate(GhostNetFrame frame, bool release) {
-            ReceiveUpdate(UpdateEndPoint, frame);
+            ReceiveUpdate(UpdateEndPoint, (GhostNetFrame) frame.Clone());
         }
 
         public override void SendUpdate(GhostNetFrame frame, IPEndPoint remote, bool release) {
