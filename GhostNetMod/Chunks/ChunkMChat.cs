@@ -41,7 +41,7 @@ namespace Celeste.Mod.Ghost.Net {
             ID = reader.ReadUInt32();
             Tag = reader.ReadNullTerminatedString();
             Text = reader.ReadNullTerminatedString();
-            Color = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), 1f);
+            Color = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), 255);
             Date = DateTime.FromBinary(reader.ReadInt64());
         }
 

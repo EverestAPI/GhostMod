@@ -32,7 +32,9 @@ namespace Celeste.Mod.Ghost.Net {
         // Used to broadcast updates.
         public GhostNetConnection UpdateConnection;
 
-        public List<uint> OPs = new List<uint>();
+        public List<uint> OPs = new List<uint>() {
+            0
+        };
 
         // All managed player connections.
         public List<GhostNetConnection> Connections = new List<GhostNetConnection>();
@@ -64,11 +66,11 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Find all commands in all mods.
             foreach (EverestModule module in Everest.Modules)
-                GhostNetFrame.RegisterChunksFromModule(module);
-            // Everest 0.0.317 and before loads the module before adding it to the module list.
-            // This causes an issue with the module not being listed above when running the server on load.
+                RegisterCommandsFromModule(module);
+            // Everest 0.0.317 and older load the module before adding it to the module list.
+            // This causes an issue with the commands not being registered above when running the server on load.
             if (!Everest.Modules.Contains(GhostNetModule.Instance))
-                GhostNetFrame.RegisterChunksFromModule(GhostNetModule.Instance);
+                RegisterCommandsFromModule(GhostNetModule.Instance);
 
             OnCreate?.Invoke(this);
         }

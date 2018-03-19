@@ -202,7 +202,7 @@ namespace Celeste.Mod.Ghost.Net {
             Logger.Log("ghostnet-s", $"Make sure to forward the ports {Settings.Port} TCP and UDP");
             Logger.Log("ghostnet-s", "and to let your firewall allow incoming connections.");
             Console.WriteLine("");
-            Server.OnHandle += (con, frame) => {
+            Client.OnHandle += (con, frame) => {
                 if (frame.MChat != null)
                     Logger.Log("ghostnet-chat", new GhostNetClient.ChatLine(frame).ToString());
             };
