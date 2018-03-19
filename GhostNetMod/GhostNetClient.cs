@@ -1055,8 +1055,7 @@ namespace Celeste.Mod.Ghost.Net {
             EmoteWheel?.RemoveSelf();
             level.Add(EmoteWheel = new GhostNetEmoteWheel(Player));
 
-            if (ServerInfo != null)
-                SendMPlayer();
+            SendMPlayer();
         }
 
         public void OnExitLevel(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow) {
