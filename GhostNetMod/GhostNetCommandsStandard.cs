@@ -91,6 +91,25 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         [GhostNetCommandField]
+        public static GhostNetCommand OP = new GhostNetDCommand {
+            Name = "op",
+            Args = "<id>",
+            Help = "OP: Make another player an OP.",
+            OnRun = (cmd, env, args) => {
+                if (!env.IsOP)
+                    throw new Exception("You're not OP!");
+                if (args.Length != 1)
+                    throw new Exception("Exactly 1 argument required!");
+
+                int id = args[0].Int;
+                if (env.Server.OPs.Contains((uint) id))
+                    throw new Exception($"#{id} already OP!");
+
+                env.Server.OPs.Add((uint) id);
+            }
+        };
+
+        [GhostNetCommandField]
         public static GhostNetCommand Kick = new GhostNetDCommand {
             Name = "kick",
             Args = "<id>",
@@ -102,10 +121,10 @@ namespace Celeste.Mod.Ghost.Net {
                     throw new Exception("Exactly 1 argument required!");
 
                 int id = args[0].Int;
-                if (id == 0)
-                    throw new Exception("Cannot kick OP!");
-                GhostNetConnection other = args[0].Connection;
+                if (env.Server.OPs.IndexOf((uint) id) < env.Server.OPs.IndexOf(env.PlayerID))
+                    throw new Exception("Cannot kick a higher OP!");
 
+                GhostNetConnection other = args[0].Connection;
                 other.Dispose();
             }
         };

@@ -242,7 +242,7 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostNetFrame Frame;
 
         public uint PlayerID => Frame.HHead.PlayerID;
-        public bool IsOP => PlayerID == 0;
+        public bool IsOP => Server.OPs.Contains(PlayerID);
 
         public ChunkHHead HHead => Frame.HHead;
 

@@ -43,9 +43,8 @@ namespace Celeste.Mod.Ghost.Net {
             throw new InvalidDataException("Unregistered chunk type");
         }
 
-        static GhostNetFrame() {
-            // Find all chunk types in all mods.
-            foreach (Type type in FakeAssembly.GetFakeEntryAssembly().GetTypes()) {
+        public static void RegisterChunksFromModule(EverestModule module) {
+            foreach (Type type in module.GetType().Assembly.GetTypes()) {
                 ChunkAttribute chunkInfo = type.GetCustomAttribute<ChunkAttribute>();
                 if (chunkInfo == null)
                     continue;

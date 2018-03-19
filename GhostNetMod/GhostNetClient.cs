@@ -238,7 +238,7 @@ namespace Celeste.Mod.Ghost.Net {
                         GhostDashTimes[i] = dashTime;
                     }
 
-                    if (ghost.Frame.Data.Speed != Vector2.Zero && level.OnInterval(0.02f)) {
+                    if (level != null && ghost.Frame.Data.Speed != Vector2.Zero && level.OnInterval(0.02f)) {
                         level.ParticlesFG.Emit(ghost.Frame.Data.DashWasB ? Player.P_DashB : Player.P_DashA, ghost.Center + Calc.Random.Range(Vector2.One * -2f, Vector2.One * 2f), ghost.Frame.Data.DashDir.Angle());
                     }
                 } else if (GhostDashTimes.ContainsKey(i)) {
@@ -300,10 +300,7 @@ namespace Celeste.Mod.Ghost.Net {
                         if (alpha <= 0f)
                             continue;
 
-                        string text = Escape(
-                            $"[{line.Date.ToLocalTime().ToLongTimeString()}]{(string.IsNullOrEmpty(line.Tag) ? "" : $"[{line.Tag}]")} {line.PlayerName}{(line.PlayerID == uint.MaxValue ? "" : $"#{line.PlayerID}")}:{(line.Text.Contains('\n') ? "\n" : " ")}{line.Text}",
-                            Monocle.Draw.DefaultFont
-                        );
+                        string text = Escape(line.ToString(), Monocle.Draw.DefaultFont);
                         Vector2 size = Monocle.Draw.DefaultFont.MeasureString(text);
                         float height = 20f + size.Y;
 
@@ -339,6 +336,9 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected virtual void RebuildPlayerList() {
+            if (Monocle.Draw.DefaultFont == null)
+                return;
+
             StringBuilder builder = new StringBuilder();
             lock (PlayerMap) {
                 foreach (KeyValuePair<uint, ChunkMPlayer> player in PlayerMap) {
@@ -431,7 +431,7 @@ namespace Celeste.Mod.Ghost.Net {
             Dust.Burst(who.BottomCenter, -1.57079637f, 8);
 
             if (isPlayer || withPlayer) {
-                level.DirectionalShake(Vector2.UnitY, 0.05f);
+                level?.DirectionalShake(Vector2.UnitY, 0.05f);
 
                 Input.Rumble(RumbleStrength.Light, RumbleLength.Medium);
             }
@@ -604,7 +604,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (frame.MServerInfo != null) {
                 // The client can receive this more than once.
-                // Logger.Log("ghostnet-c", $"Received MServerInfo: #{frame.HHead.PlayerID} in {frame.MServerInfo.Name}");
+                Logger.Log("ghostnet-c", $"Received MServerInfo: #{frame.HHead.PlayerID} in {frame.MServerInfo.Name}");
                 PlayerID = frame.HHead.PlayerID;
                 ServerInfo = frame.MServerInfo;
             }
@@ -720,7 +720,8 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            if (Player?.Scene == null)
+            Level level = Engine.Scene as Level;
+            if (level == null)
                 return;
 
             Ghost ghost;
@@ -801,21 +802,13 @@ namespace Celeste.Mod.Ghost.Net {
         public virtual void HandleMChat(GhostNetConnection con, GhostNetFrame frame) {
             // Logger.Log(LogLevel.Info, "ghostnet-c", $"#{frame.HHead.PlayerID} chat: {frame.MChat.Text}");
 
-            string playerName;
-            if (frame.HHead.PlayerID == uint.MaxValue) {
-                // We've received a message from the server.
-                playerName = "**SERVER**";
-
-            } else if (frame.MPlayer != null) {
-                // We've received a message from a living ghost.
-                playerName = frame.MPlayer.Name;
-
-            } else {
+            if (frame.HHead.PlayerID != uint.MaxValue &&
+                frame.MPlayer == null) {
                 // We've received a message from a dead ghost.
                 return;
             }
 
-            ChatLine line = new ChatLine(frame.MChat.ID, frame.HHead.PlayerID, playerName, frame.MChat.Tag, frame.MChat.Text, frame.MChat.Color);
+            ChatLine line = new ChatLine(frame);
 
             // If there's already a chat line with the same message ID, replace it.
             // Also remove any "unconfirmed" messages.
@@ -1117,6 +1110,8 @@ namespace Celeste.Mod.Ghost.Net {
         public void Stop() {
             Logger.Log(LogLevel.Info, "ghostnet-c", "Stopping client");
 
+            ChatVisible = false;
+
             Celeste.Instance.Components.Remove(this);
 
             Connection?.Dispose();
@@ -1169,6 +1164,9 @@ namespace Celeste.Mod.Ghost.Net {
             public ChatLine(uint messageID, uint playerID, string playerName, string tag, string text)
                 : this(messageID, playerID, playerName, tag, text, Color.White) {
             }
+            public ChatLine(GhostNetFrame frame)
+                : this(frame.MChat.ID, frame.HHead.PlayerID, frame.MPlayer?.Name ?? "**SERVER**", frame.MChat.Tag, frame.MChat.Text, frame.MChat.Color) {
+            }
             public ChatLine(uint messageID, uint playerID, string playerName, string tag, string text, Color color) {
                 MessageID = messageID;
                 PlayerID = playerID;
@@ -1178,6 +1176,9 @@ namespace Celeste.Mod.Ghost.Net {
                 Color = color;
                 Date = DateTime.UtcNow;
             }
+
+            public override string ToString()
+                => $"[{Date.ToLocalTime().ToLongTimeString()}]{(string.IsNullOrEmpty(Tag) ? "" : $"[{Tag}]")} {PlayerName}{(PlayerID == uint.MaxValue ? "" : $"#{PlayerID}")}:{(Text.Contains('\n') ? "\n" : " ")}{Text}";
 
         }
 

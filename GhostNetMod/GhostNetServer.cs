@@ -11,6 +11,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +31,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         // Used to broadcast updates.
         public GhostNetConnection UpdateConnection;
+
+        public List<uint> OPs = new List<uint>();
 
         // All managed player connections.
         public List<GhostNetConnection> Connections = new List<GhostNetConnection>();
@@ -56,8 +59,22 @@ namespace Celeste.Mod.Ghost.Net {
 
         public GhostNetServer(Game game)
             : base(game) {
+            // Just in case Mono fucks up.
+            RuntimeHelpers.RunClassConstructor(typeof(GhostNetCommandsStandard).TypeHandle);
+
             // Find all commands in all mods.
-            foreach (Type type in FakeAssembly.GetFakeEntryAssembly().GetTypes()) {
+            foreach (EverestModule module in Everest.Modules)
+                GhostNetFrame.RegisterChunksFromModule(module);
+            // Everest 0.0.317 and before loads the module before adding it to the module list.
+            // This causes an issue with the module not being listed above when running the server on load.
+            if (!Everest.Modules.Contains(GhostNetModule.Instance))
+                GhostNetFrame.RegisterChunksFromModule(GhostNetModule.Instance);
+
+            OnCreate?.Invoke(this);
+        }
+
+        public void RegisterCommandsFromModule(EverestModule module) {
+            foreach (Type type in module.GetType().Assembly.GetTypes()) {
                 foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Static)) {
                     if (!typeof(GhostNetCommand).IsAssignableFrom(field.FieldType) ||
                         field.GetCustomAttribute<GhostNetCommandFieldAttribute>() == null)
@@ -68,8 +85,6 @@ namespace Celeste.Mod.Ghost.Net {
                     Commands.Add(cmd);
                 }
             }
-
-            OnCreate?.Invoke(this);
         }
 
         public override void Update(GameTime gameTime) {

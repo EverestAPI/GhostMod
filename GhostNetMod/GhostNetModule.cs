@@ -32,6 +32,9 @@ namespace Celeste.Mod.Ghost.Net {
         public VirtualButton ButtonEmoteSend;
         public VirtualButton ButtonChat;
 
+        private bool _StartServer;
+        private bool _StartHeadless;
+
         public override void LoadSettings() {
             base.LoadSettings();
 
@@ -57,6 +60,39 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Example of a MP server mod.
             GhostNetServer.OnCreate += GhostNetRaceManager.OnCreateServer;
+
+            base.Initialize();
+
+            Queue<string> args = new Queue<string>(Everest.Args);
+            while (args.Count > 0) {
+                string arg = args.Dequeue();
+                if (arg == "--server") {
+                    _StartServer = true;
+                } else if (arg == "--headless") {
+                    _StartHeadless = true;
+                }
+            }
+
+            if (_StartServer && _StartHeadless) {
+                // We don't care about other mods.
+                GhostNetFrame.RegisterChunksFromModule(this);
+
+                Start(true, true);
+                RunDedicated();
+                Environment.Exit(0);
+            }
+        }
+
+        public override void Initialize() {
+            base.Initialize();
+
+            // Register after all mods have loaded.
+            foreach (EverestModule module in Everest.Modules)
+                GhostNetFrame.RegisterChunksFromModule(module);
+
+            if (_StartServer && !_StartHeadless) {
+                Start(true, true);
+            }
         }
 
         public override void Unload() {
@@ -122,14 +158,18 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public void Start() {
+        public void Start(bool server = false, bool client = false) {
             Stop();
 
-            if (Settings.IsHost) {
+            if (Settings.IsHost || server) {
                 Server = new GhostNetServer(Celeste.Instance);
                 Celeste.Instance.Components.Add(Server);
+                Server.OPs.Add(0);
                 Server.Start();
             }
+
+            if (!Settings.IsHost && server && !client)
+                return;
 
             try {
                 Client = new GhostNetClient(Celeste.Instance);
@@ -154,6 +194,25 @@ namespace Celeste.Mod.Ghost.Net {
             if (Server != null) {
                 Server.Stop();
                 Server = null;
+            }
+        }
+
+        public void RunDedicated() {
+            Logger.Log("ghostnet-s", "GhostNet headless server is online.");
+            Logger.Log("ghostnet-s", $"Make sure to forward the ports {Settings.Port} TCP and UDP");
+            Logger.Log("ghostnet-s", "and to let your firewall allow incoming connections.");
+            Console.WriteLine("");
+            Server.OnHandle += (con, frame) => {
+                if (frame.MChat != null)
+                    Logger.Log("ghostnet-chat", new GhostNetClient.ChatLine(frame).ToString());
+            };
+            while (Server.IsRunning) {
+                string line = Console.ReadLine().TrimEnd();
+                if (line == "/quit") {
+                    Stop();
+                    return;
+                }
+                Client.SendMChat(line);
             }
         }
 
