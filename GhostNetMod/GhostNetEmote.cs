@@ -153,20 +153,21 @@ namespace Celeste.Mod.Ghost.Net {
             return GetIconAtlas(ref emote) != null;
         }
 
+        private static Atlas FallbackIconAtlas = new Atlas();
         public static Atlas GetIconAtlas(ref string emote) {
             if (emote.StartsWith("i:")) {
                 emote = emote.Substring(2);
-                return GFX.Gui;
+                return GFX.Gui ?? FallbackIconAtlas;
             }
 
             if (emote.StartsWith("g:")) {
                 emote = emote.Substring(2);
-                return GFX.Game;
+                return GFX.Game ?? FallbackIconAtlas;
             }
 
             if (emote.StartsWith("p:")) {
                 emote = emote.Substring(2);
-                return GFX.Portraits;
+                return GFX.Portraits ?? FallbackIconAtlas;
             }
 
             return null;
