@@ -1039,6 +1039,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             for (int i = 0; i < Ghosts.Count; i++) {
                 Ghost ghost = Ghosts[i];
+                if (ghost.Scene != Engine.Scene)
+                    Ghosts[i] = ghost = null;
                 if (ghost == null)
                     continue;
                 ghost.Player = Player;
