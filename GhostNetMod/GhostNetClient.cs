@@ -36,10 +36,12 @@ namespace Celeste.Mod.Ghost.Net {
         public ChunkMServerInfo ServerInfo;
 
         public Dictionary<uint, ChunkMPlayer> PlayerMap = new Dictionary<uint, ChunkMPlayer>();
+        public Dictionary<uint, GhostNetFrame> UpdateMap = new Dictionary<uint, GhostNetFrame>();
 
         public List<Ghost> Ghosts = new List<Ghost>();
         public Dictionary<uint, Ghost> GhostMap = new Dictionary<uint, Ghost>();
-        public Dictionary<uint, uint> GhostIndices = new Dictionary<uint, uint>();
+        public Dictionary<Ghost, uint> GhostPlayerIDs = new Dictionary<Ghost, uint>();
+        public Dictionary<uint, uint> GhostUpdateIndices = new Dictionary<uint, uint>();
         public Dictionary<int, float> GhostDashTimes = new Dictionary<int, float>();
 
         public List<ChatLine> ChatLog = new List<ChatLine>();
@@ -378,6 +380,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public virtual Ghost AddGhost(GhostNetFrame frame) {
             Ghost ghost = new Ghost(Player);
+            ghost.AddTag(Tags.Persistent | Tags.TransitionUpdate | Tags.FrozenUpdate);
+            ghost.Name.AddTag(Tags.Persistent | Tags.TransitionUpdate | Tags.FrozenUpdate);
 
             ghost.Collidable = true;
 
@@ -385,7 +389,12 @@ namespace Celeste.Mod.Ghost.Net {
             ghost.Add(new PlayerCollider(OnPlayerTouchGhost(ghost)));
 
             Engine.Scene.Add(ghost);
-            GhostMap[frame.HHead.PlayerID] = ghost;
+            lock (GhostMap) {
+                GhostMap[frame.HHead.PlayerID] = ghost;
+            }
+            lock (GhostPlayerIDs) {
+                GhostPlayerIDs[ghost] = frame.HHead.PlayerID;
+            }
             Ghosts.Add(ghost);
             return ghost;
         }
@@ -415,11 +424,9 @@ namespace Celeste.Mod.Ghost.Net {
 
                 // In a perfect world, the server would see and handle the collision, and we would receive the following.
                 // Right now, though, GhostNetMod doesn't have a dedicated server handling each player's state.
-                foreach (KeyValuePair<uint, Ghost> other in GhostMap) {
-                    if (ghost != other.Value)
-                        continue;
-                    SendUActionCollision(other.Key, head);
-                    break;
+                uint otherID;
+                if (GhostPlayerIDs.TryGetValue(ghost, out otherID)) {
+                    SendUActionCollision(otherID, head);
                 }
             };
 
@@ -499,8 +506,22 @@ namespace Celeste.Mod.Ghost.Net {
                 UUpdate = new ChunkUUpdate {
                     UpdateIndex = (uint) UpdateIndex,
                     Data = GhostRecorder.LastFrameData.Data
-                }
+                },
+
+                UUpdateE0 = new ChunkUUpdateE0()
             };
+
+            ChunkUUpdateE0 e0 = frame.UUpdateE0;
+            if (Player != null) {
+                int hairCount = Player.Sprite.HairCount;
+                e0.HairColors = new Color[hairCount];
+                for (int i = 0; i < hairCount; i++)
+                    e0.HairColors[i] = Player.Hair.GetHairColor(i);
+                e0.HairTextures = new string[hairCount];
+                for (int i = 0; i < hairCount; i++)
+                    e0.HairTextures[i] = Player.Hair.GetHairTexture(i).AtlasPath;
+            }
+
             // TODO: Move GhostNetModule.Settings.SendUFramesInMStream check into connection.
             if (GhostNetModule.Settings.SendUFramesInMStream) {
                 Connection.SendManagement(frame, true);
@@ -734,8 +755,12 @@ namespace Celeste.Mod.Ghost.Net {
                     ghost.RemoveSelf();
                     GhostMap[frame.HHead.PlayerID] = null;
                     int index = Ghosts.IndexOf(ghost);
-                    if (index != -1)
+                    if (index != -1) {
                         Ghosts[index] = null;
+                        lock (GhostPlayerIDs) {
+                            GhostPlayerIDs.Remove(ghost);
+                        }
+                    }
                 }
                 return;
             }
@@ -746,7 +771,7 @@ namespace Celeste.Mod.Ghost.Net {
                 ghost = AddGhost(frame);
             }
 
-            GhostIndices[frame.HHead.PlayerID] = 0;
+            GhostUpdateIndices[frame.HHead.PlayerID] = 0;
 
             if (ghost != null && ghost.Name != null)
                 ghost.Name.Name = frame.MPlayer.Name;
@@ -796,6 +821,7 @@ namespace Celeste.Mod.Ghost.Net {
             GhostNetEmote emote = new GhostNetEmote(ghost ?? (Entity) Player, frame.MEmote.Value) {
                 Pop = true
             };
+            emote.AddTag(Tags.Persistent | Tags.TransitionUpdate | Tags.FrozenUpdate);
             Engine.Scene.Add(emote);
         }
 
@@ -850,11 +876,15 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
 
             uint lastIndex;
-            if (GhostIndices.TryGetValue(frame.HHead.PlayerID, out lastIndex) && frame.UUpdate.UpdateIndex < lastIndex) {
+            if (GhostUpdateIndices.TryGetValue(frame.HHead.PlayerID, out lastIndex) && frame.UUpdate.UpdateIndex < lastIndex) {
                 // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Out of order update from #{frame.H0.PlayerID} - got {frame.U0.UpdateIndex}, newest is {lastIndex]}");
                 return;
             }
-            GhostIndices[frame.HHead.PlayerID] = frame.UUpdate.UpdateIndex;
+            GhostUpdateIndices[frame.HHead.PlayerID] = frame.UUpdate.UpdateIndex;
+
+            lock (UpdateMap) {
+                UpdateMap[frame.HHead.PlayerID] = frame;
+            }
 
             // Logger.Log(LogLevel.Verbose, "ghostnet-c", $"Received nU0 from #{frame.PlayerID} ({remote}), HasData: {frame.Frame.HasData}");
 
@@ -1007,13 +1037,15 @@ namespace Celeste.Mod.Ghost.Net {
 
             Player = level.Tracker.GetEntity<Player>();
 
-            for (int i = 0; i < Ghosts.Count; i++)
-                Ghosts[i]?.RemoveSelf();
-            GhostMap.Clear();
-            Ghosts.Clear();
+            for (int i = 0; i < Ghosts.Count; i++) {
+                Ghost ghost = Ghosts[i];
+                if (ghost == null)
+                    continue;
+                ghost.Player = Player;
+            }
 
-            GhostRecorder?.RemoveSelf();
             level.Add(GhostRecorder = new GhostRecorder(Player));
+            GhostRecorder.AddTag(Tags.Persistent | Tags.TransitionUpdate | Tags.FrozenUpdate);
 
             PlayerName?.RemoveSelf();
             level.Add(PlayerName = new GhostName(Player, PlayerInfo?.Name ?? ""));
@@ -1120,9 +1152,10 @@ namespace Celeste.Mod.Ghost.Net {
         public void Cleanup() {
             Player = null;
 
-            foreach (Ghost ghost in GhostMap.Values)
-                ghost?.RemoveSelf();
+            for (int i = 0; i < Ghosts.Count; i++)
+                Ghosts[i]?.RemoveSelf();
             GhostMap.Clear();
+            Ghosts.Clear();
 
             GhostRecorder?.RemoveSelf();
             GhostRecorder = null;

@@ -130,6 +130,14 @@ namespace Celeste.Mod.Ghost.Net {
                 Set(value);
             }
         }
+        public ChunkUUpdateE0 UUpdateE0 {
+            get {
+                return Get<ChunkUUpdateE0>();
+            }
+            set {
+                Set(value);
+            }
+        }
         public ChunkUActionCollision UActionCollision {
             get {
                 return Get<ChunkUActionCollision>();

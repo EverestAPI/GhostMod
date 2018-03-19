@@ -38,7 +38,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         [SettingIgnore]
         [YamlMember(Alias = "Server")]
-        public string _Server { get; set; } = "";
+        public string _Server { get; set; } = "celeste.0x0ade.ga";
         [YamlIgnore]
         public string Server {
             get {

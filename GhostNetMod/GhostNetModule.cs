@@ -11,6 +11,8 @@ using System.Text;
 using System.Threading.Tasks;
 using FMOD.Studio;
 using Microsoft.Xna.Framework.Input;
+using HookedMethod;
+using HM = HookedMethod.HookedMethod;
 
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetModule : EverestModule {
@@ -57,6 +59,8 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Input.OnDeregister += OnInputDeregister;
 
             GhostNetModuleBackCompat.Load();
+
+            GhostNetHooks.Load();
 
             // Example of a MP server mod.
             GhostNetServer.OnCreate += GhostNetRaceManager.OnCreateServer;
