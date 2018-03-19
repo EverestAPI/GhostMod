@@ -752,7 +752,7 @@ namespace Celeste.Mod.Ghost.Net {
                 frame.MPlayer.Mode != Session.Area.Mode) {
                 // Ghost not in the same level.
                 // Find the ghost and remove it if it exists.
-                if (GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) && ghost != null) {
+                if (GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) && ghost != null && ghost.Scene == Engine.Scene) {
                     ghost.RemoveSelf();
                     GhostMap[frame.HHead.PlayerID] = null;
                     int index = Ghosts.IndexOf(ghost);
@@ -766,7 +766,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null) {
+            if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null || ghost.Scene != Engine.Scene) {
                 // No ghost for the player existing.
                 // Create a new ghost for the player.
                 ghost = AddGhost(frame);
@@ -813,7 +813,7 @@ namespace Celeste.Mod.Ghost.Net {
             Ghost ghost = null;
             if (frame.HHead.PlayerID != PlayerID) {
                 // We received an icon from somebody else.
-                if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null) {
+                if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null || ghost.Scene != Engine.Scene) {
                     // No ghost for the player existing.
                     return;
                 }
@@ -873,7 +873,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             Ghost ghost;
-            if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null)
+            if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null || ghost.Scene != Engine.Scene)
                 return;
 
             uint lastIndex;
@@ -906,7 +906,7 @@ namespace Celeste.Mod.Ghost.Net {
             bool withPlayer = frame.UActionCollision.With == PlayerID;
 
             Ghost ghost;
-            if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null)
+            if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null || ghost.Scene != Engine.Scene)
                 return;
 
             if (frame.UActionCollision.Head) {
