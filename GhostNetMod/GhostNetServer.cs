@@ -206,6 +206,10 @@ namespace Celeste.Mod.Ghost.Net {
 
                 MServerInfo = new ChunkMServerInfo {
                     Name = GhostNetModule.Settings.ServerNameAuto
+                },
+
+                MRequest = new ChunkMRequest {
+                    ID = ChunkMPlayer.ChunkID
                 }
             }, true);
         }
