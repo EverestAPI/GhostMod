@@ -411,8 +411,6 @@ namespace Celeste.Mod.Ghost.Net {
                     int dashes = player.Dashes;
                     float stamina = player.Stamina;
 
-                    Audio.Play("event:/game/general/thing_booped", ghost.Position).setVolume(0.5f);
-
                     OnJumpedOnHead(player, true, false);
 
                     player.Bounce(ghost.Top + 2f);
@@ -512,7 +510,7 @@ namespace Celeste.Mod.Ghost.Net {
             };
 
             ChunkUUpdateE0 e0 = frame.UUpdateE0;
-            if (Player != null) {
+            if (Player != null && Player.Sprite != null && Player.Hair != null) {
                 int hairCount = Player.Sprite.HairCount;
                 e0.HairColors = new Color[hairCount];
                 for (int i = 0; i < hairCount; i++)
