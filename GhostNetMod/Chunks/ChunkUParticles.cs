@@ -13,7 +13,7 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost.Net {
     [Chunk(ChunkID)]
     /// <summary>
-    /// Update chunk sent by the server to emit particles.
+    /// Update chunk sent to emit particles.
     /// </summary>
     public class ChunkUParticles : IChunk {
 

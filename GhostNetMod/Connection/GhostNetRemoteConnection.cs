@@ -20,7 +20,6 @@ namespace Celeste.Mod.Ghost.Net {
         public TcpClient ManagementClient;
         public NetworkStream ManagementStream;
         public BinaryReader ManagementReader;
-        public BinaryWriter ManagementWriter;
 
         public UdpClient UpdateClient;
 
@@ -53,7 +52,6 @@ namespace Celeste.Mod.Ghost.Net {
 
                 ManagementStream = ManagementClient.GetStream();
                 ManagementReader = new BinaryReader(ManagementStream);
-                ManagementWriter = new BinaryWriter(ManagementStream);
 
                 ReceiveManagementThread = new Thread(ReceiveManagementLoop);
                 ReceiveManagementThread.Name = $"GhostNetConnection ReceiveManagementThread {Context} {ManagementEndPoint}";
@@ -147,6 +145,7 @@ namespace Celeste.Mod.Ghost.Net {
                             byte[] buffer = bufferStream.ToArray();
                             try {
                                 ManagementStream.Write(buffer, 0, buffer.Length);
+                                ManagementStream.Flush();
                                 // Logger.Log(LogLevel.Warn, "ghostnet-con", "Sent management frame");
                             } catch (Exception e) {
                                 if (!(ManagementClient?.Connected ?? false)) {
@@ -269,9 +268,6 @@ namespace Celeste.Mod.Ghost.Net {
 
                 ManagementReader?.Dispose();
                 ManagementReader = null;
-
-                ManagementWriter?.Dispose();
-                ManagementWriter = null;
 
                 ManagementStream?.Dispose();
                 ManagementStream = null;

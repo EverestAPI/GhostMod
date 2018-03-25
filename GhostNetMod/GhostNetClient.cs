@@ -770,8 +770,6 @@ namespace Celeste.Mod.Ghost.Net {
                 ghost = AddGhost(frame);
             }
 
-            GhostUpdateIndices[frame.HHead.PlayerID] = 0;
-
             if (ghost != null && ghost.Name != null)
                 ghost.Name.Name = frame.MPlayer.Name;
         }
@@ -1055,7 +1053,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             EmoteWheel?.RemoveSelf();
             level.Add(EmoteWheel = new GhostNetEmoteWheel(Player));
-
+            
             SendMPlayer();
         }
 

@@ -211,7 +211,10 @@ namespace Celeste.Mod.Ghost.Net {
                     Logger.Log("ghostnet-chat", new GhostNetClient.ChatLine(frame).ToString());
             };
             while (Server.IsRunning) {
-                string line = Console.ReadLine().TrimEnd();
+                string line = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+                line = line.TrimEnd();
                 if (line == "/quit") {
                     Stop();
                     return;

@@ -233,8 +233,13 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.HHead == null)
                 return;
 
-            if (frame.MPlayer != null)
+            bool lockedMPlayer = false;
+
+            if (frame.MPlayer != null) {
+                Monitor.Enter(frame.MPlayer, ref lockedMPlayer);
+                frame.MPlayer.IsCached = false;
                 HandleMPlayer(con, frame);
+            }
 
             ChunkMPlayer player;
             if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player == null) {
@@ -245,6 +250,7 @@ namespace Celeste.Mod.Ghost.Net {
             // Temporarily attach the MPlayer chunk to make player identification easier.
             if (frame.MPlayer == null) {
                 frame.MPlayer = player;
+                Monitor.Enter(frame.MPlayer, ref lockedMPlayer);
                 frame.MPlayer.IsCached = true;
             }
 
@@ -277,6 +283,9 @@ namespace Celeste.Mod.Ghost.Net {
                 PropagateM(frame);
             else if (frame.PropagateU)
                 PropagateU(frame);
+
+            if (lockedMPlayer)
+                Monitor.Exit(frame.MPlayer);
         }
 
         public virtual void HandleMPlayer(GhostNetConnection con, GhostNetFrame frame) {
@@ -301,8 +310,6 @@ namespace Celeste.Mod.Ghost.Net {
                     SendMChat(con, frame, GhostNetModule.Settings.ServerMessageMOTD, fillVars: true);
                 }
             }
-
-            GhostIndices[frame.HHead.PlayerID] = 0;
 
             // Inform the player about all existing ghosts.
             lock (PlayerMap) {
