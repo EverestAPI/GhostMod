@@ -481,10 +481,10 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public virtual void SendMChat(string text) {
-            text = text.TrimEnd();
+            text = text?.TrimEnd();
             if (string.IsNullOrWhiteSpace(text))
                 return;
-            ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, "", PlayerInfo.Name, text));
+            ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, "", PlayerInfo?.Name ?? GhostModule.Settings.Name, text));
             ChatRepeat.Insert(1, text);
             Connection?.SendManagement(new GhostNetFrame {
                 MChat = new ChunkMChat {
@@ -741,7 +741,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             Level level = Engine.Scene as Level;
-            if (level == null)
+            if (level == null || Session == null)
                 return;
 
             Ghost ghost;
