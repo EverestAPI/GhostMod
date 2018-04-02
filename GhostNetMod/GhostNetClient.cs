@@ -705,10 +705,6 @@ namespace Celeste.Mod.Ghost.Net {
                             frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal)) {
                             // Different SID or mode - create new session.
                             Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode), null, SaveData.Instance.Areas[area.ID]);
-                            if (Session != null && frame.Has<ChunkRSession>()) {
-                                // We received additional session data from the server.
-                                HandleRSession(con, frame);
-                            }
                             SaveData.Instance.CurrentSession = Session;
                         }
 
@@ -734,7 +730,13 @@ namespace Celeste.Mod.Ghost.Net {
 
                         LevelEnterExt.ErrorMessage = message;
                         LevelEnter.Go(new Session(new AreaKey(1).SetSID("")), false);
+                        return;
                     }
+                }
+
+                if (Session != null && frame.Has<ChunkRSession>()) {
+                    // We received additional session data from the server.
+                    HandleRSession(con, frame);
                 }
 
                 return;
@@ -1014,6 +1016,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
             Everest.Events.Level.OnExit -= OnExitLevel;
+            Everest.Events.Player.OnDie -= OnDie;
             GhostNetModuleBackCompat.OnLevelComplete -= OnCompleteLevel;
             GhostNetModuleBackCompat.OnTextInput -= OnTextInput;
 
@@ -1066,6 +1069,9 @@ namespace Celeste.Mod.Ghost.Net {
             Cleanup();
 
             SendMPlayer(levelExit: mode);
+        }
+
+        public void OnDie(Player player) {
         }
 
         public void OnCompleteLevel(Level level) {
@@ -1131,6 +1137,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             Everest.Events.Level.OnLoadLevel += OnLoadLevel;
             Everest.Events.Level.OnExit += OnExitLevel;
+            Everest.Events.Player.OnDie += OnDie;
             GhostNetModuleBackCompat.OnLevelComplete += OnCompleteLevel;
             GhostNetModuleBackCompat.OnTextInput += OnTextInput;
 
