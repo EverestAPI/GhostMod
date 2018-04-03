@@ -77,6 +77,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Chunks\ChunkEAudioTrackState.cs" />
+    <Compile Include="Chunks\ChunkEAudioState.cs" />
     <Compile Include="Chunks\ChunkRListAreas.cs" />
     <Compile Include="Chunks\ChunkRListMods.cs" />
     <Compile Include="Chunks\ChunkUParticles.cs" />
@@ -87,7 +89,7 @@
     <Compile Include="Chunks\ChunkMChat.cs" />
     <Compile Include="Chunks\ChunkMEmote.cs" />
     <Compile Include="Chunks\ChunkMRequest.cs" />
-    <Compile Include="Chunks\ChunkRSession.cs" />
+    <Compile Include="Chunks\ChunkMSession.cs" />
     <Compile Include="Chunks\ChunkMServerInfo.cs" />
     <Compile Include="Chunks\ChunkUUpdate.cs" />
     <Compile Include="Chunks\ChunkMPlayer.cs" />

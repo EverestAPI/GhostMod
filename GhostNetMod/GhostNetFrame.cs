@@ -24,7 +24,7 @@ namespace Celeste.Mod.Ghost.Net {
         private static IDictionary<string, GhostNetChunkParser> ChunkParsers = new Dictionary<string, GhostNetChunkParser>();
         private static IDictionary<Type, string> ChunkIDs = new Dictionary<Type, string>();
 
-        // TODO: Wrapper for objects that don't natively implement IChunk.
+        // TODO: Wrapper for objects that don't natively implement IChunk, but implement its members.
 
         public static void RegisterChunk(Type type, string id, Func<BinaryReader, object> parser)
             => RegisterChunk(type, id, reader => parser(reader) as IChunk);

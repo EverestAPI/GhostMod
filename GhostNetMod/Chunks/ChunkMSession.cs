@@ -17,15 +17,16 @@ namespace Celeste.Mod.Ghost.Net {
     /// Used when teleporting.
     /// The player can receive this with an MPlayer chunk to change the session.
     /// </summary>
-    public class ChunkRSession : IChunk {
+    public class ChunkMSession : IChunk {
 
-        public const string ChunkID = "nRS";
+        public const string ChunkID = "nMS";
 
         public bool IsValid => true;
         public bool IsSendable => true;
 
         public bool InSession;
 
+        public AudioState Audio;
         public Vector2? RespawnPoint;
         public PlayerInventory Inventory;
         public HashSet<string> Flags;
@@ -51,11 +52,18 @@ namespace Celeste.Mod.Ghost.Net {
         public Session.CoreModes CoreMode;
 
         public void Read(BinaryReader reader) {
-            if (!reader.ReadBoolean())
+            InSession = reader.ReadBoolean();
+            if (!InSession)
                 return;
 
             byte bools;
             int count;
+
+            if (reader.ReadBoolean()) {
+                ChunkEAudioState audio = new ChunkEAudioState();
+                audio.Read(reader);
+                Audio = audio.Audio;
+            }
 
             if (reader.ReadBoolean())
                 RespawnPoint = new Vector2(reader.ReadSingle(), reader.ReadSingle());
@@ -100,9 +108,9 @@ namespace Celeste.Mod.Ghost.Net {
                     Value = reader.ReadInt32()
                 });
 
-            FurthestSeenLevel = reader.ReadNullTerminatedString();
-            StartCheckpoint = reader.ReadNullTerminatedString();
-            ColorGrade = reader.ReadNullTerminatedString();
+            FurthestSeenLevel = reader.ReadNullTerminatedString()?.Nullify();
+            StartCheckpoint = reader.ReadNullTerminatedString()?.Nullify();
+            ColorGrade = reader.ReadNullTerminatedString()?.Nullify();
 
             count = reader.ReadByte();
             SummitGems = new bool[count];
@@ -137,6 +145,15 @@ namespace Celeste.Mod.Ghost.Net {
             writer.Write(true);
 
             byte bools;
+
+            if (Audio != null) {
+                writer.Write(true);
+                ChunkEAudioState audio = new ChunkEAudioState(Audio);
+                audio.Write(writer);
+
+            } else {
+                writer.Write(false);
+            }
 
             if (RespawnPoint != null) {
                 writer.Write(true);
@@ -210,7 +227,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public object Clone()
-            => new ChunkRSession {
+            => new ChunkMSession {
                 InSession = InSession,
 
                 RespawnPoint = RespawnPoint,

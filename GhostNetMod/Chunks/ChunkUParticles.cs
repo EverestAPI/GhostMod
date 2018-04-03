@@ -22,10 +22,6 @@ namespace Celeste.Mod.Ghost.Net {
         public bool IsValid => Type != null && Type.GetID() != -1;
         public bool IsSendable => true;
 
-        public string SID;
-        public AreaMode Mode;
-        public string Level;
-
         public Systems System;
 
         public ParticleType Type;
@@ -39,10 +35,6 @@ namespace Celeste.Mod.Ghost.Net {
         public void Read(BinaryReader reader) {
             Type = GhostNetParticleHelper.GetType(reader.ReadInt32());
 
-            SID = reader.ReadNullTerminatedString();
-            Mode = (AreaMode) reader.ReadByte();
-            Level = reader.ReadNullTerminatedString();
-
             System = (Systems) reader.ReadByte();
 
             Amount = reader.ReadInt32();
@@ -54,10 +46,6 @@ namespace Celeste.Mod.Ghost.Net {
 
         public void Write(BinaryWriter writer) {
             writer.Write(Type.GetID());
-
-            writer.WriteNullTerminatedString(SID);
-            writer.Write((byte) Mode);
-            writer.WriteNullTerminatedString(Level);
 
             writer.Write((byte) System);
 
@@ -75,10 +63,6 @@ namespace Celeste.Mod.Ghost.Net {
 
         public object Clone()
             => new ChunkUParticles {
-                SID = SID,
-                Mode = Mode,
-                Level = Level,
-
                 System = System,
 
                 Type = Type,

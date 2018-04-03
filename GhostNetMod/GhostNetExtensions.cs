@@ -19,5 +19,8 @@ namespace Celeste.Mod.Ghost.Net {
         public static TrailManager.Snapshot[] GetSnapshots(this TrailManager self)
             => (TrailManager.Snapshot[]) f_TrailManager_shapshots.GetValue(self);
 
+        public static string Nullify(this string value)
+            => string.IsNullOrEmpty(value) ? null : value;
+
     }
 }

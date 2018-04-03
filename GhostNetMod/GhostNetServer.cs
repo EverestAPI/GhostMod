@@ -142,7 +142,7 @@ namespace Celeste.Mod.Ghost.Net {
                 if (filterCon != con)
                     return; // Not the player we sent the request to.
                 if (!filterFrame.Has(type))
-                    return; // Doesn't contain our response.
+                    return; // Doesn't contain the awaited response.
 
                 response = filterFrame;
             };

@@ -23,6 +23,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         protected float time;
 
+        protected Queue<Action> MainThreadQueue = new Queue<Action>();
+
         public int UpdateIndex;
 
         public Player Player;
@@ -248,6 +250,9 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
+            while (MainThreadQueue.Count > 0)
+                MainThreadQueue.Dequeue()();
+
             base.Update(gameTime);
         }
 
@@ -335,6 +340,25 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             Monocle.Draw.SpriteBatch.End();
+        }
+
+        protected void RunOnMainThread(Action action, bool wait = false) {
+            bool finished = true;
+            if (wait) {
+                finished = false;
+                action = new Func<Action, Action>(_ => () => {
+                    try {
+                        _();
+                    } finally {
+                        finished = true;
+                    }
+                })(action);
+            }
+
+            MainThreadQueue.Enqueue(action);
+
+            while (!finished)
+                Thread.Sleep(0);
         }
 
         protected virtual void RebuildPlayerList() {
@@ -548,21 +572,22 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public virtual void SendRSession() {
+        public virtual void SendMSession() {
             if (Connection == null)
                 return;
             if (Session == null) {
                 Connection.SendManagement(new GhostNetFrame()
-                    .Set(new ChunkRSession {
+                    .Set(new ChunkMSession {
                         InSession = false
                     })
                 , true);
                 return;
             }
             Connection.SendManagement(new GhostNetFrame()
-                .Set(new ChunkRSession {
+                .Set(new ChunkMSession {
                     InSession = true,
 
+                    Audio = Session.Audio,
                     RespawnPoint = Session.RespawnPoint,
                     Inventory = Session.Inventory,
                     Flags = Session.Flags,
@@ -685,58 +710,77 @@ namespace Celeste.Mod.Ghost.Net {
                     return;
                 }
 
+                ChunkMSession sessionToApply = frame.Get<ChunkMSession>();
+                if (sessionToApply != null && !sessionToApply.InSession)
+                    sessionToApply = null;
+
                 Logger.Log(LogLevel.Info, "ghostnet-c", $"Server told us to move to {frame.MPlayer.SID} {(char) ('A' + frame.MPlayer.Mode)} {frame.MPlayer.Level}");
                 if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
                     frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
-                    frame.MPlayer.Level != (Session?.Level ?? "")) {
+                    frame.MPlayer.Level != (Session?.Level ?? "") ||
+                    sessionToApply != null) {
                     // Server told us to move.
 
-                    if (SaveData.Instance == null) {
-                        SaveData.InitializeDebugMode();
-                    }
+                    RunOnMainThread(() => {
+                        if (SaveData.Instance == null) {
+                            SaveData.InitializeDebugMode();
+                        }
+                    }, true);
 
                     AreaData area = AreaDataExt.Get(frame.MPlayer.SID);
                     if (area != null) {
-                        if (Session != null) {
-                            Session.RespawnPoint = null;
-                        }
+                        RunOnMainThread(() => {
+                            if (Session != null) {
+                                Session.RespawnPoint = null;
+                            }
 
-                        if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
-                            frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal)) {
-                            // Different SID or mode - create new session.
-                            Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode), null, SaveData.Instance.Areas[area.ID]);
-                            SaveData.Instance.CurrentSession = Session;
-                        }
+                            if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
+                                frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
+                                sessionToApply != null) {
+                                // Different SID or mode - create new session.
+                                Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode), null, SaveData.Instance.Areas[area.ID]);
+                                Session.Level = frame.MPlayer.Level;
+                                if (sessionToApply != null) {
+                                    HandleMSession(con, frame);
+                                    sessionToApply = null;
+                                }
+                                SaveData.Instance.CurrentSession = Session;
+                            }
 
-                        if (!string.IsNullOrEmpty(frame.MPlayer.Level) && Session.MapData.Get(frame.MPlayer.Level) != null) {
-                            Session.Level = frame.MPlayer.Level;
-                            Session.FirstLevel = false;
-                        }
-                        LevelEnterExt.ErrorMessage = null;
-                        Cleanup();
-                        Engine.Scene = new LevelLoader(Session, frame.UUpdate?.Data.Position);
+                            if (!string.IsNullOrEmpty(frame.MPlayer.Level) && Session.MapData.Get(frame.MPlayer.Level) != null) {
+                                Session.Level = frame.MPlayer.Level;
+                                Session.FirstLevel = false;
+                            }
+
+                            LevelEnterExt.ErrorMessage = null;
+                            Cleanup();
+                            Engine.Scene = new LevelLoader(Session, frame.UUpdate?.Data.Position);
+                        }, true);
 
                     } else {
-                        OnExitLevel(null, null, LevelExit.Mode.SaveAndQuit, null, null);
+                        RunOnMainThread(() => {
+                            OnExitLevel(null, null, LevelExit.Mode.SaveAndQuit, null, null);
 
-                        string message = Dialog.Get("postcard_levelgone");
-                        if (string.IsNullOrEmpty(frame.MPlayer.SID)) {
-                            message = Dialog.Has("postcard_ghostnetmodule_backtomenu") ? Dialog.Get("postcard_ghostnetmodule_backtomenu") :
+                            string message = Dialog.Get("postcard_levelgone");
+                            if (string.IsNullOrEmpty(frame.MPlayer.SID)) {
+                                message = Dialog.Has("postcard_ghostnetmodule_backtomenu") ? Dialog.Get("postcard_ghostnetmodule_backtomenu") :
 @"The server has sent you back to the main menu.";
-                        }
+                            }
 
-                        message = message.Replace("((player))", SaveData.Instance.Name);
-                        message = message.Replace("((sid))", frame.MPlayer.SID);
+                            message = message.Replace("((player))", SaveData.Instance.Name);
+                            message = message.Replace("((sid))", frame.MPlayer.SID);
 
-                        LevelEnterExt.ErrorMessage = message;
-                        LevelEnter.Go(new Session(new AreaKey(1).SetSID("")), false);
+                            LevelEnterExt.ErrorMessage = message;
+                            LevelEnter.Go(new Session(new AreaKey(1).SetSID("")), false);
+                        });
                         return;
                     }
                 }
 
-                if (Session != null && frame.Has<ChunkRSession>()) {
+                if (sessionToApply != null) {
                     // We received additional session data from the server.
-                    HandleRSession(con, frame);
+                    HandleMSession(con, frame);
+                    sessionToApply = null;
                 }
 
                 return;
@@ -787,9 +831,10 @@ namespace Celeste.Mod.Ghost.Net {
                     SendUUpdate();
                     break;
 
-                case ChunkRSession.ChunkID:
-                    SendRSession();
+                case ChunkMSession.ChunkID:
+                    SendMSession();
                     break;
+                
                 case ChunkRListAreas.ChunkID:
                     SendRListAreas();
                     break;
@@ -928,9 +973,9 @@ namespace Celeste.Mod.Ghost.Net {
             if (level == null)
                 return;
 
-            if (frame.UParticles.SID != (Session?.Area.GetSID() ?? "") ||
-                frame.UParticles.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
-                frame.UParticles.Level != (Session?.Level ?? "")) {
+            if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
+                frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
+                frame.MPlayer.Level != (Session?.Level ?? "")) {
                 // Not the same level - skip.
                 return;
             }
@@ -960,14 +1005,18 @@ namespace Celeste.Mod.Ghost.Net {
             );
         }
 
-        public virtual void HandleRSession(GhostNetConnection con, GhostNetFrame frame) {
+        public virtual void HandleMSession(GhostNetConnection con, GhostNetFrame frame) {
             if (Session == null)
                 return;
 
-            ChunkRSession received = frame.Get<ChunkRSession>();
+            ChunkMSession received = frame.Get<ChunkMSession>();
             if (!received.InSession)
                 return;
 
+            Session.Area = new AreaKey(-1, frame.MPlayer.Mode).SetSID(frame.MPlayer.SID);
+            Session.Level = frame.MPlayer.Level;
+
+            Session.Audio = received.Audio;
             Session.RespawnPoint = received.RespawnPoint;
             Session.Inventory = received.Inventory;
             Session.Flags = received.Flags;
