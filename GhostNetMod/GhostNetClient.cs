@@ -33,7 +33,7 @@ namespace Celeste.Mod.Ghost.Net {
         public GhostName PlayerName;
         public GhostNetEmoteWheel EmoteWheel;
 
-        public uint PlayerID;
+        public uint PlayerID = uint.MaxValue;
         public ChunkMPlayer PlayerInfo;
         public ChunkMServerInfo ServerInfo;
 
@@ -42,9 +42,12 @@ namespace Celeste.Mod.Ghost.Net {
 
         public List<Ghost> Ghosts = new List<Ghost>();
         public Dictionary<uint, Ghost> GhostMap = new Dictionary<uint, Ghost>();
+        public Dictionary<uint, GhostNetEmote> IdleMap = new Dictionary<uint, GhostNetEmote>();
         public Dictionary<Ghost, uint> GhostPlayerIDs = new Dictionary<Ghost, uint>();
         public Dictionary<uint, uint> GhostUpdateIndices = new Dictionary<uint, uint>();
         public Dictionary<int, float> GhostDashTimes = new Dictionary<int, float>();
+
+        private bool WasPaused = false;
 
         public List<ChatLine> ChatLog = new List<ChatLine>();
         public string ChatInput = "";
@@ -125,6 +128,13 @@ namespace Celeste.Mod.Ghost.Net {
 
             bool inputDisabled = MInput.Disabled;
             MInput.Disabled = false;
+
+            if (PlayerID != uint.MaxValue && (Player?.Scene?.Paused ?? false) != WasPaused) {
+                SendMPlayer();
+                if (Player != null)
+                    OnIdle(PlayerID, Player, Player?.Scene?.Paused ?? false);
+                WasPaused = Player?.Scene?.Paused ?? false;
+            }
 
             if (!(Player?.Scene?.Paused ?? true)) {
                 EmoteWheel.Shown = GhostNetModule.Instance.JoystickEmoteWheel.Value.LengthSquared() >= 0.36f;
@@ -466,6 +476,27 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        protected virtual void OnIdle(uint id, Actor who, bool idle) {
+            GhostNetEmote emote;
+            if (idle) {
+                if (IdleMap.TryGetValue(id, out emote)) {
+                    emote.PopOut = true;
+                    emote.AnimationTime = 1f;
+                }
+
+                IdleMap[id] = emote = new GhostNetEmote(who, "i:hover/idle") {
+                    PopIn = true,
+                    Float = true
+                };
+                emote.AddTag(Tags.Persistent | Tags.TransitionUpdate | Tags.FrozenUpdate);
+                Engine.Scene.Add(emote);
+
+            } else if (IdleMap.TryGetValue(id, out emote)) {
+                emote.PopOut = true;
+                emote.AnimationTime = 1f;
+            }
+        }
+
         public virtual void CreateTrail(Ghost ghost) {
             TrailManager.Add(ghost, ghost.Frame.Data.DashColor.Value, 1f);
         }
@@ -482,7 +513,8 @@ namespace Celeste.Mod.Ghost.Net {
                     Mode = Session?.Area.Mode ?? AreaMode.Normal,
                     Level = Session?.Level ?? "",
                     LevelCompleted = levelCompleted,
-                    LevelExit = levelExit
+                    LevelExit = levelExit,
+                    Idle = Player?.Scene?.Paused ?? false
                 }
             }, true);
         }
@@ -822,8 +854,12 @@ namespace Celeste.Mod.Ghost.Net {
                 ghost = AddGhost(frame);
             }
 
-            if (ghost != null && ghost.Name != null)
-                ghost.Name.Name = frame.MPlayer.Name;
+            if (ghost != null) {
+                if (ghost.Name != null)
+                    ghost.Name.Name = frame.MPlayer.Name;
+
+                OnIdle(frame.HHead.PlayerID, ghost, frame.MPlayer.Idle);
+            }
         }
 
         public virtual void HandleMRequest(GhostNetConnection con, GhostNetFrame frame) {
@@ -869,7 +905,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             GhostNetEmote emote = new GhostNetEmote(ghost ?? (Entity) Player, frame.MEmote.Value) {
-                Pop = true
+                PopIn = true,
+                FadeOut = true
             };
             emote.AddTag(Tags.Persistent | Tags.TransitionUpdate | Tags.FrozenUpdate);
             Engine.Scene.Add(emote);
@@ -1244,6 +1281,7 @@ namespace Celeste.Mod.Ghost.Net {
             for (int i = 0; i < Ghosts.Count; i++)
                 Ghosts[i]?.RemoveSelf();
             GhostMap.Clear();
+            IdleMap.Clear();
             Ghosts.Clear();
 
             GhostRecorder?.RemoveSelf();

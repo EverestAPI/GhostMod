@@ -22,8 +22,12 @@ namespace Celeste.Mod.Ghost.Net {
 
         public float Alpha = 1f;
 
-        public bool Pop = false;
-        protected float popupTime;
+        public bool PopIn = false;
+        public bool FadeOut = false;
+        public bool PopOut = false;
+        public float AnimationTime;
+
+        public bool Float = false;
 
         protected float time;
 
@@ -45,30 +49,51 @@ namespace Celeste.Mod.Ghost.Net {
             float popupAlpha = 1f;
             float popupScale = 1f;
 
+            if (Tracking?.Scene != Scene)
+                FadeOut = true;
+
             // Update can halt in the pause menu.
-            if (Pop) {
-                popupTime += Engine.DeltaTime;
-                if (popupTime < 0.1f) {
-                    float t = popupTime / 0.1f;
+            if (PopIn || FadeOut) {
+                AnimationTime += Engine.DeltaTime;
+                if (AnimationTime < 0.1f && PopIn) {
+                    float t = AnimationTime / 0.1f;
                     // Pop in.
                     popupAlpha = Ease.CubeOut(t);
                     popupScale = Ease.ElasticOut(t);
 
-                } else if (popupTime < 1f) {
+                } else if (AnimationTime < 1f) {
                     // Stay.
                     popupAlpha = 1f;
                     popupScale = 1f;
 
-                } else if (popupTime < 2f) {
-                    float t = popupTime - 1f;
+                } else if (FadeOut) {
                     // Fade out.
-                    popupAlpha = 1f - Ease.CubeIn(t);
-                    popupScale = 1f - 0.4f * Ease.CubeIn(t);
+                    if (AnimationTime < 2f) {
+                        float t = AnimationTime - 1f;
+                        popupAlpha = 1f - Ease.CubeIn(t);
+                        popupScale = 1f - 0.4f * Ease.CubeIn(t);
+
+                    } else {
+                        // Destroy.
+                        RemoveSelf();
+                        return;
+                    }
+
+                } else if (PopOut) {
+                    // Pop out.
+                    if (AnimationTime < 1.1f) {
+                        float t = (AnimationTime - 1f) / 0.1f;
+                        popupAlpha = 1f - Ease.CubeIn(t);
+                        popupScale = 1f - 0.4f * Ease.BounceIn(t);
+
+                    } else {
+                        // Destroy.
+                        RemoveSelf();
+                        return;
+                    }
 
                 } else {
-                    // Destroy.
-                    RemoveSelf();
-                    return;
+                    AnimationTime = 1f;
                 }
             }
 
@@ -105,6 +130,8 @@ namespace Celeste.Mod.Ghost.Net {
             // - name offset - popup offset
             pos.Y -= 16f + 4f;
             pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
+            if (Float)
+                pos.Y -= (float) Math.Sin(time * 2f) * 4f;
 
             if (icon != null) {
                 Vector2 size = new Vector2(icon.Width, icon.Height);

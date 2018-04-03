@@ -40,6 +40,8 @@ namespace Celeste.Mod.Ghost.Net {
         public bool LevelCompleted = false;
         public LevelExit.Mode? LevelExit;
 
+        public bool Idle;
+
         public void Read(BinaryReader reader) {
             IsCached = false;
 
@@ -55,6 +57,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (reader.ReadBoolean())
                 LevelExit = (LevelExit.Mode) reader.ReadByte();
+
+            Idle = reader.ReadBoolean();
         }
 
         public void Write(BinaryWriter writer) {
@@ -74,6 +78,8 @@ namespace Celeste.Mod.Ghost.Net {
                 writer.Write(true);
                 writer.Write((byte) LevelExit);
             }
+
+            writer.Write(Idle);
         }
 
         public object Clone()
@@ -87,7 +93,9 @@ namespace Celeste.Mod.Ghost.Net {
                 Level = Level,
 
                 LevelCompleted = LevelCompleted,
-                LevelExit = LevelExit
+                LevelExit = LevelExit,
+
+                Idle = Idle
             };
 
     }
