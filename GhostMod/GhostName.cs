@@ -48,7 +48,9 @@ namespace Celeste.Mod.Ghost {
 
             Vector2 pos = Tracking.Position;
             pos.Y -= 16f;
-            pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
+
+            pos -= level.Camera.Position;
+            pos *= 6f; // 1920 / 320
 
             Vector2 size = ActiveFont.Measure(Name);
             pos = pos.Clamp(

@@ -84,6 +84,7 @@ namespace Celeste.Mod.Ghost.Net {
                     if (AnimationTime < 1.1f) {
                         float t = (AnimationTime - 1f) / 0.1f;
                         popupAlpha = 1f - Ease.CubeIn(t);
+                        popupAlpha *= popupAlpha;
                         popupScale = 1f - 0.4f * Ease.BounceIn(t);
 
                     } else {
@@ -129,7 +130,10 @@ namespace Celeste.Mod.Ghost.Net {
             Vector2 pos = Tracking.Position;
             // - name offset - popup offset
             pos.Y -= 16f + 4f;
-            pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
+
+            pos -= level.Camera.Position;
+            pos *= 6f; // 1920 / 320
+
             if (Float)
                 pos.Y -= (float) Math.Sin(time * 2f) * 4f;
 

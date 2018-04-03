@@ -244,7 +244,7 @@ namespace Celeste.Mod.Ghost.Net {
             ChunkMPlayer player;
             if (!PlayerMap.TryGetValue(frame.HHead.PlayerID, out player) || player == null) {
                 // Ghost not managed - ignore the frame.
-                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unexpected frame from #{frame.HHead?.PlayerID.ToString() ?? "???"} ({con.ManagementEndPoint}) - statusless ghost, possibly premature");
+                Logger.Log(LogLevel.Verbose, "ghostnet-s", $"Unexpected frame from #{frame.HHead?.PlayerID.ToString() ?? "???"} ({con.ManagementEndPoint}) - no MPlayer on this connection, possibly premature");
                 return;
             }
             // Temporarily attach the MPlayer chunk to make player identification easier.
@@ -550,7 +550,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             GhostNetConnection con;
             // We receive updates either from LocalConnectionToServer or from UpdateConnection.
-            // Get the management connection to the remote client.
+            // Get the managed connection to the remote client.
             if (conReceived == null || !ConnectionMap.TryGetValue(remote, out con) || con == null) {
                 // Unlike management connections, which we already know the target port of at the time of connection,
                 // updates are sent via UDP (by default) and thus "connectionless."

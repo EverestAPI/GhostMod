@@ -130,7 +130,9 @@ namespace Celeste.Mod.Ghost.Net {
 
             Vector2 pos = Tracking.Position;
             pos.Y -= 8f;
-            pos = Camera.CameraToScreen(pos) / Camera.Viewport.Width * 1920f;
+
+            pos -= level.Camera.Position;
+            pos *= 6f; // 1920 / 320
 
             float radius = BG.Width * 0.5f * 0.75f * popupScale;
 
