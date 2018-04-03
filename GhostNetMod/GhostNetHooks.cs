@@ -53,17 +53,17 @@ namespace Celeste.Mod.Ghost.Net {
             GhostNetClient client = GhostNetModule.Instance.Client;
             uint playerID;
             GhostNetFrame frame;
-            ChunkUUpdateE0 e0;
+            ChunkUUpdate update;
             if (ghost == null ||
                 client == null ||
                 !client.GhostPlayerIDs.TryGetValue(ghost, out playerID) ||
                 !client.UpdateMap.TryGetValue(playerID, out frame) ||
-                (e0 = frame?.UUpdateE0) == null)
+                (update = frame) == null)
                 return colorOrig;
 
-            if (index < 0 || e0.HairColors.Length <= index)
+            if (index < 0 || update.HairColors.Length <= index)
                 return Color.Transparent;
-            return e0.HairColors[index];
+            return update.HairColors[index];
         }
 
         public static object GetHairTexture(HM hook, HM.OriginalMethod origM, HM.Parameters args) {
@@ -78,17 +78,17 @@ namespace Celeste.Mod.Ghost.Net {
             GhostNetClient client = GhostNetModule.Instance.Client;
             uint playerID;
             GhostNetFrame frame;
-            ChunkUUpdateE0 e0;
+            ChunkUUpdate update;
             if (ghost == null ||
                 client == null ||
                 !client.GhostPlayerIDs.TryGetValue(ghost, out playerID) ||
                 !client.UpdateMap.TryGetValue(playerID, out frame) ||
-                (e0 = frame?.UUpdateE0) == null)
+                (update = frame) == null)
                 return texOrig;
 
-            if (index < 0 || e0.HairColors.Length <= index)
+            if (index < 0 || update.HairColors.Length <= index)
                 return texOrig;
-            string texName = e0.HairTextures[index];
+            string texName = update.HairTextures[index];
             if (!GFX.Game.Has(texName))
                 return texOrig;
             return GFX.Game[texName];

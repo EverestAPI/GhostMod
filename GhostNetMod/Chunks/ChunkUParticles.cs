@@ -73,6 +73,9 @@ namespace Celeste.Mod.Ghost.Net {
                 Direction = Direction
             };
 
+        public static implicit operator ChunkUParticles(GhostNetFrame frame)
+            => frame.Get<ChunkUParticles>();
+
         public enum Systems {
             Particles,
             ParticlesBG,

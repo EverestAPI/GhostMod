@@ -50,5 +50,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Entries = Entries
             };
 
+        public static implicit operator ChunkRListAreas(GhostNetFrame frame)
+            => frame.Get<ChunkRListAreas>();
+
     }
 }

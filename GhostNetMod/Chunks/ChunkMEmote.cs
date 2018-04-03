@@ -37,5 +37,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Value = Value
             };
 
+        public static implicit operator ChunkMEmote(GhostNetFrame frame)
+            => frame.Get<ChunkMEmote>();
+
     }
 }

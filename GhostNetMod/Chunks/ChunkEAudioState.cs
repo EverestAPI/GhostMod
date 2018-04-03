@@ -72,5 +72,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Audio = Audio.Clone()
             };
 
+        public static implicit operator ChunkEAudioState(GhostNetFrame frame)
+            => frame.Get<ChunkEAudioState>();
+
     }
 }

@@ -80,14 +80,6 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
-        public ChunkMServerInfo MServerInfo {
-            get {
-                return Get<ChunkMServerInfo>();
-            }
-            set {
-                Set(value);
-            }
-        }
         public ChunkMPlayer MPlayer {
             get {
                 return Get<ChunkMPlayer>();
@@ -96,59 +88,9 @@ namespace Celeste.Mod.Ghost.Net {
                 Set(value);
             }
         }
-        public ChunkMRequest MRequest {
-            get {
-                return Get<ChunkMRequest>();
-            }
-            set {
-                Set(value);
-            }
-        }
-        public ChunkMEmote MEmote {
-            get {
-                return Get<ChunkMEmote>();
-            }
-            set {
-                Set(value);
-            }
-        }
-        public ChunkMChat MChat {
-            get {
-                return Get<ChunkMChat>();
-            }
-            set {
-                Set(value);
-            }
-        }
-
-        // Update chunks.
         public ChunkUUpdate UUpdate {
             get {
                 return Get<ChunkUUpdate>();
-            }
-            set {
-                Set(value);
-            }
-        }
-        public ChunkUUpdateE0 UUpdateE0 {
-            get {
-                return Get<ChunkUUpdateE0>();
-            }
-            set {
-                Set(value);
-            }
-        }
-        public ChunkUActionCollision UActionCollision {
-            get {
-                return Get<ChunkUActionCollision>();
-            }
-            set {
-                Set(value);
-            }
-        }
-        public ChunkUParticles UParticles {
-            get {
-                return Get<ChunkUParticles>();
             }
             set {
                 Set(value);
@@ -221,6 +163,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        public void Get<T>(out T chunk) where T : IChunk
+            => chunk = (T) Get(typeof(T));
         public T Get<T>() where T : IChunk
             => (T) Get(typeof(T));
         public IChunk Get(Type t) {

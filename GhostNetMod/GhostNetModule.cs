@@ -207,7 +207,7 @@ namespace Celeste.Mod.Ghost.Net {
             Logger.Log("ghostnet-s", "and to let your firewall allow incoming connections.");
             Console.WriteLine("");
             Client.OnHandle += (con, frame) => {
-                if (frame.MChat != null)
+                if (frame.Get<ChunkMChat>() != null)
                     Logger.Log("ghostnet-chat", new GhostNetClient.ChatLine(frame).ToString());
             };
             while (Server.IsRunning) {

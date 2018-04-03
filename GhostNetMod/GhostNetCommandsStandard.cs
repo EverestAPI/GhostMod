@@ -160,9 +160,9 @@ namespace Celeste.Mod.Ghost.Net {
 
                 ChunkMChat msg = env.Send($"Teleporting to {other.Name}#{args[0].Int}...");
 
-                ChunkMSession session = new ChunkMSession();
+                ChunkMSession session;
                 // Request the current session information from the other player.
-                session = env.Server.Request<ChunkMSession>(args[0].Connection)?.Get<ChunkMSession>();
+                env.Server.Request(args[0].Connection, out session);
 
                 env.Connection.SendManagement(new GhostNetFrame {
                     HHead = env.HHead,
@@ -178,10 +178,8 @@ namespace Celeste.Mod.Ghost.Net {
 
                 msg.Text = $"Teleported to {other.Name}#{args[0].Int}";
                 env.Connection.SendManagement(new GhostNetFrame {
-                    HHead = env.HHead,
-                    
-                    MChat = msg
-                }, true);
+                    HHead = env.HHead
+                }.Set(msg), true);
 
             }
         };
@@ -204,12 +202,10 @@ p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
                     return;
 
                 GhostNetFrame frame = new GhostNetFrame {
-                    HHead = env.HHead,
-
-                    MEmote = new ChunkMEmote {
-                        Value = args[0]
-                    }
-                };
+                    HHead = env.HHead
+                }.Set(new ChunkMEmote {
+                    Value = args[0]
+                });
                 env.Server.Handle(env.Connection, frame);
             }
         };

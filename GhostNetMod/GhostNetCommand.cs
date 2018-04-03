@@ -247,7 +247,7 @@ namespace Celeste.Mod.Ghost.Net {
         public ChunkHHead HHead => Frame.HHead;
 
         public ChunkMPlayer MPlayer => Frame.MPlayer;
-        public ChunkMChat MChat => Frame.MChat;
+        public ChunkMChat MChat => Frame.Get<ChunkMChat>();
 
         public string Text => MChat?.Text;
 

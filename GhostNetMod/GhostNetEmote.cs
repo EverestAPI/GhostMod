@@ -50,10 +50,10 @@ namespace Celeste.Mod.Ghost.Net {
             float popupScale = 1f;
 
             if (Tracking?.Scene != Scene)
-                FadeOut = true;
+                PopOut = true;
 
             // Update can halt in the pause menu.
-            if (PopIn || FadeOut) {
+            if (PopIn || FadeOut || PopOut) {
                 AnimationTime += Engine.DeltaTime;
                 if (AnimationTime < 0.1f && PopIn) {
                     float t = AnimationTime / 0.1f;

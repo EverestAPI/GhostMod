@@ -117,7 +117,8 @@ You can chat with your fellow racers using the rc command.",
 
                         string area = args[1].String;
                         if (args[1].Type == GhostNetCommandArg.EType.Int) {
-                            ChunkRListAreas areas = env.Server.Request<ChunkRListAreas>(env.Connection)?.Get<ChunkRListAreas>();
+                            ChunkRListAreas areas;
+                            env.Server.Request(env.Connection, out areas);
                             if (areas == null)
                                 throw new Exception("Your client didn't respond to the area list request!");
                             if (args[1].Int < 1 || areas.Entries.Length < args[1].Int)
@@ -543,9 +544,8 @@ The server will teleport you when the race starts."
                 GhostNetFrame frameMsg = new GhostNetFrame {
                     HHead = frame?.HHead ?? new ChunkHHead {
                         PlayerID = uint.MaxValue
-                    },
-                    MChat = msg
-                };
+                    }
+                }.Set(msg);
                 lock (Players) {
                     foreach (uint playerID in Players) {
                         GhostNetConnection con = Manager.Server.Connections[(int) playerID];

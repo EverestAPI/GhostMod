@@ -529,11 +529,11 @@ namespace Celeste.Mod.Ghost.Net {
         public virtual void SendMEmote(string value) {
             if (string.IsNullOrWhiteSpace(value))
                 return;
-            Connection?.SendManagement(new GhostNetFrame {
-                MEmote = new ChunkMEmote {
+            Connection?.SendManagement(new GhostNetFrame()
+                .Set(new ChunkMEmote {
                     Value = value.Trim()
-                }
-            }, true);
+                })
+            , true);
         }
 
         public virtual void SendMChat(string text) {
@@ -542,11 +542,11 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, "", PlayerInfo?.Name ?? GhostModule.Settings.Name, text));
             ChatRepeat.Insert(1, text);
-            Connection?.SendManagement(new GhostNetFrame {
-                MChat = new ChunkMChat {
+            Connection?.SendManagement(new GhostNetFrame()
+                .Set(new ChunkMChat {
                     Text = text
-                }
-            }, true);
+                })
+            , true);
         }
 
         public virtual void SendUUpdate() {
@@ -560,20 +560,18 @@ namespace Celeste.Mod.Ghost.Net {
                 UUpdate = new ChunkUUpdate {
                     UpdateIndex = (uint) UpdateIndex,
                     Data = GhostRecorder.LastFrameData.Data
-                },
-
-                UUpdateE0 = new ChunkUUpdateE0()
+                }
             };
 
-            ChunkUUpdateE0 e0 = frame.UUpdateE0;
+            ChunkUUpdate update = frame.UUpdate;
             if (Player != null && Player.Sprite != null && Player.Hair != null) {
                 int hairCount = Player.Sprite.HairCount;
-                e0.HairColors = new Color[hairCount];
+                update.HairColors = new Color[hairCount];
                 for (int i = 0; i < hairCount; i++)
-                    e0.HairColors[i] = Player.Hair.GetHairColor(i);
-                e0.HairTextures = new string[hairCount];
+                    update.HairColors[i] = Player.Hair.GetHairColor(i);
+                update.HairTextures = new string[hairCount];
                 for (int i = 0; i < hairCount; i++)
-                    e0.HairTextures[i] = Player.Hair.GetHairTexture(i).AtlasPath;
+                    update.HairTextures[i] = Player.Hair.GetHairTexture(i).AtlasPath;
             }
 
             Connection.SendUpdate(frame, true);
@@ -585,12 +583,12 @@ namespace Celeste.Mod.Ghost.Net {
             if (Connection == null)
                 return;
 
-            Connection.SendUpdate(new GhostNetFrame {
-                UActionCollision = new ChunkUActionCollision {
+            Connection.SendUpdate(new GhostNetFrame()
+                .Set(new ChunkUActionCollision {
                     With = with,
                     Head = head
-                }
-            }, true);
+                })
+            , true);
         }
 
         public virtual void SendUAudio(Player player, string sound, string param = null, float value = 0f) {
@@ -682,11 +680,11 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.HHead == null)
                 return;
 
-            if (frame.MServerInfo != null) {
+            if (frame.Has<ChunkMServerInfo>()) {
                 // The client can receive this more than once.
-                Logger.Log("ghostnet-c", $"Received MServerInfo: #{frame.HHead.PlayerID} in {frame.MServerInfo.Name}");
+                frame.Get(out ServerInfo);
+                Logger.Log("ghostnet-c", $"Received MServerInfo: #{frame.HHead.PlayerID} in {ServerInfo.Name}");
                 PlayerID = frame.HHead.PlayerID;
-                ServerInfo = frame.MServerInfo;
             }
 
             if (frame.MPlayer != null)
@@ -704,25 +702,25 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            if (frame.MRequest != null)
+            if (frame.Has<ChunkMRequest>())
                 HandleMRequest(con, frame);
 
-            if (frame.MEmote != null)
+            if (frame.Has<ChunkMEmote>())
                 HandleMEmote(con, frame);
 
-            if (frame.MChat != null)
+            if (frame.Has<ChunkMChat>())
                 HandleMChat(con, frame);
 
             if (frame.UUpdate != null)
                 HandleUUpdate(con, frame);
 
-            if (frame.UActionCollision != null)
+            if (frame.Has<ChunkUActionCollision>())
                 HandleUActionCollision(con, frame);
 
             if (frame.Has<ChunkUAudioPlay>())
                 HandleUAudioPlay(con, frame);
 
-            if (frame.UParticles != null)
+            if (frame.Has<ChunkUParticles>())
                 HandleUParticles(con, frame);
 
             OnHandle?.Invoke(con, frame);
@@ -749,7 +747,7 @@ namespace Celeste.Mod.Ghost.Net {
                     return;
                 }
 
-                ChunkMSession sessionToApply = frame.Get<ChunkMSession>();
+                ChunkMSession sessionToApply = frame;
                 if (sessionToApply != null && !sessionToApply.InSession)
                     sessionToApply = null;
 
@@ -864,7 +862,7 @@ namespace Celeste.Mod.Ghost.Net {
 
         public virtual void HandleMRequest(GhostNetConnection con, GhostNetFrame frame) {
             // TODO: Event for request by server in client.
-            switch (frame.MRequest.ID) {
+            switch (frame.Get<ChunkMRequest>().ID) {
                 case ChunkMPlayer.ChunkID:
                     SendMPlayer();
                     break;
@@ -904,7 +902,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            GhostNetEmote emote = new GhostNetEmote(ghost ?? (Entity) Player, frame.MEmote.Value) {
+            GhostNetEmote emote = new GhostNetEmote(ghost ?? (Entity) Player, frame.Get<ChunkMEmote>().Value) {
                 PopIn = true,
                 FadeOut = true
             };
@@ -989,13 +987,15 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            bool withPlayer = frame.UActionCollision.With == PlayerID;
+            ChunkUActionCollision collision = frame;
+
+            bool withPlayer = collision.With == PlayerID;
 
             Ghost ghost;
             if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null || ghost.Scene != Engine.Scene)
                 return;
 
-            if (frame.UActionCollision.Head) {
+            if (collision.Head) {
                 OnJumpedOnHead(ghost, false, withPlayer);
                 if (withPlayer) {
                     Player.Speed.Y = Math.Max(Player.Speed.Y, 16f);
@@ -1026,7 +1026,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (!GhostNetModule.Settings.PlayerSounds)
                 return;
 
-            ChunkUAudioPlay audio = frame.Get<ChunkUAudioPlay>();
+            ChunkUAudioPlay audio = frame;
             Audio.Play(audio.Sound, audio.Position ?? Player.Center, audio.Param, audio.Value);
         }
 
@@ -1050,8 +1050,10 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
+            ChunkUParticles particles = frame;
+
             ParticleSystem system;
-            switch (frame.UParticles.System) {
+            switch (particles.System) {
                 case ChunkUParticles.Systems.Particles:
                     system = level.Particles;
                     break;
@@ -1066,12 +1068,12 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             system.Emit(
-                frame.UParticles.Type,
-                frame.UParticles.Amount,
-                frame.UParticles.Position,
-                frame.UParticles.PositionRange,
-                frame.UParticles.Color,
-                frame.UParticles.Direction
+                particles.Type,
+                particles.Amount,
+                particles.Position,
+                particles.PositionRange,
+                particles.Color,
+                particles.Direction
             );
         }
 
@@ -1079,7 +1081,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (Session == null)
                 return;
 
-            ChunkMSession received = frame.Get<ChunkMSession>();
+            ChunkMSession received = frame;
             if (!received.InSession)
                 return;
 
@@ -1324,7 +1326,10 @@ namespace Celeste.Mod.Ghost.Net {
                 : this(messageID, playerID, playerName, tag, text, Color.White) {
             }
             public ChatLine(GhostNetFrame frame)
-                : this(frame.MChat.ID, frame.HHead.PlayerID, frame.MPlayer?.Name ?? "**SERVER**", frame.MChat.Tag, frame.MChat.Text, frame.MChat.Color) {
+                : this(frame, frame) {
+            }
+            private ChatLine(GhostNetFrame frame, ChunkMChat chat)
+                : this(chat.ID, frame.HHead.PlayerID, frame.MPlayer?.Name ?? "**SERVER**", chat.Tag, chat.Text, chat.Color) {
             }
             public ChatLine(uint messageID, uint playerID, string playerName, string tag, string text, Color color) {
                 MessageID = messageID;

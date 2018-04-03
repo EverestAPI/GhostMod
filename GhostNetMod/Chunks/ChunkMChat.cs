@@ -67,5 +67,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Date = Date
             };
 
+        public static implicit operator ChunkMChat(GhostNetFrame frame)
+            => frame.Get<ChunkMChat>();
+
     }
 }

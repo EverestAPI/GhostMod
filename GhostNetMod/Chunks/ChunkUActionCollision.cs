@@ -42,5 +42,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Head = Head
             };
 
+        public static implicit operator ChunkUActionCollision(GhostNetFrame frame)
+            => frame.Get<ChunkUActionCollision>();
+
     }
 }

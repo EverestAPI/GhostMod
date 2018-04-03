@@ -128,6 +128,22 @@ namespace Celeste.Mod.Ghost.Net {
             }
         }
 
+        public void Request<T>(int playerID, out T chunk, long timeout = 5000) where T : IChunk {
+            GhostNetFrame response = Request<T>(playerID, timeout);
+            if (response != null) {
+                response.Get(out chunk);
+                return;
+            }
+            chunk = default(T);
+        }
+        public void Request<T>(GhostNetConnection con, out T chunk, long timeout = 5000) where T : IChunk {
+            GhostNetFrame response = Request<T>(con, timeout);
+            if (response != null) {
+                response.Get(out chunk);
+                return;
+            }
+            chunk = default(T);
+        }
         public GhostNetFrame Request<T>(int playerID, long timeout = 5000) where T : IChunk
             => Request<T>(Connections[playerID], timeout);
         public GhostNetFrame Request<T>(GhostNetConnection con, long timeout = 5000) where T : IChunk
@@ -152,12 +168,10 @@ namespace Celeste.Mod.Ghost.Net {
             con.SendManagement(new GhostNetFrame {
                 HHead = new ChunkHHead {
                     PlayerID = int.MaxValue,
-                },
-
-                MRequest = new ChunkMRequest {
-                    ID = GhostNetFrame.GetChunkID(type)
                 }
-            }, true);
+            }.Set(new ChunkMRequest {
+                ID = GhostNetFrame.GetChunkID(type)
+            }), true);
 
             // Wait for the response.
             Stopwatch timeoutWatch = new Stopwatch();
@@ -202,16 +216,12 @@ namespace Celeste.Mod.Ghost.Net {
             con.SendManagement(new GhostNetFrame {
                 HHead = new ChunkHHead {
                     PlayerID = id
-                },
-
-                MServerInfo = new ChunkMServerInfo {
-                    Name = GhostNetModule.Settings.ServerNameAuto
-                },
-
-                MRequest = new ChunkMRequest {
-                    ID = ChunkMPlayer.ChunkID
                 }
-            }, true);
+            }.Set(new ChunkMServerInfo {
+                Name = GhostNetModule.Settings.ServerNameAuto
+            }).Set(new ChunkMRequest {
+                ID = ChunkMPlayer.ChunkID
+            }), true);
         }
 
         #endregion
@@ -224,7 +234,7 @@ namespace Celeste.Mod.Ghost.Net {
             };
 
             // Prevent MServerInfo from being propagated.
-            frame.MServerInfo = null;
+            frame.Remove<ChunkMServerInfo>();
         }
 
         public virtual void Handle(GhostNetConnection con, GhostNetFrame frame) {
@@ -254,30 +264,33 @@ namespace Celeste.Mod.Ghost.Net {
                 frame.MPlayer.IsCached = true;
             }
 
-            if (frame.MRequest != null) {
+            if (frame.Has<ChunkMRequest>()) {
                 // TODO: Handle requests by client in server.
 
-                frame.MRequest = null; // Prevent request from being propagated.
+                frame.Remove<ChunkMRequest>(); // Prevent request from being propagated.
             }
 
-            if (frame.MEmote != null)
+            if (frame.Has<ChunkMEmote>())
                 HandleMEmote(con, frame);
 
-            if (frame.MChat != null)
+            if (frame.Has<ChunkMChat>())
                 HandleMChat(con, frame);
 
             if (frame.UUpdate != null)
                 HandleUUpdate(con, frame);
 
-            if (frame.UActionCollision != null)
+            if (frame.Has<ChunkUActionCollision>())
                 HandleUActionCollision(con, frame);
 
-            if (frame.Has<ChunkUAudioPlay>())
-                HandleUAudioPlay(con, frame);
+            // TODO: Restrict players from abusing UAudioPlay and UParticles propagation.
+            if (frame.Has<ChunkUAudioPlay>()) {
+                // Propagate audio to all active players in the same room.
+                frame.PropagateU = true;
+            }
 
-            if (frame.UParticles != null) {
-                // Particles can only be sent by the player.
-                frame.UParticles = null;
+            if (frame.Has<ChunkUParticles>()) {
+                // Propagate particles to all active players in the same room.
+                frame.PropagateU = true;
             }
 
             OnHandle?.Invoke(con, frame);
@@ -332,38 +345,39 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public virtual void HandleMEmote(GhostNetConnection con, GhostNetFrame frame) {
+            ChunkMEmote emote = frame;
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} emote: {frame.MEmote.Value}");
 
-            frame.MEmote.Value = frame.MEmote.Value.Trim();
-            if (frame.MEmote.Value.Length > GhostNetModule.Settings.ServerMaxEmoteValueLength)
-                frame.MEmote.Value = frame.MEmote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteValueLength);
+            emote.Value = emote.Value.Trim();
+            if (emote.Value.Length > GhostNetModule.Settings.ServerMaxEmoteValueLength)
+                emote.Value = emote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteValueLength);
 
-            if (GhostNetEmote.IsText(frame.MEmote.Value)) {
-                frame.MChat = CreateMChat(frame, frame.MEmote.Value, color: GhostNetModule.Settings.ServerColorEmote);
+            if (GhostNetEmote.IsText(emote.Value)) {
+                frame.Set(CreateMChat(frame, emote.Value, color: GhostNetModule.Settings.ServerColorEmote));
             }
 
             frame.PropagateM = true;
         }
 
         public virtual void HandleMChat(GhostNetConnection con, GhostNetFrame frame) {
-            frame.MChat.Text = frame.MChat.Text.TrimEnd();
+            ChunkMChat msg = frame;
+            msg.Text = msg.Text.TrimEnd();
             // Logger.Log(LogLevel.Info, "ghostnet-s", $"#{frame.HHead.PlayerID} said: {frame.MChat.Text}");
 
-            if (!frame.MChat.Logged) {
+            if (!msg.Logged) {
                 lock (ChatLog) {
-                    frame.MChat.ID = (uint) ChatLog.Count;
-                    ChatLog.Add(frame.MChat);
+                    msg.ID = (uint) ChatLog.Count;
+                    ChatLog.Add(msg);
                 }
             }
 
             // Handle commands if necessary.
-            if (frame.MChat.Text.StartsWith(GhostNetModule.Settings.ServerCommandPrefix)) {
+            if (msg.Text.StartsWith(GhostNetModule.Settings.ServerCommandPrefix)) {
                 // Echo the chat chunk separately.
-                frame.MChat.Color = GhostNetModule.Settings.ServerColorCommand;
+                msg.Color = GhostNetModule.Settings.ServerColorCommand;
                 con.SendManagement(new GhostNetFrame {
-                    HHead = frame.HHead,
-                    MChat = frame.MChat
-                }, true);
+                    HHead = frame.HHead
+                }.Set(msg), true);
 
                 GhostNetCommandEnv env = new GhostNetCommandEnv {
                     Server = this,
@@ -402,16 +416,16 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            frame.MChat.Text.Replace("\r", "").Replace("\n", "");
-            if (frame.MChat.Text.Length > GhostNetModule.Settings.ServerMaxChatTextLength)
-                frame.MChat.Text = frame.MChat.Text.Substring(0, GhostNetModule.Settings.ServerMaxChatTextLength);
+            if (!msg.CreatedByServer) {
+                msg.Text.Replace("\r", "").Replace("\n", "");
+                if (msg.Text.Length > GhostNetModule.Settings.ServerMaxChatTextLength)
+                    msg.Text = msg.Text.Substring(0, GhostNetModule.Settings.ServerMaxChatTextLength);
 
-            if (!frame.MChat.CreatedByServer) {
-                frame.MChat.Tag = "";
-                frame.MChat.Color = Color.White;
+                msg.Tag = "";
+                msg.Color = Color.White;
             }
 
-            frame.MChat.Date = DateTime.UtcNow;
+            msg.Date = DateTime.UtcNow;
 
             frame.PropagateM = true;
         }
@@ -434,21 +448,16 @@ namespace Celeste.Mod.Ghost.Net {
         public virtual void HandleUActionCollision(GhostNetConnection con, GhostNetFrame frame) {
             // Allow outdated collision frames to be handled.
 
+            ChunkUActionCollision collision = frame;
+
             ChunkMPlayer otherPlayer;
-            if (!PlayerMap.TryGetValue(frame.UActionCollision.With, out otherPlayer) || otherPlayer == null ||
+            if (!PlayerMap.TryGetValue(collision.With, out otherPlayer) || otherPlayer == null ||
                 frame.MPlayer.SID != otherPlayer.SID ||
                 frame.MPlayer.Mode != otherPlayer.Mode
             ) {
                 // Player not in the same room.
                 return;
             }
-
-            // Propagate update to all active players in the same room.
-            frame.PropagateU = true;
-        }
-
-        public virtual void HandleUAudioPlay(GhostNetConnection con, GhostNetFrame frame) {
-            // Allow outdated audio frames to be handled.
 
             // Propagate update to all active players in the same room.
             frame.PropagateU = true;
@@ -498,10 +507,8 @@ namespace Celeste.Mod.Ghost.Net {
             PropagateM(new GhostNetFrame {
                 HHead = new ChunkHHead {
                     PlayerID = uint.MaxValue
-                },
-
-                MChat = msg
-            });
+                }
+            }.Set(msg));
             return msg;
         }
 
@@ -510,10 +517,8 @@ namespace Celeste.Mod.Ghost.Net {
             con.SendManagement(new GhostNetFrame {
                 HHead = new ChunkHHead {
                     PlayerID = uint.MaxValue
-                },
-
-                MChat = msg
-            }, true);
+                }
+            }.Set(msg), true);
             return msg;
         }
 

@@ -255,17 +255,20 @@ namespace Celeste.Mod.Ghost.Net {
                 CoreMode = CoreMode
             };
 
-        public byte PackBool(byte value, int index, bool set) {
+        public static implicit operator ChunkMSession(GhostNetFrame frame)
+            => frame.Get<ChunkMSession>();
+
+        public static byte PackBool(byte value, int index, bool set) {
             int mask = 1 << index;
             return set ? (byte) (value | mask) : (byte) (value & ~mask);
         }
 
-        public bool UnpackBool(byte value, int index) {
+        public static bool UnpackBool(byte value, int index) {
             int mask = 1 << index;
             return (value & mask) == mask;
         }
 
-        public byte PackBools(bool a = false, bool b = false, bool c = false, bool d = false, bool e = false, bool f = false, bool g = false, bool h = false) {
+        public static byte PackBools(bool a = false, bool b = false, bool c = false, bool d = false, bool e = false, bool f = false, bool g = false, bool h = false) {
             byte value = 0;
             value = PackBool(value, 0, a);
             value = PackBool(value, 1, b);

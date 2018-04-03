@@ -66,5 +66,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Position = Position
             };
 
+        public static implicit operator ChunkUAudioPlay(GhostNetFrame frame)
+            => frame.Get<ChunkUAudioPlay>();
+
     }
 }

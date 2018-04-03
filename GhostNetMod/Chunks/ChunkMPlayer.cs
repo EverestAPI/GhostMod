@@ -98,5 +98,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Idle = Idle
             };
 
+        public static implicit operator ChunkMPlayer(GhostNetFrame frame)
+            => frame.Get<ChunkMPlayer>();
+
     }
 }

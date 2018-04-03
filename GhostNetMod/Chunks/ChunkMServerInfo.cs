@@ -39,5 +39,8 @@ namespace Celeste.Mod.Ghost.Net {
                 Name = Name
             };
 
+        public static implicit operator ChunkMServerInfo(GhostNetFrame frame)
+            => frame.Get<ChunkMServerInfo>();
+
     }
 }

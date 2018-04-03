@@ -37,5 +37,8 @@ namespace Celeste.Mod.Ghost.Net {
                 PlayerID = PlayerID
             };
 
+        public static implicit operator ChunkHHead(GhostNetFrame frame)
+            => frame.Get<ChunkHHead>();
+
     }
 }
