@@ -85,6 +85,8 @@ namespace Celeste.Mod.Ghost.Net {
                 RunDedicated();
                 Environment.Exit(0);
             }
+
+            GhostModule.SettingsOverridden = true;
         }
 
         public override void Initialize() {
@@ -110,6 +112,10 @@ namespace Celeste.Mod.Ghost.Net {
 
         public override void CreateModMenuSection(TextMenu menu, bool inGame, EventInstance snapshot) {
             base.CreateModMenuSection(menu, inGame, snapshot);
+
+            menu.Add(new TextMenu.Button("modoptions_ghostnetmodule_reloadhint".DialogCleanOrNull() ?? "More in ModSettings/...") {
+                Disabled = true
+            });
 
             menu.Add(new TextMenu.Button("modoptions_ghostnetmodule_reload".DialogCleanOrNull() ?? "Reload Settings").Pressed(() => {
                 string server = Settings.Server;

@@ -1023,7 +1023,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             }
 
-            if (!GhostNetModule.Settings.PlayerSounds)
+            if (!GhostNetModule.Settings.Sounds)
                 return;
 
             ChunkUAudioPlay audio = frame;

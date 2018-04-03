@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using FMOD.Studio;
 
 namespace Celeste.Mod.Ghost {
     public class GhostModule : EverestModule {
@@ -18,6 +19,8 @@ namespace Celeste.Mod.Ghost {
 
         public override Type SettingsType => typeof(GhostModuleSettings);
         public static GhostModuleSettings Settings => (GhostModuleSettings) Instance._Settings;
+
+        public static bool SettingsOverridden = false;
 
         public static string PathGhosts { get; internal set; }
 
@@ -115,6 +118,15 @@ namespace Celeste.Mod.Ghost {
             }
 
             GhostRecorder.Data.Dead = true;
+        }
+
+        public override void CreateModMenuSection(TextMenu menu, bool inGame, FMOD.Studio.EventInstance snapshot) {
+            if (SettingsOverridden && !Settings.AlwaysShowSettings) {
+                menu.Add(new TextMenu.SubHeader(Dialog.Clean("modoptions_ghostmodule_overridden") + " | v." + Metadata.VersionString));
+                return;
+            }
+
+            base.CreateModMenuSection(menu, inGame, snapshot);
         }
 
     }

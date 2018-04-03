@@ -12,6 +12,9 @@ using YamlDotNet.Serialization;
 namespace Celeste.Mod.Ghost {
     public class GhostModuleSettings : EverestModuleSettings {
 
+        [SettingIgnore]
+        public bool AlwaysShowSettings { get; set; } = false;
+
         public GhostModuleMode Mode { get; set; } = GhostModuleMode.On;
 
         [SettingInGame(false)]
