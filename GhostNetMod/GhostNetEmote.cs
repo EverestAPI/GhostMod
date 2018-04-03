@@ -54,7 +54,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Update can halt in the pause menu.
             if (PopIn || FadeOut || PopOut) {
-                AnimationTime += Engine.DeltaTime;
+                AnimationTime += Engine.RawDeltaTime;
                 if (AnimationTime < 0.1f && PopIn) {
                     float t = AnimationTime / 0.1f;
                     // Pop in.
@@ -98,7 +98,7 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            time += Engine.DeltaTime;
+            time += Engine.RawDeltaTime;
 
             MTexture icon = null;
             string text = null;

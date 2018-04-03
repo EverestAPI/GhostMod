@@ -124,7 +124,7 @@ namespace Celeste.Mod.Ghost.Net {
 
             Level level = Engine.Scene as Level;
 
-            time += Engine.DeltaTime;
+            time += Engine.RawDeltaTime;
 
             bool inputDisabled = MInput.Disabled;
             MInput.Disabled = false;
@@ -140,7 +140,6 @@ namespace Celeste.Mod.Ghost.Net {
                 EmoteWheel.Shown = GhostNetModule.Instance.JoystickEmoteWheel.Value.LengthSquared() >= 0.36f;
                 if (EmoteWheel.Shown && EmoteWheel.Selected != -1 && GhostNetModule.Instance.ButtonEmoteSend.Pressed) {
                     SendMEmote(EmoteWheel.Selected);
-                    EmoteWheel.Selected = -1;
                 }
             } else if (EmoteWheel != null) {
                 EmoteWheel.Shown = false;
@@ -244,7 +243,7 @@ namespace Celeste.Mod.Ghost.Net {
                         CreateTrail(ghost);
                         GhostDashTimes[i] = 0.08f;
                     } else {
-                        dashTime -= Engine.DeltaTime;
+                        dashTime -= Engine.RawDeltaTime;
                         if (dashTime <= 0f) {
                             CreateTrail(ghost);
                             dashTime += 0.08f;
@@ -449,8 +448,9 @@ namespace Celeste.Mod.Ghost.Net {
 
                     player.Bounce(ghost.Top + 2f);
 
-                    player.Dashes = dashes;
-                    player.Stamina = stamina;
+                    // If we ever want to _not_ refil dashes and stamina (again)...
+                    // player.Dashes = dashes;
+                    // player.Stamina = stamina;
                     head = true;
                 }
 

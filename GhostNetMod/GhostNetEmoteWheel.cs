@@ -23,6 +23,7 @@ namespace Celeste.Mod.Ghost.Net {
         public bool Shown = false;
         protected bool popupShown = false;
         protected float popupTime = 100f;
+        protected bool timeRateSet = false;
 
         public float Angle = 0f;
 
@@ -43,6 +44,21 @@ namespace Celeste.Mod.Ghost.Net {
 
             Tag = GhostModuleBackCompat.TagSubHUD;
             Depth = -1;
+        }
+
+        public override void Update() {
+            // Update only runs while the level is "alive" (scene not paused or frozen).
+
+            if (Shown && !timeRateSet) {
+                Engine.TimeRate = 0.25f;
+                timeRateSet = true;
+
+            } else if (!Shown && timeRateSet) {
+                Engine.TimeRate = 1f;
+                timeRateSet = false;
+            }
+
+            base.Update();
         }
 
         public override void Render() {
@@ -70,12 +86,12 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
-            time += Engine.DeltaTime;
+            time += Engine.RawDeltaTime;
 
             if (!Shown) {
                 Selected = -1;
             }
-            selectedTime += Engine.DeltaTime;
+            selectedTime += Engine.RawDeltaTime;
             if (PrevSelected != Selected) {
                 selectedTime = 0f;
                 PrevSelected = Selected;
@@ -84,7 +100,7 @@ namespace Celeste.Mod.Ghost.Net {
             float popupAlpha;
             float popupScale;
 
-            popupTime += Engine.DeltaTime;
+            popupTime += Engine.RawDeltaTime;
             if (Shown && !popupShown) {
                 popupTime = 0f;
             } else if ((Shown && popupTime > 1f) ||
@@ -186,8 +202,7 @@ namespace Celeste.Mod.Ghost.Net {
                     icon.DrawCentered(
                         emotePos,
                         Color.White * (Selected == i ? (Calc.BetweenInterval(selectedTime, 0.1f) ? 0.9f : 1f) : 0.7f) * alpha,
-                        Vector2.One * (Selected == i ? selectedScale : 1f) * iconScale,
-                        Selected == i ? (float) Math.Sin(time * 2f) * 0.05f : 0f
+                        Vector2.One * (Selected == i ? selectedScale : 1f) * iconScale
                     );
 
                 } else {
