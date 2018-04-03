@@ -32,8 +32,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public override void SendUpdate(GhostNetFrame frame, IPEndPoint remote, bool release) {
-            // Local connections don't support sending updates to another client.
-            throw new NotSupportedException();
+            throw new NotSupportedException("Local connections don't support sending updates to another client.");
         }
 
     }

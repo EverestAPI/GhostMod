@@ -81,6 +81,7 @@
     <Compile Include="Chunks\ChunkEAudioState.cs" />
     <Compile Include="Chunks\ChunkRListAreas.cs" />
     <Compile Include="Chunks\ChunkRListMods.cs" />
+    <Compile Include="Chunks\ChunkUAudioPlay.cs" />
     <Compile Include="Chunks\ChunkUParticles.cs" />
     <Compile Include="Chunks\ChunkUActionCollision.cs" />
     <Compile Include="Chunks\ChunkUUpdateE0.cs" />

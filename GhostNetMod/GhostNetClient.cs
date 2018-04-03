@@ -453,7 +453,7 @@ namespace Celeste.Mod.Ghost.Net {
             };
 
         public void OnJumpedOnHead(Actor who, bool isPlayer, bool withPlayer) {
-            Audio.Play("event:/game/general/thing_booped", who.Position).setVolume(0.7f);
+            Audio.Play("event:/game/general/thing_booped", who.Center).setVolume(0.7f);
 
             Level level = Engine.Scene as Level;
 
@@ -544,12 +544,7 @@ namespace Celeste.Mod.Ghost.Net {
                     e0.HairTextures[i] = Player.Hair.GetHairTexture(i).AtlasPath;
             }
 
-            // TODO: Move GhostNetModule.Settings.SendUFramesInMStream check into connection.
-            if (GhostNetModule.Settings.SendUFramesInMStream) {
-                Connection.SendManagement(frame, true);
-            } else {
-                Connection.SendUpdate(frame, true);
-            }
+            Connection.SendUpdate(frame, true);
 
             UpdateIndex++;
         }
@@ -558,18 +553,27 @@ namespace Celeste.Mod.Ghost.Net {
             if (Connection == null)
                 return;
 
-            GhostNetFrame frame = new GhostNetFrame {
+            Connection.SendUpdate(new GhostNetFrame {
                 UActionCollision = new ChunkUActionCollision {
                     With = with,
                     Head = head
                 }
-            };
-            // TODO: Move GhostNetModule.Settings.SendUFramesInMStream check into connection.
-            if (GhostNetModule.Settings.SendUFramesInMStream) {
-                Connection.SendManagement(frame, true);
-            } else {
-                Connection.SendUpdate(frame, true);
-            }
+            }, true);
+        }
+
+        public virtual void SendUAudio(Player player, string sound, string param = null, float value = 0f) {
+            if (Connection == null)
+                return;
+
+            Connection.SendUpdate(new GhostNetFrame()
+                .Set(new ChunkUAudioPlay {
+                    Sound = sound,
+                    Param = param,
+                    Value = value,
+
+                    Position = player.Center
+                })
+            , true);
         }
 
         public virtual void SendMSession() {
@@ -683,6 +687,9 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.UActionCollision != null)
                 HandleUActionCollision(con, frame);
 
+            if (frame.Has<ChunkUAudioPlay>())
+                HandleUAudioPlay(con, frame);
+
             if (frame.UParticles != null)
                 HandleUParticles(con, frame);
 
@@ -739,7 +746,6 @@ namespace Celeste.Mod.Ghost.Net {
                                 sessionToApply != null) {
                                 // Different SID or mode - create new session.
                                 Session = new Session(SaveData.Instance.LastArea = area.ToKey(frame.MPlayer.Mode), null, SaveData.Instance.Areas[area.ID]);
-                                Session.Level = frame.MPlayer.Level;
                                 if (sessionToApply != null) {
                                     HandleMSession(con, frame);
                                     sessionToApply = null;
@@ -958,6 +964,33 @@ namespace Celeste.Mod.Ghost.Net {
                     Player.Speed.Y = Math.Max(Player.Speed.Y, 16f);
                 }
             }
+        }
+
+        public virtual void HandleUAudioPlay(GhostNetConnection con, GhostNetFrame frame) {
+            if (Player == null)
+                return;
+
+            if (frame.HHead.PlayerID == PlayerID) {
+                // We've received our own audio... which we already played.
+                return;
+            }
+
+            Level level = Engine.Scene as Level;
+            if (level == null)
+                return;
+
+            if (frame.MPlayer.SID != (Session?.Area.GetSID() ?? "") ||
+                frame.MPlayer.Mode != (Session?.Area.Mode ?? AreaMode.Normal) ||
+                frame.MPlayer.Level != (Session?.Level ?? "")) {
+                // Not the same level - skip.
+                return;
+            }
+
+            if (!GhostNetModule.Settings.PlayerSounds)
+                return;
+
+            ChunkUAudioPlay audio = frame.Get<ChunkUAudioPlay>();
+            Audio.Play(audio.Sound, audio.Position ?? Player.Center, audio.Param, audio.Value);
         }
 
         public virtual void HandleUParticles(GhostNetConnection con, GhostNetFrame frame) {

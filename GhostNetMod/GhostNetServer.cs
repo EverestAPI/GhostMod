@@ -272,6 +272,9 @@ namespace Celeste.Mod.Ghost.Net {
             if (frame.UActionCollision != null)
                 HandleUActionCollision(con, frame);
 
+            if (frame.Has<ChunkUAudioPlay>())
+                HandleUAudioPlay(con, frame);
+
             if (frame.UParticles != null) {
                 // Particles can only be sent by the player.
                 frame.UParticles = null;
@@ -444,6 +447,13 @@ namespace Celeste.Mod.Ghost.Net {
             frame.PropagateU = true;
         }
 
+        public virtual void HandleUAudioPlay(GhostNetConnection con, GhostNetFrame frame) {
+            // Allow outdated audio frames to be handled.
+
+            // Propagate update to all active players in the same room.
+            frame.PropagateU = true;
+        }
+
         #endregion
 
         #region Frame Senders
@@ -474,7 +484,7 @@ namespace Celeste.Mod.Ghost.Net {
 
                 if (!(otherCon is GhostNetRemoteConnection)) {
                     otherCon.SendUpdate(frame, false);
-                } else if (otherCon.UpdateEndPoint != null) {
+                } else if (otherCon.UpdateEndPoint != null && !GhostNetModule.Settings.SendUFramesInMStream) {
                     UpdateConnection.SendUpdate(frame, otherCon.UpdateEndPoint, false);
                 } else {
                     // Fallback for UDP-less clients.

@@ -18,8 +18,8 @@ namespace Celeste.Mod.Ghost.Net {
     public static class GhostNetHooks {
 
         private static Hook h_GetHairColor;
-        private static Hook h_GetTrailColor;
         private static Hook h_GetHairTexture;
+        private static Hook h_PlayerPlayAudio;
 
         public static void Load() {
             h_GetHairColor = new Hook(
@@ -34,6 +34,11 @@ namespace Celeste.Mod.Ghost.Net {
                     GetHairTexture
                 );
             }
+
+            h_PlayerPlayAudio = new Hook(
+                MethodInfoWithDef.CreateAndResolveDef(typeof(Player).GetMethod("Play", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)),
+                PlayerPlayAudio
+            );
         }
 
         public static object GetHairColor(HM hook, HM.OriginalMethod origM, HM.Parameters args) {
@@ -61,7 +66,7 @@ namespace Celeste.Mod.Ghost.Net {
             return e0.HairColors[index];
         }
 
-        public static MTexture GetHairTexture(HM hook, HM.OriginalMethod origM, HM.Parameters args) {
+        public static object GetHairTexture(HM hook, HM.OriginalMethod origM, HM.Parameters args) {
             // C# 7:
             // var (self, index) = args.As<PlayerHair, int>();
             // C# 6:
@@ -87,6 +92,17 @@ namespace Celeste.Mod.Ghost.Net {
             if (!GFX.Game.Has(texName))
                 return texOrig;
             return GFX.Game[texName];
+        }
+
+        public static object PlayerPlayAudio(HM hook, HM.OriginalMethod origM, HM.Parameters args) {
+            Player self = (Player) args.RawParams[0];
+            string sound = (string) args.RawParams[1];
+            string param = (string) args.RawParams[2];
+            float value = (float) args.RawParams[3];
+
+            GhostNetModule.Instance?.Client?.SendUAudio(self, sound, param, value);
+
+            return origM.As<EventInstance>(args.RawParams);
         }
 
     }

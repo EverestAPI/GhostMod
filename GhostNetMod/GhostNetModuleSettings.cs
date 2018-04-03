@@ -61,6 +61,8 @@ namespace Celeste.Mod.Ghost.Net {
 
         public bool Collision { get; set; } = true;
 
+        public bool PlayerSounds { get; set; } = true;
+
         [SettingIgnore]
         // [SettingRange(0, 3)]
         public int SendFrameSkip { get; set; } = 0;
