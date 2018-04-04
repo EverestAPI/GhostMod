@@ -16,6 +16,16 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Main Settings
 
+        [SettingInGame(false)]
+        public string Name {
+            get {
+                return GhostModule.Settings.Name;
+            }
+            set {
+                GhostModule.Settings.Name = value;
+            }
+        }
+
         [YamlIgnore]
         public bool Connection {
             get {
