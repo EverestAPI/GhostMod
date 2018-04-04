@@ -1278,6 +1278,10 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public void Cleanup() {
+            if (Player != null) {
+                OnIdle(PlayerID, Player, false);
+            }
+
             Player = null;
 
             for (int i = 0; i < Ghosts.Count; i++)
