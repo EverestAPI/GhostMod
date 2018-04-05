@@ -542,10 +542,11 @@ The server will teleport you when the race starts."
             public ChunkMChat Send(GhostNetFrame frame, string text, string tag = "race", Color? color = null, bool fillVars = false, uint? id = null) {
                 ChunkMChat msg = Manager.Server.CreateMChat(frame, text, tag, color ?? (frame != null ? ColorDefault : ColorBroadcast), fillVars, id);
                 GhostNetFrame frameMsg = new GhostNetFrame {
-                    HHead = frame?.HHead ?? new ChunkHHead {
+                    frame?.HHead ?? new ChunkHHead {
                         PlayerID = uint.MaxValue
-                    }
-                }.Set(msg);
+                    },
+                    msg
+                };
                 lock (Players) {
                     foreach (uint playerID in Players) {
                         GhostNetConnection con = Manager.Server.Connections[(int) playerID];

@@ -165,21 +165,23 @@ namespace Celeste.Mod.Ghost.Net {
                 env.Server.Request(args[0].Connection, out session);
 
                 env.Connection.SendManagement(new GhostNetFrame {
-                    HHead = env.HHead,
+                    env.HHead,
 
-                    MPlayer = new ChunkMPlayer {
+                    new ChunkMPlayer {
                         Name = env.MPlayer.Name,
                         SID = other.SID,
                         Mode = other.Mode,
                         Level = other.Level
-                    }
-                }.Set(session)
-                , true);
+                    },
+
+                    session
+                }, true);
 
                 msg.Text = $"Teleported to {other.Name}#{args[0].Int}";
                 env.Connection.SendManagement(new GhostNetFrame {
-                    HHead = env.HHead
-                }.Set(msg), true);
+                    env.HHead,
+                    msg
+                }, true);
 
             }
         };
@@ -201,12 +203,12 @@ p:10 FRM1 FRM2 FRM3 plays the animation at 10 FPS.",
                 if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
                     return;
 
-                GhostNetFrame frame = new GhostNetFrame {
-                    HHead = env.HHead
-                }.Set(new ChunkMEmote {
-                    Value = args[0]
+                env.Server.Handle(env.Connection, new GhostNetFrame {
+                    env.HHead,
+                    new ChunkMEmote {
+                        Value = args[0]
+                    }
                 });
-                env.Server.Handle(env.Connection, frame);
             }
         };
 

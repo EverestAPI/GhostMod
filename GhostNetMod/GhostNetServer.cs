@@ -166,12 +166,13 @@ namespace Celeste.Mod.Ghost.Net {
 
             // Send a request.
             con.SendManagement(new GhostNetFrame {
-                HHead = new ChunkHHead {
+                new ChunkHHead {
                     PlayerID = int.MaxValue,
+                },
+                new ChunkMRequest {
+                    ID = GhostNetFrame.GetChunkID(type)
                 }
-            }.Set(new ChunkMRequest {
-                ID = GhostNetFrame.GetChunkID(type)
-            }), true);
+            }, true);
 
             // Wait for the response.
             Stopwatch timeoutWatch = new Stopwatch();
@@ -214,14 +215,16 @@ namespace Celeste.Mod.Ghost.Net {
             ConnectionMap[con.ManagementEndPoint] = con;
             UpdateConnectionQueue[con.ManagementEndPoint.Address] = con;
             con.SendManagement(new GhostNetFrame {
-                HHead = new ChunkHHead {
+                new ChunkHHead {
                     PlayerID = id
+                },
+                new ChunkMServerInfo {
+                    Name = GhostNetModule.Settings.ServerNameAuto
+                },
+                new ChunkMRequest {
+                    ID = ChunkMPlayer.ChunkID
                 }
-            }.Set(new ChunkMServerInfo {
-                Name = GhostNetModule.Settings.ServerNameAuto
-            }).Set(new ChunkMRequest {
-                ID = ChunkMPlayer.ChunkID
-            }), true);
+            }, true);
         }
 
         #endregion
@@ -353,7 +356,7 @@ namespace Celeste.Mod.Ghost.Net {
                 emote.Value = emote.Value.Substring(0, GhostNetModule.Settings.ServerMaxEmoteValueLength);
 
             if (GhostNetEmote.IsText(emote.Value)) {
-                frame.Set(CreateMChat(frame, emote.Value, color: GhostNetModule.Settings.ServerColorEmote));
+                frame.Add(CreateMChat(frame, emote.Value, color: GhostNetModule.Settings.ServerColorEmote));
             }
 
             frame.PropagateM = true;
@@ -376,8 +379,9 @@ namespace Celeste.Mod.Ghost.Net {
                 // Echo the chat chunk separately.
                 msg.Color = GhostNetModule.Settings.ServerColorCommand;
                 con.SendManagement(new GhostNetFrame {
-                    HHead = frame.HHead
-                }.Set(msg), true);
+                    frame.HHead,
+                    msg
+                }, true);
 
                 GhostNetCommandEnv env = new GhostNetCommandEnv {
                     Server = this,
@@ -505,20 +509,22 @@ namespace Celeste.Mod.Ghost.Net {
         public ChunkMChat BroadcastMChat(GhostNetFrame frame, string text, string tag = null, Color? color = null, bool fillVars = false) {
             ChunkMChat msg = CreateMChat(frame, text, tag, color ?? GhostNetModule.Settings.ServerColorBroadcast, fillVars);
             PropagateM(new GhostNetFrame {
-                HHead = new ChunkHHead {
+                new ChunkHHead {
                     PlayerID = uint.MaxValue
-                }
-            }.Set(msg));
+                },
+                msg
+            });
             return msg;
         }
 
         public ChunkMChat SendMChat(GhostNetConnection con, GhostNetFrame frame, string text, string tag = null, Color? color = null, bool fillVars = false) {
             ChunkMChat msg = CreateMChat(frame, text, tag, color, fillVars);
             con.SendManagement(new GhostNetFrame {
-                HHead = new ChunkHHead {
+                new ChunkHHead {
                     PlayerID = uint.MaxValue
-                }
-            }.Set(msg), true);
+                },
+                msg
+            }, true);
             return msg;
         }
 

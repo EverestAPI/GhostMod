@@ -529,11 +529,11 @@ namespace Celeste.Mod.Ghost.Net {
         public virtual void SendMEmote(string value) {
             if (string.IsNullOrWhiteSpace(value))
                 return;
-            Connection?.SendManagement(new GhostNetFrame()
-                .Set(new ChunkMEmote {
+            Connection?.SendManagement(new GhostNetFrame {
+                new ChunkMEmote {
                     Value = value.Trim()
-                })
-            , true);
+                }
+            }, true);
         }
 
         public virtual void SendMChat(string text) {
@@ -542,11 +542,11 @@ namespace Celeste.Mod.Ghost.Net {
                 return;
             ChatLog.Insert(0, new ChatLine(uint.MaxValue, PlayerID, "", PlayerInfo?.Name ?? GhostModule.Settings.Name, text));
             ChatRepeat.Insert(1, text);
-            Connection?.SendManagement(new GhostNetFrame()
-                .Set(new ChunkMChat {
+            Connection?.SendManagement(new GhostNetFrame {
+                new ChunkMChat {
                     Text = text
-                })
-            , true);
+                }
+            }, true);
         }
 
         public virtual void SendUUpdate() {
@@ -583,42 +583,42 @@ namespace Celeste.Mod.Ghost.Net {
             if (Connection == null)
                 return;
 
-            Connection.SendUpdate(new GhostNetFrame()
-                .Set(new ChunkUActionCollision {
+            Connection.SendUpdate(new GhostNetFrame {
+                new ChunkUActionCollision {
                     With = with,
                     Head = head
-                })
-            , true);
+                }
+            }, true);
         }
 
         public virtual void SendUAudio(Player player, string sound, string param = null, float value = 0f) {
             if (Connection == null)
                 return;
 
-            Connection.SendUpdate(new GhostNetFrame()
-                .Set(new ChunkUAudioPlay {
+            Connection.SendUpdate(new GhostNetFrame {
+                new ChunkUAudioPlay {
                     Sound = sound,
                     Param = param,
                     Value = value,
 
                     Position = player.Center
-                })
-            , true);
+                }
+            }, true);
         }
 
         public virtual void SendMSession() {
             if (Connection == null)
                 return;
             if (Session == null) {
-                Connection.SendManagement(new GhostNetFrame()
-                    .Set(new ChunkMSession {
+                Connection.SendManagement(new GhostNetFrame {
+                    new ChunkMSession {
                         InSession = false
-                    })
-                , true);
+                    }
+                }, true);
                 return;
             }
-            Connection.SendManagement(new GhostNetFrame()
-                .Set(new ChunkMSession {
+            Connection.SendManagement(new GhostNetFrame {
+                new ChunkMSession {
                     InSession = true,
 
                     Audio = Session.Audio,
@@ -645,31 +645,31 @@ namespace Celeste.Mod.Ghost.Net {
                     DarkRoomAlpha = Session.DarkRoomAlpha,
                     Time = Session.Time,
                     CoreMode = Session.CoreMode
-                })
-            , true);
+                }
+            } , true);
         }
 
         public virtual void SendRListAreas() {
             if (Connection == null)
                 return;
-            Connection.SendManagement(new GhostNetFrame()
-                .Set(new ChunkRListAreas {
+            Connection.SendManagement(new GhostNetFrame {
+                new ChunkRListAreas {
                     Entries = AreaData.Areas.Select(area => area.GetSID()).ToArray()
-                })
-            , true);
+                }
+            } , true);
         }
 
         public virtual void SendRListMods() {
             if (Connection == null)
                 return;
-            Connection.SendManagement(new GhostNetFrame()
-                .Set(new ChunkRListMods {
+            Connection.SendManagement(new GhostNetFrame {
+                new ChunkRListMods {
                     Entries = Everest.Modules.Select(module => new ChunkRListMods.Entry {
                         Name = module.Metadata.Name,
                         Version = module.Metadata.Version
                     }).ToArray()
-                })
-            , true);
+                }
+            } , true);
         }
 
         #endregion

@@ -19,7 +19,7 @@ namespace Celeste.Mod.Ghost.Net {
     /// <summary>
     /// A GhostNetFrame is a collection of many individual Chunks, which can have an individual or combined meaning.
     /// </summary>
-    public sealed class GhostNetFrame : ICloneable {
+    public sealed class GhostNetFrame : ICloneable, IEnumerable<IChunk> {
 
         private static IDictionary<string, GhostNetChunkParser> ChunkParsers = new Dictionary<string, GhostNetChunkParser>();
         private static IDictionary<Type, string> ChunkIDs = new Dictionary<Type, string>();
@@ -76,7 +76,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return Get<ChunkHHead>();
             }
             set {
-                Set(value);
+                Add(value);
             }
         }
 
@@ -85,7 +85,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return Get<ChunkMPlayer>();
             }
             set {
-                Set(value);
+                Add(value);
             }
         }
         public ChunkUUpdate UUpdate {
@@ -93,7 +93,7 @@ namespace Celeste.Mod.Ghost.Net {
                 return Get<ChunkUUpdate>();
             }
             set {
-                Set(value);
+                Add(value);
             }
         }
 
@@ -145,9 +145,9 @@ namespace Celeste.Mod.Ghost.Net {
             writer.WriteNullTerminatedString(GhostFrame.End);
         }
 
-        public GhostNetFrame Set<T>(T chunk) where T : IChunk
-            => Set(typeof(T), chunk);
-        public GhostNetFrame Set(Type t, IChunk chunk) {
+        public GhostNetFrame Add<T>(T chunk) where T : IChunk
+            => Add(typeof(T), chunk);
+        public GhostNetFrame Add(Type t, IChunk chunk) {
             // Assume that chunk is t for performance reasons.
             lock (ChunkMap) {
                 ChunkMap[t] = chunk;
@@ -189,5 +189,12 @@ namespace Celeste.Mod.Ghost.Net {
             return clone;
         }
 
+        public IEnumerator<IChunk> GetEnumerator() {
+            return ChunkMap.Values.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() {
+            return ChunkMap.Values.GetEnumerator();
+        }
     }
 }
