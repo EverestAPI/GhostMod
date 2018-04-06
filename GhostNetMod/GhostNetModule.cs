@@ -127,8 +127,10 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public static void ResetGhostModuleSettings() {
+            string name = GhostModule.Settings.Name;
             GhostModule.Instance._Settings = new GhostModuleSettings();
             GhostModule.Settings.Mode = GhostModuleMode.Off;
+            GhostModule.Settings.Name = name;
             GhostModule.Settings.NameFilter = "";
             GhostModule.Settings.ShowNames = true;
             GhostModule.Settings.ShowDeaths = true;
