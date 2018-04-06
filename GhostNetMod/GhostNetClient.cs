@@ -1131,13 +1131,14 @@ namespace Celeste.Mod.Ghost.Net {
 
             Connection = null;
 
+            Cleanup();
+
             if (GhostNetModule.Settings.EnabledEntry != null) {
                 GhostNetModule.Settings.EnabledEntry.LeftPressed();
             }
 
             Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
             Everest.Events.Level.OnExit -= OnExitLevel;
-            Everest.Events.Player.OnDie -= OnDie;
             GhostNetModuleBackCompat.OnLevelComplete -= OnCompleteLevel;
             GhostNetModuleBackCompat.OnTextInput -= OnTextInput;
 
@@ -1153,8 +1154,10 @@ namespace Celeste.Mod.Ghost.Net {
         public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
             Session = level.Session;
 
-            if (Connection != null)
-                Logger.Log(LogLevel.Info, "ghost-c", $"Stepping into {Session.Area.GetSID()} {(char) ('A' + Session.Area.Mode)} {Session.Level}");
+            if (Connection == null)
+                return;
+
+            Logger.Log(LogLevel.Info, "ghost-c", $"Stepping into {Session.Area.GetSID()} {(char) ('A' + Session.Area.Mode)} {Session.Level}");
 
             Player = level.Tracker.GetEntity<Player>();
 
@@ -1184,20 +1187,21 @@ namespace Celeste.Mod.Ghost.Net {
         public void OnExitLevel(Level level, LevelExit exit, LevelExit.Mode mode, Session session, HiresSnow snow) {
             Session = null;
 
-            if (Connection != null)
-                Logger.Log(LogLevel.Info, "ghost-c", "Leaving level");
-
             Cleanup();
+
+            if (Connection == null)
+                return;
+
+            Logger.Log(LogLevel.Info, "ghost-c", "Leaving level");
 
             SendMPlayer(levelExit: mode);
         }
 
-        public void OnDie(Player player) {
-        }
-
         public void OnCompleteLevel(Level level) {
-            if (Connection != null)
-                Logger.Log(LogLevel.Info, "ghost-c", "Completed level");
+            if (Connection == null)
+                return;
+
+            Logger.Log(LogLevel.Info, "ghost-c", "Completed level");
 
             SendMPlayer(levelCompleted: true);
         }
@@ -1258,7 +1262,6 @@ namespace Celeste.Mod.Ghost.Net {
 
             Everest.Events.Level.OnLoadLevel += OnLoadLevel;
             Everest.Events.Level.OnExit += OnExitLevel;
-            Everest.Events.Player.OnDie += OnDie;
             GhostNetModuleBackCompat.OnLevelComplete += OnCompleteLevel;
             GhostNetModuleBackCompat.OnTextInput += OnTextInput;
 
