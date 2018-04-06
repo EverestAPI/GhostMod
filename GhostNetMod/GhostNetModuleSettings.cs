@@ -33,14 +33,7 @@ namespace Celeste.Mod.Ghost.Net {
             }
             set {
                 if (value) {
-                    GhostModule.Settings.Mode &= ~GhostModuleMode.Play;
-                    GhostModule.Settings.NameFilter = "";
-                    GhostModule.Settings.ShowNames = true;
-                    GhostModule.Settings.ShowDeaths = true;
-                    GhostModule.Settings.InnerOpacity = 8;
-                    GhostModule.Settings.InnerHairOpacity = 8;
-                    GhostModule.Settings.OuterOpacity = 8;
-                    GhostModule.Settings.OuterHairOpacity = 8;
+                    GhostNetModule.ResetGhostModuleSettings();
 
                     GhostNetModule.Instance.Start();
                 } else {

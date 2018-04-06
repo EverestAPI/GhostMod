@@ -77,6 +77,9 @@ namespace Celeste.Mod.Ghost.Net {
                 }
             }
 
+            GhostModule.SettingsOverridden = true;
+            ResetGhostModuleSettings();
+
             if (_StartServer && _StartHeadless) {
                 // We don't care about other mods.
                 GhostNetFrame.RegisterChunksFromModule(this);
@@ -85,8 +88,6 @@ namespace Celeste.Mod.Ghost.Net {
                 RunDedicated();
                 Environment.Exit(0);
             }
-
-            GhostModule.SettingsOverridden = true;
         }
 
         public override void Initialize() {
@@ -123,6 +124,18 @@ namespace Celeste.Mod.Ghost.Net {
                 if (Settings.Server != server)
                     Settings.Server = Settings._Server;
             }));
+        }
+
+        public static void ResetGhostModuleSettings() {
+            GhostModule.Instance._Settings = new GhostModuleSettings();
+            GhostModule.Settings.Mode = GhostModuleMode.Off;
+            GhostModule.Settings.NameFilter = "";
+            GhostModule.Settings.ShowNames = true;
+            GhostModule.Settings.ShowDeaths = true;
+            GhostModule.Settings.InnerOpacity = 8;
+            GhostModule.Settings.InnerHairOpacity = 8;
+            GhostModule.Settings.OuterOpacity = 8;
+            GhostModule.Settings.OuterHairOpacity = 8;
         }
 
         public void OnInputInitialize() {
