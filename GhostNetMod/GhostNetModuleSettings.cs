@@ -303,7 +303,7 @@ Send /help for a list of all commands.";
                     );
                 })
             );
-            ServerEntry.Disabled = Connection;
+            ServerEntry.Disabled = inGame || Connection;
         }
 
         #endregion
