@@ -42,7 +42,7 @@ namespace Celeste.Mod.Ghost.Net {
             : base(Vector2.Zero) {
             Tracking = tracking;
 
-            Tag = GhostModuleBackCompat.TagSubHUD;
+            Tag = TagsExt.SubHUD;
             Depth = -1;
         }
 

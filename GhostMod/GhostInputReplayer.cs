@@ -22,11 +22,13 @@ namespace Celeste.Mod.Ghost {
             : base(game) {
             Data = data;
 
-            Everest.Events.Input.OnInitialize += HookInput;
-            HookInput();
+            On.Celeste.Input.Initialize += HookInput;
+            HookInput(null);
         }
 
-        public void HookInput() {
+        public void HookInput(On.Celeste.Input.orig_Initialize orig) {
+            orig?.Invoke();
+
             Input.MoveX.Nodes.Add(new GhostInputNodes.MoveX(this));
             Input.MoveY.Nodes.Add(new GhostInputNodes.MoveY(this));
 
@@ -65,7 +67,7 @@ namespace Celeste.Mod.Ghost {
         }
 
         public void Remove() {
-            Everest.Events.Input.OnInitialize -= HookInput;
+            On.Celeste.Input.Initialize -= HookInput;
             Input.Initialize();
             Logger.Log("ghost", "GhostReplayer returned input.");
             Game.Components.Remove(this);

@@ -1,7 +1,6 @@
 ﻿using Celeste.Mod;
 using Microsoft.Xna.Framework;
 using Monocle;
-using MonoMod.Detour;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,8 +10,6 @@ using System.Text;
 using System.Threading.Tasks;
 using FMOD.Studio;
 using Microsoft.Xna.Framework.Input;
-using HookedMethod;
-using HM = HookedMethod.HookedMethod;
 
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetModule : EverestModule {
@@ -57,8 +54,6 @@ namespace Celeste.Mod.Ghost.Net {
         public override void Load() {
             Everest.Events.Input.OnInitialize += OnInputInitialize;
             Everest.Events.Input.OnDeregister += OnInputDeregister;
-
-            GhostNetModuleBackCompat.Load();
 
             GhostNetHooks.Load();
 
@@ -107,8 +102,6 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Input.OnDeregister -= OnInputDeregister;
             Stop();
             OnInputDeregister();
-
-            GhostNetModuleBackCompat.Unload();
         }
 
         public override void CreateModMenuSection(TextMenu menu, bool inGame, EventInstance snapshot) {

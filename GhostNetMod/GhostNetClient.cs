@@ -3,7 +3,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Monocle;
-using MonoMod.Detour;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -276,25 +275,15 @@ namespace Celeste.Mod.Ghost.Net {
             if (ChatVisible) {
                 Monocle.Draw.Rect(10f, viewHeight - 50f, viewWidth - 20f, 40f, Color.Black * 0.8f);
 
-                if (!GhostNetModuleBackCompat.HasTextInputEvent) {
-                    Monocle.Draw.SpriteBatch.DrawString(
-                        Monocle.Draw.DefaultFont,
-                        "TextInput not found - update Everest to 0.0.305 or newer!",
-                        new Vector2(20f, viewHeight - 42f),
-                        Color.Red
-                    );
-
-                } else {
-                    string text = ">" + ChatInput;
-                    if (Calc.BetweenInterval(time, 0.5f))
-                        text += "_";
-                    Monocle.Draw.SpriteBatch.DrawString(
-                        Monocle.Draw.DefaultFont,
-                        Escape(text, Monocle.Draw.DefaultFont),
-                        new Vector2(20f, viewHeight - 42f),
-                        Color.White
-                    );
-                }
+                string text = ">" + ChatInput;
+                if (Calc.BetweenInterval(time, 0.5f))
+                    text += "_";
+                Monocle.Draw.SpriteBatch.DrawString(
+                    Monocle.Draw.DefaultFont,
+                    Escape(text, Monocle.Draw.DefaultFont),
+                    new Vector2(20f, viewHeight - 42f),
+                    Color.White
+                );
             }
 
             lock (ChatLog) {
@@ -1137,10 +1126,10 @@ namespace Celeste.Mod.Ghost.Net {
                 GhostNetModule.Settings.EnabledEntry.LeftPressed();
             }
 
-            Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+            On.Celeste.Level.LoadLevel -= OnLoadLevel;
             Everest.Events.Level.OnExit -= OnExitLevel;
-            GhostNetModuleBackCompat.OnLevelComplete -= OnCompleteLevel;
-            GhostNetModuleBackCompat.OnTextInput -= OnTextInput;
+            Everest.Events.Level.OnComplete -= OnCompleteLevel;
+            TextInput.OnInput -= OnTextInput;
 
             OnExitLevel(null, null, LevelExit.Mode.SaveAndQuit, null, null);
 
@@ -1151,7 +1140,9 @@ namespace Celeste.Mod.Ghost.Net {
 
         #region Celeste Events
 
-        public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
+        public void OnLoadLevel(On.Celeste.Level.orig_LoadLevel orig, Level level, Player.IntroTypes playerIntro, bool isFromLoader = false) {
+            orig?.Invoke(level, playerIntro, isFromLoader);
+
             Session = level.Session;
 
             if (Connection == null)
@@ -1260,13 +1251,14 @@ namespace Celeste.Mod.Ghost.Net {
                 };
             }
 
-            Everest.Events.Level.OnLoadLevel += OnLoadLevel;
+            On.Celeste.Level.LoadLevel += OnLoadLevel;
             Everest.Events.Level.OnExit += OnExitLevel;
-            GhostNetModuleBackCompat.OnLevelComplete += OnCompleteLevel;
-            GhostNetModuleBackCompat.OnTextInput += OnTextInput;
+            Everest.Events.Level.OnComplete += OnCompleteLevel;
+            TextInput.OnInput += OnTextInput;
 
             if (Engine.Scene is Level)
-                OnLoadLevel((Level) Engine.Scene, Player.IntroTypes.Transition, true);
+                OnLoadLevel(null, (Level) Engine.Scene, Player.IntroTypes.Transition, true);
+
         }
 
         public void Stop() {

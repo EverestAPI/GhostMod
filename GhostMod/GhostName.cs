@@ -24,7 +24,7 @@ namespace Celeste.Mod.Ghost {
             Tracking = tracking;
             Name = name;
 
-            Tag = GhostModuleBackCompat.TagSubHUD;
+            Tag = TagsExt.SubHUD;
         }
 
         public override void Render() {

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\Microsoft.Net.Compilers.2.6.1\build\Microsoft.Net.Compilers.props" Condition="Exists('..\packages\Microsoft.Net.Compilers.2.6.1\build\Microsoft.Net.Compilers.props')" />
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -44,19 +44,14 @@
       <HintPath>..\Everest\lib-stripped\FNA.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="MonoMod">
-      <HintPath>..\Everest\lib\MonoMod.exe</HintPath>
-      <Private>False</Private>
+    <Reference Include="MMHOOK_Celeste">
+      <HintPath>..\MMHOOK_Celeste.dll</HintPath>
     </Reference>
     <Reference Include="Steamworks.NET">
       <HintPath>..\Everest\lib-stripped\Steamworks.NET.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.ValueTuple, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.ValueTuple.4.4.0\lib\netstandard1.0\System.ValueTuple.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System.Xml" />
     <Reference Include="YamlDotNet">
       <HintPath>..\Everest\lib\YamlDotNet.dll</HintPath>
@@ -68,7 +63,6 @@
     <Compile Include="GhostChunkData.cs" />
     <Compile Include="GhostManager.cs" />
     <Compile Include="GhostExtensions.cs" />
-    <Compile Include="GhostModuleBackCompat.cs" />
     <Compile Include="GhostName.cs" />
     <Compile Include="GhostInputReplayer.cs" />
     <Compile Include="GhostRecorder.cs" />
@@ -81,28 +75,29 @@
     <Compile Include="GhostInputNodes.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Everest\Celeste.Mod.mm\Celeste.Mod.mm.csproj">
-      <Project>{d5d0239d-ff95-4897-9484-1898ab7e82f5}</Project>
-      <Name>Celeste.Mod.mm</Name>
-      <Private>False</Private>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="metadata.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Content\Dialog\English.txt">
       <LogicalName>Content\Dialog\English.txt</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Microsoft.Net.Compilers.2.6.1\build\Microsoft.Net.Compilers.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Net.Compilers.2.6.1\build\Microsoft.Net.Compilers.props'))" />
+  <ItemGroup>
+    <ProjectReference Include="..\Everest\Celeste.Mod.mm\Celeste.Mod.mm.csproj">
+      <Project>{d5d0239d-ff95-4897-9484-1898ab7e82f5}</Project>
+      <Name>Celeste.Mod.mm</Name>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
   </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
 </Project>

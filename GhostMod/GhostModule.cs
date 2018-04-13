@@ -1,7 +1,6 @@
 ﻿using Celeste.Mod;
 using Microsoft.Xna.Framework;
 using Monocle;
-using MonoMod.Detour;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -39,18 +38,20 @@ namespace Celeste.Mod.Ghost {
             if (!Directory.Exists(PathGhosts))
                 Directory.CreateDirectory(PathGhosts);
 
-            Everest.Events.Level.OnLoadLevel += OnLoadLevel;
+            On.Celeste.Level.LoadLevel += OnLoadLevel;
             Everest.Events.Level.OnExit += OnExit;
-            Everest.Events.Player.OnDie += OnDie;
+            On.Celeste.Player.Die += OnDie;
         }
 
         public override void Unload() {
-            Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+            On.Celeste.Level.LoadLevel -= OnLoadLevel;
             Everest.Events.Level.OnExit -= OnExit;
-            Everest.Events.Player.OnDie -= OnDie;
+            On.Celeste.Player.Die -= OnDie;
         }
 
-        public void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
+        public void OnLoadLevel(On.Celeste.Level.orig_LoadLevel orig, Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
+            orig(level, playerIntro, isFromLoader);
+            
             if (isFromLoader) {
                 GhostManager?.RemoveSelf();
                 GhostManager = null;
@@ -98,9 +99,11 @@ namespace Celeste.Mod.Ghost {
             GhostRecorder.Data.Name = Settings.Name;
         }
 
-        public void OnDie(Player player) {
+        public PlayerDeadBody OnDie(On.Celeste.Player.orig_Die orig, Player player, Vector2 direction, bool evenIfInvincible, bool registerDeathInStats) {
+            PlayerDeadBody corpse = orig(player, direction, evenIfInvincible, registerDeathInStats);
+
             if (GhostRecorder == null || GhostRecorder.Data == null)
-                return;
+                return corpse;
 
             // This is hacky, but it works:
             // Check the stack trace for Celeste.Level+* <Pause>*
@@ -114,10 +117,12 @@ namespace Celeste.Mod.Ghost {
                     continue;
 
                 GhostRecorder.Data = null;
-                return;
+                return corpse;
             }
 
             GhostRecorder.Data.Dead = true;
+
+            return corpse;
         }
 
         public override void CreateModMenuSection(TextMenu menu, bool inGame, FMOD.Studio.EventInstance snapshot) {

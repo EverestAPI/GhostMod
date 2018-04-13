@@ -1,4 +1,5 @@
-﻿using FMOD.Studio;
+﻿using Celeste.Mod;
+using FMOD.Studio;
 using Microsoft.Xna.Framework;
 using Monocle;
 using System;
