@@ -101,11 +101,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="metadata.yaml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="Content\Dialog\English.txt">
       <LogicalName>Content\Dialog\English.txt</LogicalName>
     </EmbeddedResource>
@@ -118,6 +113,12 @@
     <EmbeddedResource Include="Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\indicator.png">
       <LogicalName>Content\Graphics\Atlases\Gui\ghostnetmod\iconwheel\indicator.png</LogicalName>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\multimetadata.yaml">
+      <Link>multimetadata.yaml</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

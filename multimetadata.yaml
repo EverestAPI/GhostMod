@@ -1,15 +1,15 @@
 ﻿- Name: GhostMod
-  Version: 1.2.0
+  Version: 1.2.1
   DLL: GhostMod.dll
   Dependencies:
     - Name: Everest
       Version: 1.0.0
 
 - Name: GhostNetMod
-  Version: 1.3.1
+  Version: 1.3.2
   DLL: GhostNetMod.dll
   Dependencies:
     - Name: Everest
       Version: 1.0.0
     - Name: GhostMod
-      Version: 1.2.0
+      Version: 1.2.1
