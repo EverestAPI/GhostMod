@@ -46,6 +46,7 @@
     </Reference>
     <Reference Include="MMHOOK_Celeste">
       <HintPath>..\MMHOOK_Celeste.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Steamworks.NET">
       <HintPath>..\Everest\lib-stripped\Steamworks.NET.dll</HintPath>
