@@ -157,6 +157,8 @@ namespace Celeste.Mod.Ghost.Net {
                 ChatVisible = true;
 
             } else if (ChatVisible) {
+                Celeste.Commands.Open = false;
+
                 if (MInput.Keyboard.Pressed(Keys.Enter)) {
                     SendMChat(ChatInput);
                     ChatVisible = false;
