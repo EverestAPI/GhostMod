@@ -18,6 +18,8 @@ using System.Threading.Tasks;
 namespace Celeste.Mod.Ghost.Net {
     public class GhostNetClient : DrawableGameComponent {
 
+        public readonly static Vector2 FontScale = new Vector2(0.4f, 0.4f);
+
         public GhostNetConnection Connection;
 
         protected float time;
@@ -278,10 +280,11 @@ namespace Celeste.Mod.Ghost.Net {
                 string text = ">" + ChatInput;
                 if (Calc.BetweenInterval(time, 0.5f))
                     text += "_";
-                Monocle.Draw.SpriteBatch.DrawString(
-                    Monocle.Draw.DefaultFont,
-                    Escape(text, Monocle.Draw.DefaultFont),
+                ActiveFont.Draw(
+                    text,
                     new Vector2(20f, viewHeight - 42f),
+                    Vector2.Zero,
+                    FontScale,
                     Color.White
                 );
             }
@@ -305,17 +308,18 @@ namespace Celeste.Mod.Ghost.Net {
                         if (alpha <= 0f)
                             continue;
 
-                        string text = Escape(line.ToString(), Monocle.Draw.DefaultFont);
-                        Vector2 size = Monocle.Draw.DefaultFont.MeasureString(text);
+                        string text = line.ToString();
+                        Vector2 size = ActiveFont.Measure(text) * FontScale;
                         float height = 20f + size.Y;
 
                         y -= height;
 
                         Monocle.Draw.Rect(10f, y, size.X + 20f, height, Color.Black * 0.8f * alpha);
-                        Monocle.Draw.SpriteBatch.DrawString(
-                            Monocle.Draw.DefaultFont,
+                        ActiveFont.Draw(
                             text,
                             new Vector2(20f, y + 10f),
+                            Vector2.Zero,
+                            FontScale,
                             line.Color * alpha * (line.Unconfirmed ? 0.6f : 1f)
                         );
                     }
