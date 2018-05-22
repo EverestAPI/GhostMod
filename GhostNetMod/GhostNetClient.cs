@@ -323,6 +323,8 @@ namespace Celeste.Mod.Ghost.Net {
             }
 
             if (PlayerListVisible) {
+                if (PlayerListText == null)
+                    RebuildPlayerList();
                 float y = 0f;
                 if ((Settings.Instance?.SpeedrunClock ?? SpeedrunType.Off) != SpeedrunType.Off) {
                     y += 192f * (viewHeight / 1920f);

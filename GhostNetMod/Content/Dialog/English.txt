@@ -22,6 +22,7 @@
 	POSTCARD_GHOSTNETMODULE_BACKTOMENU=			The server has sent you back to the main menu\.
 
 # GhostNet Module Options
+	MODOPTIONS_GHOSTMODULE_OVERRIDDEN=			Delete GhostNetMod.dll in mod .zip for time trials
 	MODOPTIONS_GHOSTNETMODULE_TITLE= 			GhostNet - Multiplayer
 	MODOPTIONS_GHOSTNETMODULE_DEBUGWARN=		WARNING: DEBUG MODE DETECTED!
 	MODOPTIONS_GHOSTNETMODULE_CONNECTED=		Connected
