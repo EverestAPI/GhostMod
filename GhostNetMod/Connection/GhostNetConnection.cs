@@ -47,12 +47,24 @@ namespace Celeste.Mod.Ghost.Net {
 
         protected virtual void ReceiveManagement(IPEndPoint remote, GhostNetFrame frame) {
             ManagementEndPoint = remote;
-            OnReceiveManagement?.Invoke(this, remote, frame);
+            try {
+                OnReceiveManagement?.Invoke(this, remote, frame);
+            } catch (Exception e) {
+                Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed handling management frame");
+                LogContext(LogLevel.Warn);
+                e.LogDetailed();
+            }
         }
 
         protected virtual void ReceiveUpdate(IPEndPoint remote, GhostNetFrame frame) {
             UpdateEndPoint = remote;
-            OnReceiveUpdate?.Invoke(this, remote, frame);
+            try {
+                OnReceiveUpdate?.Invoke(this, remote, frame);
+            } catch (Exception e) {
+                Logger.Log(LogLevel.Warn, "ghostnet-con", "Failed handling update frame");
+                LogContext(LogLevel.Warn);
+                e.LogDetailed();
+            }
         }
 
         public void LogContext(LogLevel level) {

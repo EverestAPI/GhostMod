@@ -157,7 +157,7 @@ namespace Celeste.Mod.Ghost.Net {
                 ChatVisible = true;
 
             } else if (ChatVisible) {
-                Celeste.Commands.Open = false;
+                Engine.Commands.Open = false;
 
                 if (MInput.Keyboard.Pressed(Keys.Enter)) {
                     SendMChat(ChatInput);
@@ -618,15 +618,15 @@ namespace Celeste.Mod.Ghost.Net {
                 new ChunkMSession {
                     InSession = true,
 
-                    Audio = Session.Audio,
+                    Audio = Session.Audio?.Clone(),
                     RespawnPoint = Session.RespawnPoint,
                     Inventory = Session.Inventory,
-                    Flags = Session.Flags,
-                    LevelFlags = Session.LevelFlags,
-                    Strawberries = Session.Strawberries,
-                    DoNotLoad = Session.DoNotLoad,
-                    Keys = Session.Keys,
-                    Counters = Session.Counters,
+                    Flags = new HashSet<string>(Session.Flags ?? new HashSet<string>()),
+                    LevelFlags = new HashSet<string>(Session.LevelFlags ?? new HashSet<string>()),
+                    Strawberries = new HashSet<EntityID>(Session.Strawberries ?? new HashSet<EntityID>()),
+                    DoNotLoad = new HashSet<EntityID>(Session.DoNotLoad ?? new HashSet<EntityID>()),
+                    Keys = new HashSet<EntityID>(Session.Keys ?? new HashSet<EntityID>()),
+                    Counters = new List<Session.Counter>(Session.Counters ?? new List<Session.Counter>()),
                     FurthestSeenLevel = Session.FurthestSeenLevel,
                     StartCheckpoint = Session.StartCheckpoint,
                     ColorGrade = Session.ColorGrade,
@@ -643,7 +643,7 @@ namespace Celeste.Mod.Ghost.Net {
                     Time = Session.Time,
                     CoreMode = Session.CoreMode
                 }
-            } , true);
+            }, true);
         }
 
         public virtual void SendRListAreas() {

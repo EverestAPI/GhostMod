@@ -115,8 +115,8 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\multimetadata.yaml">
-      <Link>multimetadata.yaml</Link>
+    <Content Include="..\everest.yaml">
+      <Link>everest.yaml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
