@@ -732,6 +732,9 @@ namespace Celeste.Mod.Ghost.Net {
             }
             RebuildPlayerList();
 
+            if (Engine.Instance == null)
+                return;
+
             if (frame.HHead.PlayerID == PlayerID) {
                 // Server told us to move... or just told us about our proper name.
                 PlayerInfo = frame.MPlayer;
@@ -1264,7 +1267,7 @@ namespace Celeste.Mod.Ghost.Net {
             Everest.Events.Level.OnComplete += OnCompleteLevel;
             TextInput.OnInput += OnTextInput;
 
-            if (Engine.Scene is Level)
+            if (Engine.Instance != null && Engine.Scene is Level)
                 OnLoadLevel(null, (Level) Engine.Scene, Player.IntroTypes.Transition, true);
 
         }

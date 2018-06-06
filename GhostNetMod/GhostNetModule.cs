@@ -181,7 +181,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             if (Settings.IsHost || server) {
                 Server = new GhostNetServer(Celeste.Instance);
-                Celeste.Instance.Components.Add(Server);
+                if (!_StartHeadless)
+                    Celeste.Instance.Components.Add(Server);
                 Server.OPs.Add(0);
                 Server.Start();
             }
@@ -191,7 +192,8 @@ namespace Celeste.Mod.Ghost.Net {
 
             try {
                 Client = new GhostNetClient(Celeste.Instance);
-                Celeste.Instance.Components.Add(Client);
+                if (!_StartHeadless)
+                    Celeste.Instance.Components.Add(Client);
                 Client.Start();
             } catch (Exception e) {
                 Logger.Log(LogLevel.Warn, "ghostnet", "Failed starting client");
@@ -226,7 +228,7 @@ namespace Celeste.Mod.Ghost.Net {
             };
             while (Server.IsRunning) {
                 string line = Console.ReadLine();
-                if (string.IsNullOrWhiteSpace(line))
+                if (string.IsNullOrWhiteSpace(line)) 
                     continue;
                 line = line.TrimEnd();
                 if (line == "/quit") {
