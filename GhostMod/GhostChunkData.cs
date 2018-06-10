@@ -70,9 +70,7 @@ namespace Celeste.Mod.Ghost {
             if (version < 2)
                 return;
 
-            if (reader.ReadBoolean()) {
-                DashColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-            }
+            DashColor = reader.ReadBoolean() ? (Color?) new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte(), reader.ReadByte()) : null;
             DashDir = new Vector2(reader.ReadSingle(), reader.ReadSingle());
             DashWasB = reader.ReadBoolean();
         }

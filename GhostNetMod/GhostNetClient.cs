@@ -495,7 +495,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         public virtual void CreateTrail(Ghost ghost) {
-            TrailManager.Add(ghost, ghost.Frame.Data.DashColor.Value, 1f);
+            TrailManager.Add(ghost, ghost.Frame.Data.DashColor ?? Color.Transparent, 1f);
         }
 
         #region Frame Senders
