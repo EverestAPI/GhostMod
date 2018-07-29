@@ -175,7 +175,7 @@ You can chat with your fellow racers using the rc command.",
                 case "join":
                     race = GetRace(env.PlayerID);
                     if (race != null)
-                        throw new Exception($"You're already in race #{race.ID}!");
+                        throw new Exception($"You're already in race #{race.ID + 1}!");
 
                     if (args.Length < 2)
                         throw new Exception("Not enough arguments!");
