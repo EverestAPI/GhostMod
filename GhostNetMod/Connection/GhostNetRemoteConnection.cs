@@ -37,7 +37,11 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected static UdpClient GetUDP(string host, int port) {
-            return new UdpClient(port);
+            /* Note from PolyB:
+             * hey, i've been investigating why two clients on the same machine as the server can't see themselves,
+             * it looks like it's because the udp client port is forced to be the celeste port, so i fixed it to be dynamic
+             */
+            return new UdpClient();
         }
 
         public GhostNetRemoteConnection(string host, int port)
