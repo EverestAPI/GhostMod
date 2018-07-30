@@ -33,7 +33,12 @@ namespace Celeste.Mod.Ghost.Net {
         protected Queue<Tuple<GhostNetFrame, bool, IPEndPoint>> UpdateQueue = new Queue<Tuple<GhostNetFrame, bool, IPEndPoint>>();
 
         protected static TcpClient GetTCP(string host, int port) {
-            return new TcpClient(host, port);
+            return new TcpClient(host, port) {
+                SendTimeout = 3,
+                ReceiveTimeout = 3,
+                SendBufferSize = 32,
+                ReceiveBufferSize = 32
+            };
         }
 
         protected static UdpClient GetUDP(string host, int port) {
