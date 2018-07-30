@@ -37,7 +37,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected static UdpClient GetUDP(string host, int port) {
-            return new UdpClient(port);
+            return new UdpClient();
         }
 
         public GhostNetRemoteConnection(string host, int port)
