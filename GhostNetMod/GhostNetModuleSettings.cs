@@ -85,6 +85,36 @@ namespace Celeste.Mod.Ghost.Net {
         [SettingIgnore]
         public bool SendUFramesInMStream { get; set; } = false;
 
+        /// <summary>
+        /// The amount of time the TcpClient will wait for a send operation to complete successfully,
+        /// 0 means no timeout
+        /// </summary>
+        /// <value>The tcp send time-out. in milliseconds</value>
+        [SettingIgnore]
+        public int TcpSendTimeout { get; set; } = 3000;
+
+        /// <summary>
+        /// The amount of time the TcpClient will wait to receive data once a read operation is initiated.
+        /// 0 means no timeout
+        /// </summary>
+        /// <value>The tcp send time-out. in milliseconds</value>
+        [SettingIgnore]
+        public int TcpReceiveTimeout { get; set; } = 0;
+
+        /// <summary>
+        /// The size of the TcpClient send buffer
+        /// </summary>
+        /// <value>The size of the tcp send buffer in bytes.</value>
+        [SettingIgnore]
+        public int TcpSendBufferSize { get; set; } = 512;
+
+        /// <summary>
+        /// The size of the TcpClient receive buffer
+        /// </summary>
+        /// <value>The size of the tcp receive buffer in bytes.</value>
+        [SettingIgnore]
+        public int TcpreceiveBufferSize { get; set; } = 512;
+
         [SettingIgnore]
         public string[] EmoteFavs { get; set; }
 
