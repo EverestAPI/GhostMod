@@ -34,10 +34,9 @@ namespace Celeste.Mod.Ghost.Net {
 
         protected static TcpClient GetTCP(string host, int port) {
             return new TcpClient(host, port) {
-                SendTimeout = 3,
-                ReceiveTimeout = 3,
-                SendBufferSize = 32,
-                ReceiveBufferSize = 32
+                SendTimeout = 6,
+                SendBufferSize = 64,
+                ReceiveBufferSize = 64
             };
         }
 
