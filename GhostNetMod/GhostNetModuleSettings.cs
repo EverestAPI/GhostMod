@@ -91,7 +91,14 @@ namespace Celeste.Mod.Ghost.Net {
         /// </summary>
         /// <value>The tcp send time-out. in milliseconds</value>
         [SettingIgnore]
-        public int TcpSendTimeout { get; set; } = 3000;
+        public int TcpTimeoutSend { get; set; } = 0;
+
+        /// <summary>
+        /// The size of the TcpClient send buffer
+        /// </summary>
+        /// <value>The size of the tcp send buffer in bytes.</value>
+        [SettingIgnore]
+        public int TcpBufferSend { get; set; } = 2048;
 
         /// <summary>
         /// The amount of time the TcpClient will wait to receive data once a read operation is initiated.
@@ -99,21 +106,15 @@ namespace Celeste.Mod.Ghost.Net {
         /// </summary>
         /// <value>The tcp send time-out. in milliseconds</value>
         [SettingIgnore]
-        public int TcpReceiveTimeout { get; set; } = 0;
+        public int TcpTimeoutReceive { get; set; } = 0;
 
-        /// <summary>
-        /// The size of the TcpClient send buffer
-        /// </summary>
-        /// <value>The size of the tcp send buffer in bytes.</value>
-        [SettingIgnore]
-        public int TcpSendBufferSize { get; set; } = 512;
 
         /// <summary>
         /// The size of the TcpClient receive buffer
         /// </summary>
         /// <value>The size of the tcp receive buffer in bytes.</value>
         [SettingIgnore]
-        public int TcpreceiveBufferSize { get; set; } = 512;
+        public int TcpBufferReceive { get; set; } = 2048;
 
         [SettingIgnore]
         public string[] EmoteFavs { get; set; }

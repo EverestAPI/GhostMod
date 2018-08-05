@@ -6,7 +6,7 @@
       Version: 1.0.0
 
 - Name: GhostNetMod
-  Version: 1.3.10
+  Version: 1.3.11
   DLL: GhostNetMod.dll
   Dependencies:
     - Name: Everest
