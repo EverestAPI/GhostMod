@@ -213,6 +213,8 @@ namespace Celeste.Mod.Ghost.Net {
             Connections.Add(con);
             ConnectionMap[con.ManagementEndPoint] = con;
             UpdateConnectionQueue[con.ManagementEndPoint.Address] = con;
+            if (GhostNetModule.Settings.ServerRemoteOpIPs.Contains(con.ManagementEndPoint.Address.ToString()))
+                OPs.Add(id);
             con.SendManagement(new GhostNetFrame {
                 new ChunkHHead {
                     PlayerID = id
@@ -231,12 +233,14 @@ namespace Celeste.Mod.Ghost.Net {
         #region Frame Handlers
 
         protected virtual void SetNetHead(GhostNetConnection con, GhostNetFrame frame) {
-            frame.HHead = new ChunkHHead {
-                PlayerID = (uint) Connections.IndexOf(con)
-            };
-
             // Prevent MServerInfo from being propagated.
             frame.Remove<ChunkMServerInfo>();
+
+            uint id = (uint) Connections.IndexOf(con);
+            frame.HHead = id == uint.MaxValue ? null :
+                new ChunkHHead {
+                    PlayerID = id
+                };
         }
 
         public virtual void Handle(GhostNetConnection con, GhostNetFrame frame) {
@@ -582,7 +586,7 @@ namespace Celeste.Mod.Ghost.Net {
         }
 
         protected virtual void HandleDisconnect(GhostNetConnection con) {
-            if (!ConnectionMap.TryGetValue(con.ManagementEndPoint, out con) || con == null)
+            if (con == null)
                 return; // Probably already disconnected.
 
             uint id = (uint) Connections.IndexOf(con);

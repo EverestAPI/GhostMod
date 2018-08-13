@@ -85,37 +85,6 @@ namespace Celeste.Mod.Ghost.Net {
         [SettingIgnore]
         public bool SendUFramesInMStream { get; set; } = false;
 
-        /// <summary>
-        /// The amount of time the TcpClient will wait for a send operation to complete successfully,
-        /// 0 means no timeout
-        /// </summary>
-        /// <value>The tcp send time-out. in milliseconds</value>
-        [SettingIgnore]
-        public int TcpTimeoutSend { get; set; } = 0;
-
-        /// <summary>
-        /// The size of the TcpClient send buffer
-        /// </summary>
-        /// <value>The size of the tcp send buffer in bytes.</value>
-        [SettingIgnore]
-        public int TcpBufferSend { get; set; } = 2048;
-
-        /// <summary>
-        /// The amount of time the TcpClient will wait to receive data once a read operation is initiated.
-        /// 0 means no timeout
-        /// </summary>
-        /// <value>The tcp send time-out. in milliseconds</value>
-        [SettingIgnore]
-        public int TcpTimeoutReceive { get; set; } = 0;
-
-
-        /// <summary>
-        /// The size of the TcpClient receive buffer
-        /// </summary>
-        /// <value>The size of the tcp receive buffer in bytes.</value>
-        [SettingIgnore]
-        public int TcpBufferReceive { get; set; } = 2048;
-
         [SettingIgnore]
         public string[] EmoteFavs { get; set; }
 
@@ -253,6 +222,8 @@ Send /help for a list of all commands.";
         [YamlIgnore]
         [SettingIgnore]
         public Color ServerColorEmote { get; set; } = Color.LightSeaGreen;
+
+        public string[] ServerRemoteOpIPs { get; set; } = { "192.168.2.1" };
 
         #endregion
 

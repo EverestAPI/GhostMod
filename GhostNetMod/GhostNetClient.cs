@@ -460,6 +460,9 @@ namespace Celeste.Mod.Ghost.Net {
             };
 
         public void OnJumpedOnHead(Actor who, bool isPlayer, bool withPlayer) {
+            if (!GhostNetModule.Settings.Collision)
+                return;
+
             Audio.Play("event:/game/general/thing_booped", who.Center).setVolume(0.7f);
 
             Level level = Engine.Scene as Level;

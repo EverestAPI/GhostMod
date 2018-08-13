@@ -33,20 +33,11 @@ namespace Celeste.Mod.Ghost.Net {
         protected Queue<Tuple<GhostNetFrame, bool, IPEndPoint>> UpdateQueue = new Queue<Tuple<GhostNetFrame, bool, IPEndPoint>>();
 
         protected static TcpClient GetTCP(string host, int port) {
-            return new TcpClient(host, port) {
-                SendTimeout = GhostNetModule.Settings.TcpTimeoutSend,
-                SendBufferSize = GhostNetModule.Settings.TcpBufferSend,
-                ReceiveTimeout = GhostNetModule.Settings.TcpTimeoutReceive,
-                ReceiveBufferSize = GhostNetModule.Settings.TcpBufferReceive,
-            };
+            return new TcpClient(host, port);
         }
 
         protected static UdpClient GetUDP(string host, int port) {
-            /* Note from PolyB:
-             * hey, i've been investigating why two clients on the same machine as the server can't see themselves,
-             * it looks like it's because the udp client port is forced to be the celeste port, so i fixed it to be dynamic
-             */
-            return new UdpClient();
+            return new UdpClient(port);
         }
 
         public GhostNetRemoteConnection(string host, int port)
