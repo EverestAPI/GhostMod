@@ -119,8 +119,9 @@ namespace Celeste.Mod.Ghost.Net {
                 if (args.Length != 1)
                     throw new Exception("Exactly 1 argument required!");
 
-                int id = args[0].Int;
-                if (env.Server.OPs.IndexOf((uint) id) < env.Server.OPs.IndexOf(env.PlayerID))
+                int index = env.Server.OPs.IndexOf((uint) args[0].Int);
+                int indexSelf = env.Server.OPs.IndexOf(env.PlayerID);
+                if (-1 < index && index < indexSelf)
                     throw new Exception("Cannot kick a higher OP!");
 
                 GhostNetConnection other = args[0].Connection;
