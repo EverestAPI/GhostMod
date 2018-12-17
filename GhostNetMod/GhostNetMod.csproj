@@ -39,7 +39,11 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="MMHOOK_Celeste">
-      <HintPath>..\MMHOOK_Celeste.dll</HintPath>
+      <HintPath>..\deps\MMHOOK_Celeste.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Tmds.Systemd">
+      <HintPath>..\deps\Tmds.Systemd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Steamworks.NET">
@@ -86,6 +90,7 @@
     <Compile Include="GhostNetServer.cs" />
     <Compile Include="GhostNetModuleSettings.cs" />
     <Compile Include="GhostNetModule.cs" />
+    <Compile Include="GhostNetWatchdog.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

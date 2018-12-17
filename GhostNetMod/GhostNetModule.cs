@@ -185,6 +185,7 @@ namespace Celeste.Mod.Ghost.Net {
                     Celeste.Instance.Components.Add(Server);
                 Server.OPs.Add(0);
                 Server.Start();
+                GhostNetWatchdog.InitializeWatchdog();
             }
 
             if (!Settings.IsHost && server && !client)
@@ -214,6 +215,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (Server != null) {
                 Server.Stop();
                 Server = null;
+                GhostNetWatchdog.StopWatchdog();
             }
         }
 

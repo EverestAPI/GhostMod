@@ -1,0 +1,246 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Tmds.Systemd</name>
+    </assembly>
+    <members>
+        <member name="T:Tmds.Systemd.Journal">
+            <summary>
+            Interact with the journal service.
+            </summary>
+        </member>
+        <member name="P:Tmds.Systemd.Journal.IsAvailable">
+            <summary>Returns whether the journal service is currently available.</summary>
+        </member>
+        <member name="P:Tmds.Systemd.Journal.IsSupported">
+            <summary>Returns whether the journal service can be available.</summary>
+        </member>
+        <member name="P:Tmds.Systemd.Journal.SyslogIdentifier">
+            <summary>The syslog identifier added to each log message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.Journal.GetMessage">
+            <summary>Obtain a cleared JournalMessage. The Message must be Disposed to return it.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.Journal.Log(Tmds.Systemd.LogFlags,Tmds.Systemd.JournalMessage)">
+            <summary>
+            Submit a log entry to the journal.
+            </summary>
+        </member>
+        <member name="T:Tmds.Systemd.JournalFieldName">
+            <summary>
+            Represents a valid journal field name.
+            </summary>
+        </member>
+        <member name="F:Tmds.Systemd.JournalFieldName.Priority">
+            <summary>Priority value.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.JournalFieldName.SyslogIdentifier">
+            <summary>Syslog identifier tag.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.JournalFieldName.Message">
+            <summary>Human readable message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.#ctor(System.String)">
+            <summary>Constructor</summary>
+        </member>
+        <member name="P:Tmds.Systemd.JournalFieldName.Length">
+            <summary>Length of the name.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.op_Implicit(Tmds.Systemd.JournalFieldName)~System.ReadOnlySpan{System.Byte}">
+            <summary>Conversion to ReadOnlySpan.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.op_Implicit(System.String)~Tmds.Systemd.JournalFieldName">
+            <summary>Conversion from string.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.ToString">
+            <summary>Returns the string representation of this name.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.op_Explicit(Tmds.Systemd.JournalFieldName)~System.String">
+            <summary>Conversion to string.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.Equals(Tmds.Systemd.JournalFieldName)">
+            <summary>Checks equality.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.op_Equality(Tmds.Systemd.JournalFieldName,Tmds.Systemd.JournalFieldName)">
+            <summary>Equality comparison.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.op_Inequality(Tmds.Systemd.JournalFieldName,Tmds.Systemd.JournalFieldName)">
+            <summary>Inequality comparison.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.Equals(System.Object)">
+            <summary>Checks equality.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalFieldName.GetHashCode">
+            <summary>Returns the hash code for this name.</summary>
+        </member>
+        <member name="T:Tmds.Systemd.JournalMessage">
+            <summary>Represents a structured log message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Finalize">
+            <summary>Destructor.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Append(System.String,System.ReadOnlySpan{System.Byte})">
+            <summary>Appends a field to the message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Append(Tmds.Systemd.JournalFieldName,System.ReadOnlySpan{System.Byte})">
+            <summary>Appends a field to the message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Append(System.String,System.Object)">
+            <summary>Appends a field to the message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Append(System.String,System.Int32)">
+            <summary>Appends a field to the message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Append(Tmds.Systemd.JournalFieldName,System.Object)">
+            <summary>Appends a field to the message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Append(Tmds.Systemd.JournalFieldName,System.Int32)">
+            <summary>Appends a field to the message.</summary>
+        </member>
+        <member name="M:Tmds.Systemd.JournalMessage.Dispose">
+            <summary>Returns the JournalMessage.</summary>
+        </member>
+        <member name="T:Tmds.Systemd.LogFlags">
+            <summary>
+            Log flags.
+            </summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.None">
+            <summary>No flags.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Emergency">
+            <summary>System is unusable.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Alert">
+            <summary>Action must be taken immediately.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Critical">
+            <summary>Critical conditions.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Error">
+            <summary>Error conditions.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Warning">
+            <summary>Warning conditions.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Notice">
+            <summary>Normal but significant conditions.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Information">
+            <summary>Informational.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.Debug">
+            <summary>Debug-level messages.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.DropWhenBusy">
+            <summary>Drop the message instead of blocking.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogFlags.DontAppendSyslogIdentifier">
+            <summary>Don't append a syslog identifier.</summary>
+        </member>
+        <member name="T:Tmds.Systemd.LogResult">
+            <summary>Result of a log operation.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogResult.Success">
+            <summary>Message sent succesfully.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogResult.UnknownError">
+            <summary>Unknown error.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogResult.NotAvailable">
+            <summary>Logging service is not available.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogResult.NotSupported">
+            <summary>Logging service is not supported.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogResult.Size">
+            <summary>Message is too large to be sent.</summary>
+        </member>
+        <member name="F:Tmds.Systemd.LogResult.Busy">
+            <summary>Logging would block.</summary>
+        </member>
+        <member name="T:Tmds.Systemd.ServiceManager">
+            <summary>
+            Interact with the systemd system manager.
+            </summary>
+        </member>
+        <member name="P:Tmds.Systemd.ServiceManager.IsRunningAsService">
+            <summary>
+            Returns whether the process is running as part of a unit.
+            </summary>
+        </member>
+        <member name="P:Tmds.Systemd.ServiceManager.InvocationId">
+            <summary>
+            Returns unique identifier of the runtime cycle of the unit.
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceManager.Notify(Tmds.Systemd.ServiceState,Tmds.Systemd.ServiceState[])">
+            <summary>
+            Notify service manager about start-up completion and other service status changes.
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceManager.GetListenSockets">
+            <summary>
+            Instantiate Sockets for the file descriptors passed by the service manager.
+            </summary>
+        </member>
+        <member name="T:Tmds.Systemd.ServiceState">
+            <summary>
+            Describes a service state change.
+            </summary>
+        </member>
+        <member name="P:Tmds.Systemd.ServiceState.Ready">
+            <summary>
+            Service startup is finished.
+            </summary>
+        </member>
+        <member name="P:Tmds.Systemd.ServiceState.Reloading">
+            <summary>
+            Service is reloading its configuration.
+            </summary>
+        </member>
+        <member name="P:Tmds.Systemd.ServiceState.Stopping">
+            <summary>
+            Service is beginning its shutdown.
+            </summary>
+        </member>
+        <member name="P:Tmds.Systemd.ServiceState.Watchdog">
+            <summary>
+            Update the watchdog timestamp.
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceState.Status(System.String)">
+            <summary>
+            Describes the service state.
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceState.Errno(System.Int32)">
+            <summary>
+            Describes the service failure (errno-style).
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceState.BusError(System.String)">
+            <summary>
+            Describes the service failure (D-Bus error).
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceState.MainPid(System.Int32)">
+            <summary>
+            Main process ID (PID) of the service, in case the service manager did not fork off the process itself.
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceState.#ctor(System.String)">
+            <summary>
+            Create custom ServiceState.
+            </summary>
+        </member>
+        <member name="M:Tmds.Systemd.ServiceState.ToString">
+            <summary>
+            String representation of service state.
+            </summary>
+        </member>
+        <member name="T:Tmds.Systemd.UnixDomainSocketEndPoint">
+            <summary>Represents a Unix Domain Socket endpoint as a path.</summary>
+        </member>
+    </members>
+</doc>
