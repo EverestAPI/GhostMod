@@ -44,7 +44,6 @@
     </Reference>
     <Reference Include="Tmds.Systemd">
       <HintPath>..\deps\Tmds.Systemd.dll</HintPath>
-      <Private>False</Private>
     </Reference>
     <Reference Include="Steamworks.NET">
       <HintPath>..\Everest\lib-stripped\Steamworks.NET.dll</HintPath>
