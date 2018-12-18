@@ -29,10 +29,10 @@ namespace Celeste.Mod.Ghost.Net {
         
         public static void InitializeWatchdog() {
             StopWatchdog(); // safety
-            double seconds;
-            if (!Double.TryParse(Environment.GetEnvironmentVariable("WATCHDOG_USEC"), out seconds)) return; // automatic null check
+            double microseconds;
+            if (!Double.TryParse(Environment.GetEnvironmentVariable("WATCHDOG_USEC"), out microseconds)) return;
             
-            double interval = seconds * 500; // seconds / 2 to ms
+            double interval = microseconds / 2000; // microseconds / 2 to ms
             
             watchdogTimer = new Timer(interval);
             watchdogTimer.Elapsed += Watchdog;
