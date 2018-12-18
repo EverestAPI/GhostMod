@@ -37,6 +37,20 @@ namespace Celeste.Mod.Ghost.Net {
             }
         };
 
+        [GhostNetCommandField]
+        public static GhostNetCommand Restart = new GhostNetDCommand {
+            Name = "restart",
+            Help = "Trigger an automatic restart, if configured by the server host. Must be OP.",
+            OnRun = (cmd, env, args) => {
+                if (!env.IsOP)
+                    throw new Exception("You're not OP!");
+                if (args.Length != 0)
+                    throw new Exception("No arguments required!");
+                
+                GhostNetWatchdog.ForceRestart();
+            }
+        };
+
         public static string Help_GetCommandPage(GhostNetCommandEnv env, int page = 0) {
             const int pageSize = 8;
 
