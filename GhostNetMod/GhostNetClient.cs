@@ -998,7 +998,7 @@ namespace Celeste.Mod.Ghost.Net {
             if (!GhostMap.TryGetValue(frame.HHead.PlayerID, out ghost) || ghost == null || ghost.Scene != Engine.Scene)
                 return;
 
-            if (collision.Head) {
+            if (collision.Head && GhostNetModule.Settings.Collision) {
                 OnJumpedOnHead(ghost, false, withPlayer);
                 if (withPlayer) {
                     Player.Speed.Y = Math.Max(Player.Speed.Y, 16f);
