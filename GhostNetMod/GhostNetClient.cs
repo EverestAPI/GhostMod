@@ -168,7 +168,7 @@ namespace Celeste.Mod.Ghost.Net {
                 } else if (MInput.Keyboard.Pressed(Keys.Up) && ChatRepeatIndex < ChatRepeat.Count - 1) {
                     ChatRepeatIndex++;
 
-                } else if (Input.ESC.Pressed || Input.Pause.Pressed) {
+                } else if (Input.ESC.Pressed) {
                     ChatVisible = false;
                 }
             }
